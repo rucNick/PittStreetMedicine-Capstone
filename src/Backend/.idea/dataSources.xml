@@ -23,5 +23,14 @@
         </library>
       </libraries>
     </data-source>
+    <data-source source="LOCAL" name="StreetMed_Backend/Hibernate" uuid="a84303b2-7c49-4329-8b8f-8d79006fb3fc">
+      <driver-ref>sqlite.xerial</driver-ref>
+      <synchronize>true</synchronize>
+      <imported>true</imported>
+      <remarks>Hibernate</remarks>
+      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
+      <jdbc-url>jdbc:sqlite:auth_db.sqlite</jdbc-url>
+      <working-dir>$ProjectFileDir$</working-dir>
+    </data-source>
   </component>
 </project>

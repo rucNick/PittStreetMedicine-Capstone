@@ -23,7 +23,17 @@ public class User {
     private String phone;
 
     @Column(name = "role", nullable = false)
-    private String role;  // "ADMIN", "VOLUNTEER", "CLIENT", "GUEST", etc.
+    private String role;
+
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private UserMetadata metadata;
+
+    public void setMetadata(UserMetadata metadata) {
+        this.metadata = metadata;
+        if (metadata != null) {
+            metadata.setUser(this);
+        }
+    }
 
     public User() {}
 
@@ -82,5 +92,9 @@ public class User {
 
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public UserMetadata getMetadata() {
+        return metadata;
     }
 }
