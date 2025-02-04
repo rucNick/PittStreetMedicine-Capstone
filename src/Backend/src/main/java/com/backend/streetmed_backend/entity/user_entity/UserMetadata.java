@@ -1,4 +1,4 @@
-package com.backend.streetmed_backend.entity;
+package com.backend.streetmed_backend.entity.user_entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
@@ -6,8 +6,19 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "user_metadata")
 public class UserMetadata {
+
     @Id
-    private Integer userId;  // This will match the User's userId
+    @Column(name = "user_id")
+    private Integer userId;
+
+    /**
+     * This tells JPA:
+     *  - We have a 1-to-1 link to User.
+     */
+    @OneToOne
+    @MapsId
+    @JoinColumn(name = "user_id")
+    private User user;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
@@ -18,46 +29,62 @@ public class UserMetadata {
     @Column(name = "last_login")
     private LocalDateTime lastLogin;
 
-    @Column(name = "last_active")
-    private LocalDateTime lastActive;
 
-    @Column(name = "is_active")
-    private boolean isActive = true;
-
-    // Default constructor
-    public UserMetadata() {}
-
-    // Constructor with userId (minimum required field)
-    public UserMetadata(Integer userId) {
-        this.userId = userId;
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
+    public UserMetadata() {
+        // Required by JPA
     }
 
-    // Full constructor
-    public UserMetadata(Integer userId, LocalDateTime createdAt, LocalDateTime updatedAt,
-                        LocalDateTime lastLogin, LocalDateTime lastActive, boolean isActive) {
-        this.userId = userId;
+    /**
+     * Minimal constructor that sets up the link to User.
+     */
+    public UserMetadata(User user) {
+        this.user = user;
+        // We'll rely on lifecycle hooks to set createdAt, updatedAt.
+    }
+
+    // Full constructor if needed
+    public UserMetadata(User user, LocalDateTime createdAt, LocalDateTime updatedAt,
+                        LocalDateTime lastLogin, boolean isActive) {
+        this.user = user;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.lastLogin = lastLogin;
-        this.lastActive = lastActive;
-        this.isActive = isActive;
     }
 
-    // Getters and Setters
+    // --- Lifecycle Hooks ---
+    @PrePersist
+    public void prePersist() {
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+        if (this.updatedAt == null) {
+            this.updatedAt = LocalDateTime.now();
+        }
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    // --- Getters & Setters ---
     public Integer getUserId() {
         return userId;
     }
 
-    public void setUserId(Integer userId) {
-        this.userId = userId;
+    // userId is implicitly mapped to user.userId; typically no direct setter needed.
+    // But you can add one if you want.
+
+    public User getUser() {
+        return user;
+    }
+    public void setUser(User user) {
+        this.user = user;
     }
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
-
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
     }
@@ -65,7 +92,6 @@ public class UserMetadata {
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
     }
-
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
     }
@@ -73,30 +99,7 @@ public class UserMetadata {
     public LocalDateTime getLastLogin() {
         return lastLogin;
     }
-
     public void setLastLogin(LocalDateTime lastLogin) {
         this.lastLogin = lastLogin;
-    }
-
-    public LocalDateTime getLastActive() {
-        return lastActive;
-    }
-
-    public void setLastActive(LocalDateTime lastActive) {
-        this.lastActive = lastActive;
-    }
-
-    public boolean isActive() {
-        return isActive;
-    }
-
-    public void setActive(boolean active) {
-        isActive = active;
-    }
-
-    // PreUpdate hook to update the updatedAt timestamp
-    @PreUpdate
-    public void preUpdate() {
-        this.updatedAt = LocalDateTime.now();
     }
 }
