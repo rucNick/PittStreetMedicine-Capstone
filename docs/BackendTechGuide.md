@@ -1,4 +1,3 @@
-```markdown
 # StreetMed Backend API Documentation
 
 ## Table of Contents
@@ -7,23 +6,23 @@
 - [Authentication API](#authentication-api)
   - [Register](#register)
   - [Login](#login)
-  - [Admin: List Users](#admin-list-users)
-  - [Admin: Delete User](#admin-delete-user)
+  - [Admin Access](#admin-access)
 - [Order API](#order-api)
   - [Create Order](#create-order)
-  - [Get Order Details](#get-order-details)
-  - [Get User Orders](#get-user-orders)
-  - [Get Orders by Status (Volunteer Only)](#get-orders-by-status-volunteer-only)
-  - [Update Order Status (Volunteer Only)](#update-order-status-volunteer-only)
-  - [Assign Volunteer (Volunteer Only)](#assign-volunteer-volunteer-only)
+  - [View Orders](#view-orders)
+  - [Update Order Status](#update-order-status)
   - [Cancel Order](#cancel-order)
-- [Error Handling](#error-handling)
+- [Business Logic](#business-logic)
+  - [Authentication Flow](#authentication-flow)
+  - [Order Flow](#order-flow)
+  - [Access Control](#access-control)
 
 ## Technology Stack
-- **Backend:** Spring Boot 3.x, Java 17  
-- **Database:** SQLite  
-- **Persistence:** JPA/Hibernate  
-- **Build Tool:** Maven
+- Spring Boot 3.x
+- Java 17
+- SQLite Database
+- JPA/Hibernate
+- Maven
 
 ## Project Structure
 ```
@@ -50,398 +49,280 @@ com.backend.streetmed_backend/
 
 ## Authentication API
 
-All authentication endpoints return responses asynchronously using a `CompletableFuture`. Requests must include the appropriate headers as described below.
-
 ### Register
-- **Method:** `POST`
-- **URL:** `/api/auth/register`
-- **Headers:**  
-  _Content-Type: application/json_
+```http
+POST /api/auth/register
+Content-Type: application/json
 
-#### Request Body
-```json
+Request Body:
 {
-  "username": "string",
-  "email": "string",
-  "password": "string",
-  "phone": "string"  // optional
+    "username": "string",
+    "email": "string",
+    "password": "string",
+    "phone": "string" (optional)
 }
-```
 
-#### Success Response (HTTP 200)
-```json
+Response:
 {
-  "status": "success",
-  "message": "User registered successfully",
-  "userId": 1
+    "status": "success",
+    "message": "User registered successfully",
+    "userId": number
 }
-```
 
-#### Error Response (HTTP 400)
-```json
+Error Response:
 {
-  "status": "error",
-  "message": "Missing required fields"
+    "status": "error",
+    "message": "Error message"
 }
 ```
 
 ### Login
-- **Method:** `POST`
-- **URL:** `/api/auth/login`
-- **Headers:**  
-  _Content-Type: application/json_
+```http
+POST /api/auth/login
+Content-Type: application/json
 
-#### Request Body
-```json
+Request Body:
 {
-  "username": "string",
-  "password": "string"
+    "username": "string",
+    "password": "string"
+}
+
+Response:
+{
+    "status": "success",
+    "message": "Login successful",
+    "userId": number,
+    "role": string,
+    "authenticated": true,
+    "username": string,
+    "email": string
+}
+
+Error Response:
+{
+    "status": "error",
+    "message": "Invalid credentials",
+    "authenticated": false
 }
 ```
 
-#### Success Response (HTTP 200)
-```json
+### Admin Access
+
+#### Admin get all users
+```http
+GET /api/auth/users
+
+Request Body:
 {
-  "status": "success",
-  "message": "Login successful",
-  "userId": 1,
-  "role": "CLIENT",        
-  "authenticated": true,
-  "username": "string",
-  "email": "string"
+    "authenticated": true,
+    "userId": number,
+    "userRole": "ADMIN"
+}
+
+Response:
+{
+    "status": "success",
+    "authenticated": true,
+    "data": {
+        "clients": [...],
+        "volunteers": [...],
+        "admins": [...]
+    }
 }
 ```
 
-#### Error Response (HTTP 401 or 500)
-```json
-{
-  "status": "error",
-  "message": "Invalid credentials",
-  "authenticated": false
-}
-```
+#### Admin delete users
+```http
+Delete /api/auth/delete
 
-### Admin: List Users
-- **Method:** `GET`
-- **URL:** `/api/auth/users`
-- **Required Headers:**
-  - `Admin-Username: string`  _(username of the admin requesting the list)_
-  - `Authentication-Status: true`
 
-#### Success Response (HTTP 200)
-```json
-{
-  "status": "success",
-  "authenticated": true,
-  "data": {
-    "clients": [
-      { "username": "client1", "role": "CLIENT" },
-      { "username": "client2", "role": "CLIENT" }
-    ],
-    "volunteers": [
-      { "username": "volunteer1", "role": "VOLUNTEER" }
-    ],
-    "admins": [
-      { "username": "admin1", "role": "ADMIN" }
-    ]
-  }
-}
-```
-
-#### Error Responses
-- **HTTP 401 (Not Authenticated):**
-```json
-{
-  "status": "error",
-  "message": "Not authenticated",
-  "authenticated": false
-}
-```
-- **HTTP 403 (Unauthorized Access):**
-```json
-{
-  "status": "error",
-  "message": "Unauthorized access",
-  "authenticated": true
-}
-```
-
-### Admin: Delete User
-- **Method:** `DELETE`
-- **URL:** `/api/auth/delete`
-- **Required Headers:**  
-  _Content-Type: application/json_
-
-#### Request Body
-```json
+Request Body:
 {
   "authenticated": "true",
   "adminUsername": "string",
   "username": "userToDelete"
 }
-```
 
-#### Success Response (HTTP 200)
-```json
+Response:
 {
   "status": "success",
   "message": "User deleted successfully",
   "authenticated": true
 }
-```
 
-#### Error Responses
-- **HTTP 401 (Not Authenticated):**
-```json
-{
-  "status": "error",
-  "message": "Not authenticated",
-  "authenticated": false
-}
-```
-- **HTTP 403 (Unauthorized Access):**
-```json
-{
-  "status": "error",
-  "message": "Unauthorized access",
-  "authenticated": true
-}
-```
-- **HTTP 404 (User Not Found):**
-```json
-{
-  "status": "error",
-  "message": "User not found",
-  "authenticated": true
-}
+
 ```
 
 ## Order API
 
-All order endpoints are handled asynchronously and require proper authentication headers. The endpoints use a combination of URL parameters, headers, and request bodies.
-
 ### Create Order
-- **Method:** `POST`
-- **URL:** `/api/orders/create`
-- **Required Headers:**
-  - `Authentication-Status: true`
-  - `User-ID: number`  _(ID of the client creating the order)_
+```http
+POST /api/orders/create
+Content-Type: application/json
 
-#### Request Body
-```json
+Request Body:
 {
-  "notes": "Please deliver between 2-3 PM",
-  "deliveryAddress": "123 Main Street",
-  "latitude": 40.7128,
-  "longitude": -74.0060,
-  "items": [
-    {
-      "itemName": "Masks",
-      "quantity": 2
-    },
-    {
-      "itemName": "Gloves",
-      "quantity": 3
-    }
-  ]
+    "authenticated": true,
+    "userId": number,
+    "deliveryAddress": "string",
+    "notes": "string",
+    "latitude": number (optional),
+    "longitude": number (optional),
+    "items": [
+        {
+            "itemName": "string",
+            "quantity": number
+        }
+    ]
+}
+
+Response:
+{
+    "status": "success",
+    "message": "Order created successfully",
+    "orderId": number,
+    "authenticated": true
 }
 ```
 
-#### Success Response (HTTP 200)
-```json
+### View Orders
+
+#### Get All Orders (Volunteer Only)
+```http
+GET /api/orders/all
+
+Request Body:
 {
-  "status": "success",
-  "message": "Order created successfully",
-  "orderId": 1,
-  "authenticated": true
+    "authenticated": true,
+    "userId": number,
+    "userRole": "VOLUNTEER"
+}
+
+Response:
+{
+    "status": "success",
+    "orders": [...],
+    "authenticated": true
 }
 ```
 
-#### Error Response (HTTP 401/500)
-```json
+#### Get User Orders
+```http
+GET /api/orders/user/{targetUserId}
+
+Request Body:
 {
-  "status": "error",
-  "message": "Error message",
-  "authenticated": true
+    "authenticated": true,
+    "userId": number,
+    "userRole": string
+}
+
+Response:
+{
+    "status": "success",
+    "orders": [...],
+    "authenticated": true
 }
 ```
 
-### Get Order Details
-- **Method:** `GET`
-- **URL:** `/api/orders/{orderId}`
-- **Required Headers:**
-  - `Authentication-Status: true`
-  - `User-Role: CLIENT` or `VOLUNTEER`
-  - `User-ID: number`  _(ID of the requesting user)_
+### Update Order Status
+```http
+PUT /api/orders/{orderId}/status
 
-#### Success Response (HTTP 200)
-```json
+Request Body:
 {
-  "status": "success",
-  "order": {
-    "orderId": 1,
-    "userId": 1,
-    "notes": "Please deliver between 2-3 PM",
-    "deliveryAddress": "123 Main Street",
-    "latitude": 40.7128,
-    "longitude": -74.0060,
-    "status": "PENDING"
-  },
-  "items": [
-    {
-      "itemName": "Masks",
-      "quantity": 2
-    },
-    {
-      "itemName": "Gloves",
-      "quantity": 3
-    }
-  ]
+    "authenticated": true,
+    "userId": number,
+    "userRole": "VOLUNTEER",
+    "status": string  // "PENDING", "PROCESSING", "COMPLETED", "CANCELLED"
 }
-```
 
-### Get User Orders
-- **Method:** `GET`
-- **URL:** `/api/orders/user/{targetUserId}`
-- **Required Headers:**
-  - `Authentication-Status: true`
-  - `User-Role: CLIENT` or `VOLUNTEER`
-  - `User-ID: number`  _(ID of the requesting user)_
-
-#### Success Response (HTTP 200)
-```json
+Response:
 {
-  "status": "success",
-  "orders": [
-    {
-      "orderId": 1,
-      "userId": 1,
-      "notes": "Please deliver between 2-3 PM",
-      "deliveryAddress": "123 Main Street",
-      "latitude": 40.7128,
-      "longitude": -74.0060,
-      "status": "PENDING"
-    }
-  ],
-  "authenticated": true
-}
-```
-
-### Get Orders by Status (Volunteer Only)
-- **Method:** `GET`
-- **URL:** `/api/orders/status/{status}`
-- **Required Headers:**
-  - `Authentication-Status: true`
-  - `User-Role: VOLUNTEER`
-
-#### Success Response (HTTP 200)
-```json
-{
-  "status": "success",
-  "orders": [
-    {
-      "orderId": 1,
-      "userId": 1,
-      "notes": "Please deliver between 2-3 PM",
-      "deliveryAddress": "123 Main Street",
-      "latitude": 40.7128,
-      "longitude": -74.0060,
-      "status": "PENDING"
-    }
-  ]
-}
-```
-
-#### Error Response (HTTP 401/403)
-```json
-{
-  "status": "error",
-  "message": "Only volunteers can view orders by status",
-  "authenticated": true
-}
-```
-
-### Update Order Status (Volunteer Only)
-- **Method:** `PUT`
-- **URL:** `/api/orders/{orderId}/status`
-- **Required Headers:**
-  - `Authentication-Status: true`
-  - `User-Role: VOLUNTEER`
-  - `User-ID: number`  _(ID of the volunteer)_
-
-#### Request Body
-```json
-{
-  "status": "PROCESSING"
-}
-```
-
-#### Success Response (HTTP 200)
-```json
-{
-  "status": "success",
-  "message": "Order status updated successfully",
-  "orderStatus": "PROCESSING",
-  "authenticated": true
-}
-```
-
-### Assign Volunteer (Volunteer Only)
-- **Method:** `POST`
-- **URL:** `/api/orders/{orderId}/assign`
-- **Required Headers:**
-  - `Authentication-Status: true`
-  - `User-Role: VOLUNTEER`
-
-#### Request Body
-```json
-{
-  "volunteerId": 2
-}
-```
-
-#### Success Response (HTTP 200)
-```json
-{
-  "status": "success",
-  "message": "Volunteer assigned successfully",
-  "orderId": 1,
-  "volunteerId": 2
+    "status": "success",
+    "message": "Order status updated successfully",
+    "orderStatus": string,
+    "authenticated": true
 }
 ```
 
 ### Cancel Order
-- **Method:** `POST`
-- **URL:** `/api/orders/{orderId}/cancel`
-- **Required Headers:**
-  - `Authentication-Status: true`
-  - `User-Role: CLIENT` or `VOLUNTEER`
-  - `User-ID: number`  _(ID of the requesting user)_
+```http
+POST /api/orders/{orderId}/cancel
 
-#### Success Response (HTTP 200)
-```json
+Request Body:
 {
-  "status": "success",
-  "message": "Order cancelled successfully",
-  "authenticated": true
+    "authenticated": true,
+    "userId": number,
+    "userRole": string
+}
+
+Response:
+{
+    "status": "success",
+    "message": "Order cancelled successfully",
+    "authenticated": true
 }
 ```
 
-## Error Handling
+## Business Logic
 
-Every endpoint returns a standardized error response in the following format:
+### Authentication Flow
+1. **Registration**
+   - Users can only register as CLIENT role
+   - System creates user metadata automatically
+   - Email uniqueness is validated
+   - Phone number is optional
 
-```json
-{
-  "status": "error",
-  "message": "Detailed error message",
-  "authenticated": true  // or false, as applicable
-}
-```
+2. **Login Process**
+   - Validates username and password
+   - Updates last login timestamp
+   - Returns user role and authentication status
+   - Maintains session information
 
-Standard HTTP status codes used:
-- **401 Unauthorized**
-- **403 Forbidden**
-- **400 Bad Request**
-- **500 Internal Server Error**
-```
+3. **Admin Access**
+   - Protected admin endpoints
+   - Role-based access control
+   - User management capabilities
+
+### Order Flow
+1. **Order Creation**
+   - Must be authenticated
+   - Requires delivery address
+   - At least one item required
+   - Optional location coordinates
+   - Initial status: PENDING
+
+2. **Order Management**
+   - Client Permissions:
+     - Create new orders
+     - View own orders
+     - Cancel own orders
+   - Volunteer Permissions:
+     - View all orders
+     - Update order status
+     - Cancel any order
+
+3. **Order Status Lifecycle**
+   ```
+   [Created] -> PENDING -> PROCESSING -> COMPLETED
+                    |          |
+                    |          v
+                    +-------> CANCELLED
+   ```
+
+### Access Control
+1. **Authentication Required**
+   - All endpoints require authenticated status
+   - Authentication status checked in request body
+
+2. **Role-Based Access**
+   - CLIENT: Limited to own orders
+   - VOLUNTEER: Access to all orders
+   - ADMIN: Full system access
+
+3. **Error Handling**
+   - Authentication errors (401)
+   - Authorization errors (403)
+   - Validation errors (400)
+   - Server errors (500)
