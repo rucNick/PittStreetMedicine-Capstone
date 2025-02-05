@@ -16,12 +16,10 @@ import java.util.List;
 @Transactional
 public class UserService {
     private final UserRepository userRepository;
-    private final UserMetadataRepository metadataRepository;
 
     @Autowired
-    public UserService(UserRepository userRepository, UserMetadataRepository metadataRepository) {
+    public UserService(UserRepository userRepository) {
         this.userRepository = userRepository;
-        this.metadataRepository = metadataRepository;
     }
 
     @Transactional
