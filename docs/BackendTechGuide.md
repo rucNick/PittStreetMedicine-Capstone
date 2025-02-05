@@ -133,7 +133,7 @@ Response:
 
 #### Admin delete users
 ```http
-Delete /api/auth/delete
+DELETE /api/auth/delete
 
 
 Request Body:
