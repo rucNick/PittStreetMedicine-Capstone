@@ -1,5 +1,6 @@
-package com.backend.streetmed_backend.entity.oder_entity;
+package com.backend.streetmed_backend.entity.order_entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 @Entity
@@ -10,8 +11,10 @@ public class OrderItem {
     @Column(name = "item_id")
     private Integer itemId;
 
-    @Column(name = "order_id", nullable = false)
-    private Integer orderId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_id")
+    @JsonIgnore  // Prevents infinite recursion in JSON serialization
+    private Order order;
 
     @Column(name = "item_name", nullable = false)
     private String itemName;
@@ -19,15 +22,8 @@ public class OrderItem {
     @Column(name = "quantity", nullable = false)
     private Integer quantity;
 
-    // Constructors
+    // Default constructor
     public OrderItem() {}
-
-    public OrderItem(Integer itemId, Integer orderId, String itemName, Integer quantity) {
-        this.itemId = itemId;
-        this.orderId = orderId;
-        this.itemName = itemName;
-        this.quantity = quantity;
-    }
 
     // Getters and Setters
     public Integer getItemId() {
@@ -38,12 +34,12 @@ public class OrderItem {
         this.itemId = itemId;
     }
 
-    public Integer getOrderId() {
-        return orderId;
+    public Order getOrder() {
+        return order;
     }
 
-    public void setOrderId(Integer orderId) {
-        this.orderId = orderId;
+    public void setOrder(Order order) {
+        this.order = order;
     }
 
     public String getItemName() {

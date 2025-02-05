@@ -1,6 +1,6 @@
 package com.backend.streetmed_backend.repository;
 
-import com.backend.streetmed_backend.entity.oder_entity.Order;
+import com.backend.streetmed_backend.entity.order_entity.Order;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.util.List;
@@ -9,5 +9,6 @@ import java.util.List;
 public interface OrderRepository extends JpaRepository<Order, Integer> {
     List<Order> findByUserId(Integer userId);
     List<Order> findByStatus(String status);
+    List<Order> findByVolunteerId(Integer volunteerId);
     List<Order> findByUserIdAndStatus(Integer userId, String status);
 }
