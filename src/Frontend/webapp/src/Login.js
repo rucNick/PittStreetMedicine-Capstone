@@ -9,12 +9,12 @@ const Login = ({ onLoginSuccess }) => {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
 
-  // Login button in the top right
+  // When the Login button in the top right corner is clicked, the login form (along with the logo) is displayed.
   const handleLoginClick = () => {
     setShowLoginForm(true);
   };
 
-  // register button in the top right
+  // Register button
   const handleRegisterClick = () => {
     navigate('/register');
   };
@@ -30,7 +30,6 @@ const Login = ({ onLoginSuccess }) => {
       if (response.data.authenticated) {
         setMessage('Login success！');
         console.log('User info:', response.data);
-        // Upon successful login, the parent component's callback function is invoked
         onLoginSuccess(username);
       } else {
         setMessage('Login failure: ' + response.data.message);
@@ -42,6 +41,15 @@ const Login = ({ onLoginSuccess }) => {
 
   return (
     <div style={styles.background}>
+      <style>
+        {`
+          @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+        `}
+      </style>
+
       <div style={styles.topRightContainer}>
         <button style={styles.topRightButton} onClick={handleLoginClick}>
           Login
@@ -51,41 +59,45 @@ const Login = ({ onLoginSuccess }) => {
         </button>
       </div>
 
-      {/* When the Login button is clicked, the login form is displayed in the middle right */}
+      {/* The logo and Login form are displayed only when the Login button is clicked */}
       {showLoginForm && (
-        <div style={styles.loginFormContainer}>
-          <form style={styles.form} onSubmit={handleSubmit}>
-            <h2>PITT STREET MEDICINE</h2>
-            <div style={styles.formGroup}>
-              <label>Username:</label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                style={styles.input}
-                required
-              />
-            </div>
-            <div style={styles.formGroup}>
-              <label>Password:</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                style={styles.input}
-                required
-              />
-            </div>
-            <button type="submit" style={styles.button}>
-              Login
-            </button>
-            <div style={styles.message}>{message}</div>
-            {/* Add small words, click to jump to the registration page */}
-            <p style={styles.registerText} onClick={handleRegisterClick}>
-              Don't have an account? Go to register
-            </p>
-          </form>
-        </div>
+        <>
+          <img src="/Untitled.png" alt="Logo" style={{...styles.logo, animation: 'fadeIn 0.5s ease-in-out'}} />
+
+          <div style={{ ...styles.loginFormContainer, animation: 'fadeIn 0.5s ease-in-out' }}>
+            <form style={styles.form} onSubmit={handleSubmit}>
+              <h2>PITT STREET MEDICINE</h2>
+              <div style={styles.formGroup}>
+                <label>Username:</label>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  style={styles.input}
+                  required
+                />
+              </div>
+              <div style={styles.formGroup}>
+                <label>Password:</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  style={styles.input}
+                  required
+                />
+              </div>
+              <button type="submit" style={styles.button}>
+                Login
+              </button>
+              <div style={styles.message}>{message}</div>
+              {/* Small words, click to jump to the registration page */}
+              <p style={styles.registerText} onClick={handleRegisterClick}>
+                Don't have an account? Go to register
+              </p>
+            </form>
+          </div>
+        </>
       )}
     </div>
   );
@@ -102,6 +114,15 @@ const styles = {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  logo: {
+    position: 'fixed',
+    left: '450px',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    width: '380px',
+    height: 'auto',
+    zIndex: 998,
   },
   topRightContainer: {
     position: 'fixed',
@@ -120,7 +141,7 @@ const styles = {
     boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
   },
   topRightButton: {
-    padding: '10px 20px ',
+    padding: '10px 20px',
     backgroundColor: '#1890ff',
     color: 'white',
     border: 'none',
@@ -129,7 +150,7 @@ const styles = {
   },
   loginFormContainer: {
     position: 'fixed',
-    right: '400px',
+    right: '500px',
     top: '50%',
     transform: 'translateY(-50%)',
     backgroundColor: 'white',
