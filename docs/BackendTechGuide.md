@@ -12,9 +12,17 @@
   - [View Orders](#view-orders)
   - [Update Order Status](#update-order-status)
   - [Cancel Order](#cancel-order)
+- [Volunteer API](#volunteer-api)
+  - [Submit Volunteer Application](#submit-volunteer-application)
+  - [Get All Applications (Admin Only)](#get-all-applications-admin-only)
+  - [Get Pending Applications (Admin Only)](#get-pending-applications-admin-only)
+  - [Check Volunteer Application Status](#check-volunteer-application-status)
+  - [Approve Volunteer Application](#approve-volunteer-application)
+  - [Reject Volunteer Application](#reject-volunteer-application)
 - [Business Logic](#business-logic)
   - [Authentication Flow](#authentication-flow)
   - [Order Flow](#order-flow)
+  - [Volunteer Application Flow](#volunteer-application-flow)
   - [Access Control](#access-control)
 
 ## Technology Stack
@@ -29,11 +37,13 @@
 com.backend.streetmed_backend/
 ├── controller/
 │   ├── AuthController.java
-│   └── OrderController.java
+│   ├── OrderController.java
+│   └── VolunteerController.java
 ├── entity/
 │   ├── user_entity/
 │   │   ├── User.java
-│   │   └── UserMetadata.java
+│   │   ├── UserMetadata.java
+│   │   └── VolunteerApplication.java
 │   └── order_entity/
 │       ├── Order.java
 │       └── OrderItem.java
@@ -41,10 +51,13 @@ com.backend.streetmed_backend/
 │   ├── UserRepository.java
 │   ├── UserMetadataRepository.java
 │   ├── OrderRepository.java
-│   └── OrderItemRepository.java
+│   ├── OrderItemRepository.java
+│   └── VolunteerApplicationRepository.java
 └── service/
     ├── UserService.java
-    └── OrderService.java
+    ├── OrderService.java
+    └── VolunteerApplicationService.java
+
 ```
 
 ## Authentication API
@@ -265,6 +278,196 @@ Response:
 }
 ```
 
+## Volunteer API
+
+### Submit Volunteer Application
+**Endpoint:** `POST /api/volunteer/apply`  
+**Description:** Allows a user to submit an application to become a volunteer.
+
+```http
+POST /api/volunteer/apply
+Content-Type: application/json
+
+Request Body:
+{
+    "firstName": "string",
+    "lastName": "string",
+    "email": "string",
+    "phone": "string",
+    "notes": "string"  // optional
+}
+
+Response:
+{
+    "status": "success",
+    "message": "Application submitted successfully",
+    "applicationId": number
+}
+
+Error Response:
+{
+    "status": "error",
+    "message": "Missing required fields" // or conflict error if an application exists
+}
+```
+
+### Get All Applications (Admin Only)
+**Endpoint:** `GET /api/volunteer/applications`  
+**Description:** Returns all volunteer applications grouped by status. Only accessible by an admin.
+
+**Headers:**
+- `Admin-Username: string`
+- `Authentication-Status: "true"`
+
+```http
+GET /api/volunteer/applications
+```
+
+**Response:**
+```json
+{
+    "status": "success",
+    "data": {
+        "pending": [ { application objects } ],
+        "approved": [ { application objects } ],
+        "rejected": [ { application objects } ]
+    }
+}
+```
+
+**Error Response:**
+```json
+{
+    "status": "error",
+    "message": "Not authenticated"  // or "Unauthorized access"
+}
+```
+
+### Get Pending Applications (Admin Only)
+**Endpoint:** `GET /api/volunteer/pending`  
+**Description:** Retrieves only the pending volunteer applications.
+
+**Headers:**
+- `Admin-Username: string`
+- `Authentication-Status: "true"`
+
+```http
+GET /api/volunteer/pending
+```
+
+**Response:**
+```json
+{
+    "status": "success",
+    "data": [ { application objects } ]
+}
+```
+
+**Error Response:**
+```json
+{
+    "status": "error",
+    "message": "Not authenticated"  // or appropriate error message
+}
+```
+
+### Check Volunteer Application Status
+**Endpoint:** `GET /api/volunteer/application/status/{email}`  
+**Description:** Checks the status of a volunteer application based on the applicant's email.
+
+```http
+GET /api/volunteer/application/status/{email}
+```
+
+**Response:**
+```json
+{
+    "status": "success",
+    "applicationId": integer,
+    "firstName": "string",
+    "lastName": "string",
+    "email": "string",
+    "phone": "string",
+    "applicationStatus": "PENDING | APPROVED | REJECTED",
+    "notes": "string",
+    "submissionDate": "datetime"
+}
+```
+
+**Error Response:**
+```json
+{
+    "status": "error",
+    "message": "No application found for this email"
+}
+```
+
+### Approve Volunteer Application
+**Endpoint:** `POST /api/volunteer/approve`  
+**Description:** Approves a volunteer application and creates a volunteer account with an initial password.
+
+```http
+POST /api/volunteer/approve
+Content-Type: application/json
+
+Request Body:
+{
+    "adminUsername": "string",
+    "authenticated": "true",
+    "applicationId": "number"
+}
+
+Response:
+{
+    "status": "success",
+    "message": "Application approved and volunteer account created",
+    "applicationId": number,
+    "userId": number,
+    "initialPassword": "streetmed@pitt"
+}
+```
+
+**Error Response:**
+```json
+{
+    "status": "error",
+    "message": "Error message"
+}
+```
+
+### Reject Volunteer Application
+**Endpoint:** `POST /api/volunteer/reject`  
+**Description:** Rejects a volunteer application.
+
+```http
+POST /api/volunteer/reject
+Content-Type: application/json
+
+Request Body:
+{
+    "adminUsername": "string",
+    "authenticated": "true",
+    "applicationId": "number"
+}
+
+Response:
+{
+    "status": "success",
+    "message": "Application rejected",
+    "applicationId": number
+}
+```
+
+**Error Response:**
+```json
+{
+    "status": "error",
+    "message": "Error message"
+}
+```
+
+
+
 ## Business Logic
 
 ### Authentication Flow
@@ -310,6 +513,20 @@ Response:
                     |          v
                     +-------> CANCELLED
    ```
+
+### Volunteer Application Flow
+- **Application Submission:**  
+  - Volunteers submit an application via `/api/volunteer/apply` with required details.
+  
+- **Admin Review:**  
+  - Admins can view all applications (or only pending ones) using `/api/volunteer/applications` or `/api/volunteer/pending`.
+  
+- **Application Status Check:**  
+  - Applicants can check their status via `/api/volunteer/application/status/{email}`.
+  
+- **Approval / Rejection:**  
+  - Approved applications trigger the creation of a volunteer account (initial password: `streetmed@pitt`) via `/api/volunteer/approve`.  
+  - Applications may also be rejected via `/api/volunteer/reject`.
 
 ### Access Control
 1. **Authentication Required**
