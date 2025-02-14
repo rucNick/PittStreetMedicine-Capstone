@@ -17,6 +17,7 @@ import java.util.List;
 public class OrderService {
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
+    private static final int GUEST_USER_ID = -1;
 
     @Autowired
     public OrderService(OrderRepository orderRepository,
@@ -26,7 +27,10 @@ public class OrderService {
     }
 
     public Order createOrder(Order order, List<OrderItem> items) {
-        validateUser(order.getUserId());
+        // Only validate user if it's not a guest order
+        if (order.getUserId() != GUEST_USER_ID) {
+            validateUser(order.getUserId());
+        }
 
         // Set initial order values
         order.setRequestTime(LocalDateTime.now());
@@ -52,7 +56,15 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
 
-        // Only allow volunteers to view any order, clients can only view their own orders
+        // Allow access to guest orders for volunteers only
+        if (order.getUserId() == GUEST_USER_ID) {
+            if (!"VOLUNTEER".equals(userRole)) {
+                throw new RuntimeException("Unauthorized access to order");
+            }
+            return order;
+        }
+
+        // For regular orders: only allow volunteers to view any order, clients can only view their own orders
         if (!"VOLUNTEER".equals(userRole) && !order.getUserId().equals(userId)) {
             throw new RuntimeException("Unauthorized access to order");
         }
@@ -60,15 +72,24 @@ public class OrderService {
         return order;
     }
 
-    public List<Order> getUserOrders(Integer userId, String userRole) {
-        if ("VOLUNTEER".equals(userRole)) {
-            return orderRepository.findAll();
-        }
-        return orderRepository.findByUserId(userId);
+    @Transactional(readOnly = true)
+    public List<Order> getAllOrders() {
+        List<Order> orders = orderRepository.findAll();
+        // Initialize the collections
+        orders.forEach(order -> order.getOrderItems().size()); // Force initialization
+        return orders;
     }
 
-    public List<Order> getAllOrders() {
-        return orderRepository.findAll();
+    @Transactional(readOnly = true)
+    public List<Order> getUserOrders(Integer userId, String userRole) {
+        List<Order> orders;
+        if ("VOLUNTEER".equals(userRole)) {
+            orders = orderRepository.findAll();
+        } else {
+            orders = orderRepository.findByUserId(userId);
+        }
+        orders.forEach(order -> order.getOrderItems().size()); // Force initialization
+        return orders;
     }
 
     public List<Order> getOrdersByStatus(String status) {
@@ -112,7 +133,12 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
 
-        if (!"VOLUNTEER".equals(userRole) && !order.getUserId().equals(userId)) {
+        // Only volunteers can cancel guest orders
+        if (order.getUserId() == GUEST_USER_ID) {
+            if (!"VOLUNTEER".equals(userRole)) {
+                throw new RuntimeException("Unauthorized to cancel this order");
+            }
+        } else if (!"VOLUNTEER".equals(userRole) && !order.getUserId().equals(userId)) {
             throw new RuntimeException("Unauthorized to cancel this order");
         }
 
@@ -125,6 +151,4 @@ public class OrderService {
             throw new RuntimeException("User not found");
         }
     }
-
-
 }

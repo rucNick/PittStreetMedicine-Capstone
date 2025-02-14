@@ -8,6 +8,11 @@ import java.util.List;
 @Entity
 @Table(name = "orders")
 public class Order {
+    public enum OrderType {
+        CLIENT,
+        GUEST
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "order_id")
@@ -15,6 +20,10 @@ public class Order {
 
     @Column(name = "user_id", nullable = false)
     private Integer userId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "order_type", nullable = false)
+    private OrderType orderType = OrderType.CLIENT;  // Default to CLIENT
 
     @Column(name = "item_name", nullable = false)
     private String itemName;
@@ -46,7 +55,7 @@ public class Order {
     @Column(name = "volunteer_id")
     private Integer volunteerId;
 
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<OrderItem> orderItems = new ArrayList<>();
 
     // Relationship management methods
@@ -61,7 +70,14 @@ public class Order {
     }
 
     // Default constructor
-    public Order() {}
+    public Order() {
+        this.orderType = OrderType.CLIENT;  // Set default value
+    }
+
+    // Constructor with order type
+    public Order(OrderType orderType) {
+        this.orderType = orderType;
+    }
 
     // Getters and Setters
     public Integer getOrderId() {
@@ -78,6 +94,14 @@ public class Order {
 
     public void setUserId(Integer userId) {
         this.userId = userId;
+    }
+
+    public OrderType getOrderType() {
+        return orderType;
+    }
+
+    public void setOrderType(OrderType orderType) {
+        this.orderType = orderType;
     }
 
     public String getItemName() {

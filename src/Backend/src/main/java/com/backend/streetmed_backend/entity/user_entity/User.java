@@ -25,18 +25,13 @@ public class User {
     @Column(name = "role", nullable = false)
     private String role;
 
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY, optional = false)
     private UserMetadata metadata;
 
-    public void setMetadata(UserMetadata metadata) {
-        this.metadata = metadata;
-        if (metadata != null) {
-            metadata.setUser(this);
-        }
-    }
-
+    // Default constructor
     public User() {}
 
+    // Constructor with fields
     public User(Integer userId, String username, String email, String password, String phone, String role) {
         this.userId = userId;
         this.username = username;
@@ -46,6 +41,19 @@ public class User {
         this.role = role;
     }
 
+    // Metadata setter with bidirectional relationship handling
+    public void setMetadata(UserMetadata metadata) {
+        if (metadata == null) {
+            if (this.metadata != null) {
+                this.metadata.setUser(null);
+            }
+        } else {
+            metadata.setUser(this);
+        }
+        this.metadata = metadata;
+    }
+
+    // Getters and Setters
     public Integer getUserId() {
         return userId;
     }

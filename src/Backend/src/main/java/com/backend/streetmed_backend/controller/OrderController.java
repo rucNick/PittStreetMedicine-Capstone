@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +30,110 @@ public class OrderController {
                            @Qualifier("authExecutor") Executor asyncExecutor) {
         this.orderService = orderService;
         this.asyncExecutor = asyncExecutor;
+    }
+
+    /**
+     * Creates a new order for guest users.
+     * Request body example:
+     * {
+     *   "firstName": "John",
+     *   "lastName": "Doe",
+     *   "email": "john@example.com",    // optional
+     *   "phone": "412-555-0123",        // optional
+     *   "deliveryAddress": "123 Main St",
+     *   "notes": "Front door delivery",
+     *   "items": [
+     *     {
+     *       "itemName": "First Aid Kit",
+     *       "quantity": 1
+     *     }
+     *   ]
+     * }
+     */
+    @PostMapping("/guest/create")
+    public CompletableFuture<ResponseEntity<Map<String, Object>>> createGuestOrder(
+            @RequestBody Map<String, Object> requestData) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                // Validate required fields
+                String firstName = (String) requestData.get("firstName");
+                String lastName = (String) requestData.get("lastName");
+                String deliveryAddress = (String) requestData.get("deliveryAddress");
+
+                if (firstName == null || lastName == null || deliveryAddress == null) {
+                    Map<String, Object> errorResponse = new HashMap<>();
+                    errorResponse.put("status", "error");
+                    errorResponse.put("message", "Missing required fields: firstName, lastName, and deliveryAddress are required");
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+                }
+
+                // Create order
+                Order order = new Order(Order.OrderType.GUEST);
+                order.setUserId(-1);  // Use -1 to indicate guest order
+                order.setStatus("PENDING");
+                order.setRequestTime(LocalDateTime.now());
+                order.setDeliveryAddress(deliveryAddress);
+                order.setNotes(String.format("Guest Order - %s %s", firstName, lastName));
+
+                // Add contact information to notes if provided
+                StringBuilder additionalNotes = new StringBuilder();
+                String email = (String) requestData.get("email");
+                String phone = (String) requestData.get("phone");
+                String userNotes = (String) requestData.get("notes");
+
+                if (email != null) {
+                    additionalNotes.append("Email: ").append(email).append("\n");
+                }
+                if (phone != null) {
+                    additionalNotes.append("Phone: ").append(phone).append("\n");
+                }
+                if (userNotes != null) {
+                    additionalNotes.append("Notes: ").append(userNotes);
+                }
+
+                order.setNotes(additionalNotes.toString());
+
+                // Handle location if provided
+                if (requestData.get("latitude") != null && requestData.get("longitude") != null) {
+                    order.setLatitude(Double.valueOf(requestData.get("latitude").toString()));
+                    order.setLongitude(Double.valueOf(requestData.get("longitude").toString()));
+                }
+
+                // Process order items
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> itemsData = (List<Map<String, Object>>) requestData.get("items");
+                if (itemsData == null || itemsData.isEmpty()) {
+                    Map<String, Object> errorResponse = new HashMap<>();
+                    errorResponse.put("status", "error");
+                    errorResponse.put("message", "Order must contain at least one item");
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+                }
+
+                List<OrderItem> orderItems = itemsData.stream()
+                        .map(itemData -> {
+                            OrderItem item = new OrderItem();
+                            item.setItemName((String) itemData.get("itemName"));
+                            item.setQuantity((Integer) itemData.get("quantity"));
+                            return item;
+                        })
+                        .toList();
+
+                Order savedOrder = orderService.createOrder(order, orderItems);
+
+                Map<String, Object> response = new HashMap<>();
+                response.put("status", "success");
+                response.put("message", "Guest order created successfully");
+                response.put("orderId", savedOrder.getOrderId());
+                response.put("orderStatus", savedOrder.getStatus());
+
+                return ResponseEntity.ok(response);
+            } catch (Exception e) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("status", "error");
+                errorResponse.put("message", e.getMessage());
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+            }
+        }, asyncExecutor);
     }
 
     /**
@@ -63,7 +168,7 @@ public class OrderController {
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
                 }
 
-                Order order = new Order();
+                Order order = new Order(Order.OrderType.CLIENT);
                 order.setUserId(userId);
                 order.setNotes((String) requestData.get("notes"));
                 order.setDeliveryAddress((String) requestData.get("deliveryAddress"));

@@ -6,54 +6,57 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "user_metadata")
 public class UserMetadata {
-    @Id
-    @Column(name = "user_id")
-    private Integer userId;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @MapsId
-    @JoinColumn(name = "user_id")
-    private User user;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "metadata_id")
+    private Integer metadataId;
+
+    @Column(name = "first_name")
+    private String firstName;
+
+    @Column(name = "last_name")
+    private String lastName;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
-
     @Column(name = "last_login")
     private LocalDateTime lastLogin;
 
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-    }
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
 
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
-
-    // Constructor
+    // Default constructor with initialization
     public UserMetadata() {
+        this.createdAt = LocalDateTime.now();
+        this.lastLogin = LocalDateTime.now();
     }
 
     // Getters and Setters
-    public Integer getUserId() {
-        return userId;
+    public Integer getMetadataId() {
+        return metadataId;
     }
 
-    public void setUserId(Integer userId) {
-        this.userId = userId;
+    public void setMetadataId(Integer metadataId) {
+        this.metadataId = metadataId;
     }
 
-    public User getUser() {
-        return user;
+    public String getFirstName() {
+        return firstName;
     }
 
-    public void setUser(User user) {
-        this.user = user;
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
     }
 
     public LocalDateTime getCreatedAt() {
@@ -64,19 +67,19 @@ public class UserMetadata {
         this.createdAt = createdAt;
     }
 
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
-    }
-
     public LocalDateTime getLastLogin() {
         return lastLogin;
     }
 
     public void setLastLogin(LocalDateTime lastLogin) {
         this.lastLogin = lastLogin;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
     }
 }

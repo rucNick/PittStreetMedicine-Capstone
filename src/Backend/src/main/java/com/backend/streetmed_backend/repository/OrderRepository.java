@@ -1,14 +1,20 @@
 package com.backend.streetmed_backend.repository;
 
 import com.backend.streetmed_backend.entity.order_entity.Order;
+import org.apache.ibatis.annotations.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Integer> {
-    List<Order> findByUserId(Integer userId);
+    @Query("SELECT DISTINCT o FROM Order o LEFT JOIN FETCH o.orderItems")
+    List<Order> findAllWithItems();
+
+    @Query("SELECT DISTINCT o FROM Order o LEFT JOIN FETCH o.orderItems WHERE o.userId = :userId")
+    List<Order> findByUserIdWithItems(@Param("userId") Integer userId);
+
     List<Order> findByStatus(String status);
-    List<Order> findByVolunteerId(Integer volunteerId);
-    List<Order> findByUserIdAndStatus(Integer userId, String status);
+    List<Order> findByUserId(Integer userId);
 }

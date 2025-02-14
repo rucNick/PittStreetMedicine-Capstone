@@ -13,4 +13,5 @@ public interface VolunteerApplicationRepository extends JpaRepository<VolunteerA
     List<VolunteerApplication> findByStatus(VolunteerApplication.ApplicationStatus status);
     Optional<VolunteerApplication> findByEmail(String email);
     Optional<VolunteerApplication> findByUser_UserId(Integer userId);
+    boolean existsByEmail(String email);
 }
