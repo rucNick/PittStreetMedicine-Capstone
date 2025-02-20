@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
-// List of example items (unchanged)
 const availableItems = [
   { name: "Water", quantity: 0 },
   { name: "Ensure", quantity: 0 },
@@ -10,103 +10,54 @@ const availableItems = [
   { name: "Slim Jims", quantity: 0 },
 ];
 
-const Home = ({ username, userId, onLogout }) => {
-  // Order history state
-  const [orders, setOrders] = useState([]);
-  const [showOrders, setShowOrders] = useState(false);
-  const [ordersLoading, setOrdersLoading] = useState(false);
-  const [ordersError, setOrdersError] = useState("");
+const Guest = ({ onLogout }) => {
+  const navigate = useNavigate();
 
-  // Cart state
+  // ========== cart status ==========
   const [showCart, setShowCart] = useState(false);
-  const [cart, setCart] = useState([]);
+  const [cart, setCart] = useState([]); // [{ name, quantity }, ...]
   const [deliveryAddress, setDeliveryAddress] = useState("");
-  const [notes, setNotes] = useState("");
+  const [guestFirstName, setGuestFirstName] = useState("");
+  const [guestLastName, setGuestLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [guestNotes, setGuestNotes] = useState("");
+
   const [cartError, setCartError] = useState("");
   const [cartMessage, setCartMessage] = useState("");
 
-  // "Make a New Order" modal
+  // ========== “Make a New Order” box ==========
   const [showNewOrderModal, setShowNewOrderModal] = useState(false);
   const [tempItems, setTempItems] = useState(
     availableItems.map((i) => ({ ...i }))
   );
 
-  // ============== Fetch order history ==============
-  const toggleOrders = async () => {
-    if (!userId || typeof userId !== "number") {
-      setOrdersError("Order history is not available for guest users.");
-      setShowOrders(false);
-      return;
-    }
+  // ========== current order box ==========
+  const [showCurrentOrderModal, setShowCurrentOrderModal] = useState(false);
+  const [currentOrder, setCurrentOrder] = useState(null);
 
-    if (!showOrders) {
-      try {
-        setOrdersLoading(true);
-        setOrdersError("");
-        const response = await axios.get(
-          `http://localhost:8080/api/orders/user/${userId}`,
-          {
-            params: { authenticated: true, userRole: "CLIENT", userId },
-          }
-        );
-
-        if (response.data.status === "success") {
-          // Filter out cancelled orders
-          const filtered = response.data.orders.filter(
-            (o) => o.status !== "CANCELLED"
-          );
-          setOrders(filtered);
-        } else {
-          setOrdersError(response.data.message || "Failed to load orders.");
-        }
-      } catch (error) {
-        setOrdersError(error.response?.data?.message || "Failed to load orders.");
-      } finally {
-        setOrdersLoading(false);
-      }
-    }
-    setShowOrders(!showOrders);
+  // ========== Logout ==========
+  const handleLogout = () => {
+    onLogout();
+    navigate("/"); // back to login
   };
 
-  // ============== Cancel order (set status to CANCEL) ==============
-  const handleCancelOrder = async (orderId) => {
-    try {
-      const payload = {
-        authenticated: true,
-        userId,
-        userRole: "CLIENT",
-      };
-      const response = await axios.post(
-        `http://localhost:8080/api/orders/${orderId}/cancel`,
-        payload
-      );
-      if (response.data.status === "success") {
-        // Refresh orders if currently shown
-        if (showOrders) {
-          await toggleOrders();
-          await toggleOrders();
-        }
-      } else {
-        alert(response.data.message || "Failed to cancel order.");
-      }
-    } catch (error) {
-      alert(error.response?.data?.message || "Failed to cancel order.");
-    }
-  };
-
-  // ============== Make a New Order ==============
+  // ========== open “Make a New Order” box ==========
   const handleOpenNewOrder = () => {
+    // Reset temporary item selection
     const resetItems = availableItems.map((i) => ({ ...i, quantity: 0 }));
     setTempItems(resetItems);
     setShowNewOrderModal(true);
   };
 
+  // change item quantities in “Make a New Order” box
   const handleItemQuantityChange = (index, newQuantity) => {
     const updated = [...tempItems];
     updated[index].quantity = parseInt(newQuantity, 10) || 0;
     setTempItems(updated);
   };
 
+  // move seleted item to cart
   const handleAddToCart = () => {
     const selected = tempItems.filter((i) => i.quantity > 0);
     if (selected.length === 0) {
@@ -126,71 +77,102 @@ const Home = ({ username, userId, onLogout }) => {
     setShowNewOrderModal(false);
   };
 
-  // ============== Cart toggling ==============
+  // open cart
   const toggleCart = () => {
     setShowCart(!showCart);
     setCartError("");
     setCartMessage("");
   };
 
+  // change quantitoes in cart
   const handleCartQuantityChange = (index, newQuantity) => {
     const updated = [...cart];
     updated[index].quantity = parseInt(newQuantity, 10) || 0;
     setCart(updated);
   };
 
+  // remove items in cart
   const handleRemoveCartItem = (index) => {
     const updated = [...cart];
     updated.splice(index, 1);
     setCart(updated);
   };
 
-  // ============== Place new order (CLIENT) ==============
+  // ========== place order：POST /api/orders/guest/create ==========
   const handlePlaceOrder = async () => {
     if (cart.length === 0) {
       setCartError("Your cart is empty.");
       return;
     }
-    if (!deliveryAddress.trim() || !notes.trim()) {
-      setCartError("Please fill in delivery address and notes.");
+    if (!deliveryAddress.trim()) {
+      setCartError("Please fill in delivery address.");
+      return;
+    }
+    if (
+      !guestFirstName.trim() ||
+      !guestLastName.trim() ||
+      !email.trim() ||
+      !phone.trim() ||
+      !guestNotes.trim()
+    ) {
+      setCartError(
+        "Please fill in first name, last name, email, phone, and notes."
+      );
       return;
     }
     setCartError("");
     setCartMessage("");
 
     try {
-      // Single payload for the entire cart
+      const combinedUserNotes = `FirstName: ${guestFirstName}; LastName: ${guestLastName}; ${guestNotes}`;
+
+      // payload
       const payload = {
-        authenticated: true,
-        userId,
+        firstName: guestFirstName,
+        lastName: guestLastName,
+        email,
+        phone,
         deliveryAddress,
-        notes,
-        items: cart.map((item) => ({
-          itemName: item.name,
-          quantity: item.quantity,
+        // notes include first name and last name
+        notes: combinedUserNotes,
+        items: cart.map((c) => ({
+          itemName: c.name,
+          quantity: c.quantity,
         })),
       };
 
       const response = await axios.post(
-        "http://localhost:8080/api/orders/create",
+        "http://localhost:8080/api/orders/guest/create",
         payload
       );
 
-      if (response.data.status !== "success") {
-        setCartError(response.data.message || "Order creation failed");
-        return;
-      }
+      if (response.data.status === "success") {
+        setCartMessage("Order placed successfully!");
 
-      setCartMessage("Order placed successfully!");
-      // Clear cart and fields
-      setCart([]);
-      setDeliveryAddress("");
-      setNotes("");
+        // generate currentOrder
+        const newOrder = {
+          orderId: response.data.orderId,
+          orderStatus: response.data.orderStatus || "PENDING",
+          firstName: guestFirstName,
+          lastName: guestLastName,
+          address: deliveryAddress,
+          notes: combinedUserNotes,
+          items: cart, // items in cart
+        };
 
-      // If orders are open, refresh them
-      if (showOrders) {
-        await toggleOrders();
-        await toggleOrders();
+        setCurrentOrder(newOrder);
+        setShowCurrentOrderModal(true);
+
+        // clean cart & form
+        setCart([]);
+        setDeliveryAddress("");
+        setGuestFirstName("");
+        setGuestLastName("");
+        setEmail("");
+        setPhone("");
+        setGuestNotes("");
+      } else {
+        setCartError(response.data.message || "Order creation failed.");
       }
     } catch (error) {
       setCartError(error.response?.data?.message || "Order creation failed.");
@@ -199,78 +181,26 @@ const Home = ({ username, userId, onLogout }) => {
 
   return (
     <div style={styles.container}>
-      {/* Navbar */}
+      {/* top nav bar */}
       <div style={styles.navbar}>
-        <div style={styles.navGreeting}>Hello, {username}!</div>
-        <button style={styles.cartButton} onClick={toggleCart}>
-          Cart
-        </button>
-        <button style={styles.logoutButton} onClick={onLogout}>
+        <div style={styles.navGreeting}>Welcome, Guest!</div>
+        <button style={styles.logoutButton} onClick={handleLogout}>
           Log Out
         </button>
       </div>
 
-      {/* Main content */}
+      {/* Cannot view order history, can only place an order */}
       <div style={styles.content}>
-        <h2>Welcome Back, {username}!</h2>
-        <button style={styles.toggleOrdersButton} onClick={toggleOrders}>
-          View Orders History
-        </button>
-        {ordersLoading && <p>Loading orders...</p>}
-        {ordersError && <p style={styles.errorText}>{ordersError}</p>}
-
-        {showOrders && !ordersLoading && (
-          <div style={styles.ordersList}>
-            {orders.length === 0 ? (
-              <p>No orders found.</p>
-            ) : (
-              orders.map((order, idx) => (
-                <div key={idx} style={styles.orderItem}>
-                  <p><strong>Order ID:</strong> {order.orderId}</p>
-                  <p><strong>Address:</strong> {order.deliveryAddress}</p>
-                  <p><strong>Notes:</strong> {order.notes}</p>
-                  <p><strong>Request Time:</strong> {order.requestTime}</p>
-
-                  {/* 
-                    Instead of displaying the single itemName/quantity 
-                    from the orders table, we show the items from orderItems 
-                  */}
-                  {order.orderItems && order.orderItems.length > 0 ? (
-                    <>
-                      <p><strong>Total Items:</strong> {order.orderItems.length}</p>
-                      <ul style={{ marginLeft: "20px" }}>
-                        {order.orderItems.map((item, iidx) => (
-                          <li key={iidx}>
-                            {item.itemName} x {item.quantity}
-                          </li>
-                        ))}
-                      </ul>
-                    </>
-                  ) : (
-                    <p><em>No items found for this order.</em></p>
-                  )}
-
-                  {/* Cancel (Delete) button */}
-                  <button
-                    style={styles.deleteButton}
-                    onClick={() => handleCancelOrder(order.orderId)}
-                  >
-                    Delete
-                  </button>
-
-                  <hr />
-                </div>
-              ))
-            )}
-          </div>
-        )}
-
+        <h2>Make a New Order as Guest</h2>
         <button style={styles.newOrderButton} onClick={handleOpenNewOrder}>
           Make a New Order
         </button>
+        <button style={styles.cartButton} onClick={toggleCart}>
+          Cart ({cart.length})
+        </button>
       </div>
 
-      {/* “Make a New Order” modal */}
+      {/* “Make a New Order” box open */}
       {showNewOrderModal && (
         <div style={styles.modalOverlay}>
           <div style={styles.modalContent}>
@@ -282,9 +212,7 @@ const Home = ({ username, userId, onLogout }) => {
                   type="number"
                   min="0"
                   value={item.quantity}
-                  onChange={(e) =>
-                    handleItemQuantityChange(index, e.target.value)
-                  }
+                  onChange={(e) => handleItemQuantityChange(index, e.target.value)}
                   style={{ width: "60px" }}
                 />
               </div>
@@ -305,7 +233,7 @@ const Home = ({ username, userId, onLogout }) => {
         </div>
       )}
 
-      {/* Cart modal */}
+      {/* cart box open */}
       {showCart && (
         <div style={styles.modalOverlay}>
           <div style={styles.modalContent}>
@@ -333,7 +261,7 @@ const Home = ({ username, userId, onLogout }) => {
               ))
             )}
 
-            {/* Address & notes */}
+            {/* Required information: Address, firstName, lastName, email, phone, note */}
             <div style={styles.formGroup}>
               <label>Delivery Address:</label>
               <input
@@ -343,12 +271,53 @@ const Home = ({ username, userId, onLogout }) => {
                 style={styles.input}
               />
             </div>
+
+            <div style={styles.formGroup}>
+              <label>First Name:</label>
+              <input
+                type="text"
+                value={guestFirstName}
+                onChange={(e) => setGuestFirstName(e.target.value)}
+                style={styles.input}
+              />
+            </div>
+
+            <div style={styles.formGroup}>
+              <label>Last Name:</label>
+              <input
+                type="text"
+                value={guestLastName}
+                onChange={(e) => setGuestLastName(e.target.value)}
+                style={styles.input}
+              />
+            </div>
+
+            <div style={styles.formGroup}>
+              <label>Email:</label>
+              <input
+                type="text"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                style={styles.input}
+              />
+            </div>
+
+            <div style={styles.formGroup}>
+              <label>Phone:</label>
+              <input
+                type="text"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                style={styles.input}
+              />
+            </div>
+
             <div style={styles.formGroup}>
               <label>Notes:</label>
               <input
                 type="text"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                value={guestNotes}
+                onChange={(e) => setGuestNotes(e.target.value)}
                 style={styles.input}
               />
             </div>
@@ -365,10 +334,48 @@ const Home = ({ username, userId, onLogout }) => {
           </div>
         </div>
       )}
+
+      {/* Current order information popup (only displayed after successful order) */}
+      {showCurrentOrderModal && currentOrder && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalContent}>
+            {/* red note */}
+            <p style={{ color: "red", fontSize: "18px", fontStyle: "italic" }}>
+              NOTE: Please be sure to remember this information! Make sure you have
+              taken a screenshot or written it down!
+            </p>
+
+            <h3>Current Order</h3>
+            <p><strong>Order ID:</strong> {currentOrder.orderId}</p>
+            <p><strong>Status:</strong> {currentOrder.orderStatus}</p>
+            <p>
+              <strong>Guest Name:</strong> {currentOrder.firstName}{" "}
+              {currentOrder.lastName}
+            </p>
+            <p><strong>Address:</strong> {currentOrder.address}</p>
+            <p><strong>Notes:</strong> {currentOrder.notes}</p>
+            <div style={{ margin: "10px 0" }}>
+              <strong>Items:</strong>
+              {currentOrder.items.map((item, idx) => (
+                <div key={idx}>
+                  {item.name} x {item.quantity}
+                </div>
+              ))}
+            </div>
+            <button
+              style={styles.button}
+              onClick={() => setShowCurrentOrderModal(false)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
+// 样式
 const styles = {
   container: {
     minHeight: "100vh",
@@ -377,24 +384,14 @@ const styles = {
   },
   navbar: {
     display: "flex",
-    justifyContent: "flex-end",
+    justifyContent: "space-between",
     alignItems: "center",
     backgroundColor: "#1890ff",
     color: "white",
     padding: "10px 20px",
-    gap: "10px",
   },
   navGreeting: {
-    marginRight: "auto",
     fontSize: "20px",
-  },
-  cartButton: {
-    padding: "8px 16px",
-    backgroundColor: "#faad14",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    color: "white",
   },
   logoutButton: {
     padding: "8px 16px",
@@ -413,26 +410,6 @@ const styles = {
     boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
     textAlign: "center",
   },
-  toggleOrdersButton: {
-    padding: "10px 20px",
-    backgroundColor: "#1890ff",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    color: "white",
-    marginBottom: "10px",
-  },
-  ordersList: {
-    marginTop: "10px",
-    border: "1px solid #ddd",
-    borderRadius: "4px",
-    padding: "10px",
-    textAlign: "left",
-  },
-  orderItem: {
-    borderBottom: "1px solid #ddd",
-    padding: "10px 0",
-  },
   newOrderButton: {
     padding: "10px 20px",
     backgroundColor: "#52c41a",
@@ -440,16 +417,15 @@ const styles = {
     borderRadius: "4px",
     cursor: "pointer",
     color: "white",
-    marginTop: "20px",
+    marginRight: "10px",
   },
-  deleteButton: {
-    marginTop: "10px",
-    backgroundColor: "#ff4d4f",
-    color: "white",
+  cartButton: {
+    padding: "10px 20px",
+    backgroundColor: "#faad14",
     border: "none",
     borderRadius: "4px",
-    padding: "6px 12px",
     cursor: "pointer",
+    color: "white",
   },
   modalOverlay: {
     position: "fixed",
@@ -501,20 +477,20 @@ const styles = {
     width: "100%",
     padding: "10px",
     backgroundColor: "#1890ff",
+    color: "white",
     border: "none",
     borderRadius: "4px",
     cursor: "pointer",
-    color: "white",
     marginTop: "1rem",
   },
   cancelButton: {
     width: "100%",
     padding: "10px",
     backgroundColor: "#ff4d4f",
+    color: "white",
     border: "none",
     borderRadius: "4px",
     cursor: "pointer",
-    color: "white",
     marginTop: "1rem",
   },
   errorText: {
@@ -527,4 +503,4 @@ const styles = {
   },
 };
 
-export default Home;
+export default Guest;
