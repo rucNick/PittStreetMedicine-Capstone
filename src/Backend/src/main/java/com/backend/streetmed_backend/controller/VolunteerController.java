@@ -5,6 +5,13 @@ import com.backend.streetmed_backend.entity.user_entity.UserMetadata;
 import com.backend.streetmed_backend.entity.user_entity.VolunteerApplication;
 import com.backend.streetmed_backend.service.VolunteerApplicationService;
 import com.backend.streetmed_backend.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
@@ -16,6 +23,7 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
+@Tag(name = "Volunteer Management", description = "APIs for managing volunteer applications")
 @CrossOrigin(origins = "http://localhost:3000")
 @RestController
 @RequestMapping("/api/volunteer")
@@ -38,9 +46,33 @@ public class VolunteerController {
         this.readOnlyExecutor = readOnlyExecutor;
     }
 
+    @Operation(summary = "Submit a volunteer application",
+            description = "Allows a user to submit an application to become a volunteer")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Application submitted successfully",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(example = """
+                {
+                    "status": "success",
+                    "message": "Application submitted successfully",
+                    "applicationId": 1
+                }
+                """))),
+            @ApiResponse(responseCode = "400", description = "Missing required fields"),
+            @ApiResponse(responseCode = "409", description = "Application already exists for this email")
+    })
+
     @PostMapping("/apply")
     public CompletableFuture<ResponseEntity<Map<String, Object>>> submitApplication(
-            @RequestBody Map<String, String> applicationData) {
+            @RequestBody @Schema(example = """
+                {
+                    "firstName": "John",
+                    "lastName": "Doe",
+                    "email": "john@example.com",
+                    "phone": "412-555-0123",
+                    "notes": "Available weekends"
+                }
+                """) Map<String, String> applicationData) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 // Validate required fields
@@ -87,10 +119,42 @@ public class VolunteerController {
         }, authExecutor);
     }
 
+
+    @Operation(summary = "Get all volunteer applications",
+            description = "Returns all volunteer applications grouped by status. Admin access only.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Applications retrieved successfully",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(example = """
+                {
+                    "status": "success",
+                    "data": {
+                        "pending": [
+                            {
+                                "applicationId": 1,
+                                "firstName": "John",
+                                "lastName": "Doe",
+                                "email": "john@example.com",
+                                "phone": "412-555-0123",
+                                "status": "PENDING",
+                                "notes": "Available weekends",
+                                "submissionDate": "2024-02-19T10:30:00"
+                            }
+                        ],
+                        "approved": [],
+                        "rejected": []
+                    }
+                }
+                """))),
+            @ApiResponse(responseCode = "401", description = "Not authenticated"),
+            @ApiResponse(responseCode = "403", description = "Unauthorized access - Admin only")
+    })
     @GetMapping("/applications")
     public CompletableFuture<ResponseEntity<Map<String, Object>>> getAllApplications(
-            @RequestHeader("Admin-Username") String adminUsername,
-            @RequestHeader("Authentication-Status") String authStatus) {
+            @RequestHeader(name = "Admin-Username")
+            @Parameter(description = "Username of the admin") String adminUsername,
+            @RequestHeader(name = "Authentication-Status")
+            @Parameter(description = "Authentication status (must be 'true')") String authStatus) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 if (!"true".equals(authStatus)) {
@@ -147,10 +211,37 @@ public class VolunteerController {
         }, readOnlyExecutor);
     }
 
+
+    @Operation(summary = "Get pending volunteer applications",
+            description = "Returns only pending volunteer applications. Admin access only.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Pending applications retrieved successfully",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(example = """
+                {
+                    "status": "success",
+                    "data": [
+                        {
+                            "applicationId": 1,
+                            "firstName": "John",
+                            "lastName": "Doe",
+                            "email": "john@example.com",
+                            "phone": "412-555-0123",
+                            "notes": "Available weekends",
+                            "submissionDate": "2024-02-19T10:30:00"
+                        }
+                    ]
+                }
+                """))),
+            @ApiResponse(responseCode = "401", description = "Not authenticated"),
+            @ApiResponse(responseCode = "403", description = "Unauthorized access - Admin only")
+    })
     @GetMapping("/pending")
     public CompletableFuture<ResponseEntity<Map<String, Object>>> getPendingApplications(
-            @RequestHeader("Admin-Username") String adminUsername,
-            @RequestHeader("Authentication-Status") String authStatus) {
+            @RequestHeader(name = "Admin-Username")
+            @Parameter(description = "Username of the admin") String adminUsername,
+            @RequestHeader(name = "Authentication-Status")
+            @Parameter(description = "Authentication status (must be 'true')") String authStatus){
         return CompletableFuture.supplyAsync(() -> {
             try {
                 if (!"true".equals(authStatus)) {
@@ -192,8 +283,29 @@ public class VolunteerController {
         }, readOnlyExecutor);
     }
 
+    @Operation(summary = "Check volunteer application status",
+            description = "Checks the status of a volunteer application based on the applicant's email")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Application status retrieved successfully",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(example = """
+                {
+                    "status": "success",
+                    "applicationId": 1,
+                    "firstName": "John",
+                    "lastName": "Doe",
+                    "email": "john@example.com",
+                    "phone": "412-555-0123",
+                    "applicationStatus": "PENDING",
+                    "notes": "Available weekends",
+                    "submissionDate": "2024-02-19T10:30:00"
+                }
+                """))),
+            @ApiResponse(responseCode = "404", description = "No application found for this email")
+    })
     @GetMapping("/application/status/{email}")
     public CompletableFuture<ResponseEntity<Map<String, Object>>> checkApplicationStatus(
+            @Parameter(description = "Email address of the applicant")
             @PathVariable String email) {
         return CompletableFuture.supplyAsync(() -> {
             try {
@@ -229,9 +341,34 @@ public class VolunteerController {
         }, readOnlyExecutor);
     }
 
+    @Operation(summary = "Approve volunteer application",
+            description = "Approves a volunteer application and creates a volunteer account. Admin access only.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Application approved successfully",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(example = """
+                {
+                    "status": "success",
+                    "message": "Application approved and volunteer account created",
+                    "applicationId": 1,
+                    "userId": 1,
+                    "initialPassword": "streetmed@pitt"
+                }
+                """))),
+            @ApiResponse(responseCode = "400", description = "Missing required fields"),
+            @ApiResponse(responseCode = "401", description = "Not authenticated"),
+            @ApiResponse(responseCode = "403", description = "Unauthorized access - Admin only"),
+            @ApiResponse(responseCode = "404", description = "Application not found")
+    })
     @PostMapping("/approve")
     public CompletableFuture<ResponseEntity<Map<String, Object>>> approveApplication(
-            @RequestBody Map<String, String> approvalData) {
+            @RequestBody @Schema(example = """
+                {
+                    "adminUsername": "admin",
+                    "authenticated": "true",
+                    "applicationId": "1"
+                }
+                """) Map<String, String> approvalData) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 String adminUsername = approvalData.get("adminUsername");
@@ -301,9 +438,32 @@ public class VolunteerController {
         }, authExecutor);
     }
 
+    @Operation(summary = "Reject volunteer application",
+            description = "Rejects a volunteer application. Admin access only.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Application rejected successfully",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(example = """
+                {
+                    "status": "success",
+                    "message": "Application rejected",
+                    "applicationId": 1
+                }
+                """))),
+            @ApiResponse(responseCode = "400", description = "Missing required fields"),
+            @ApiResponse(responseCode = "401", description = "Not authenticated"),
+            @ApiResponse(responseCode = "403", description = "Unauthorized access - Admin only"),
+            @ApiResponse(responseCode = "404", description = "Application not found")
+    })
     @PostMapping("/reject")
     public CompletableFuture<ResponseEntity<Map<String, Object>>> rejectApplication(
-            @RequestBody Map<String, String> rejectData) {
+            @RequestBody @Schema(example = """
+                {
+                    "adminUsername": "admin",
+                    "authenticated": "true",
+                    "applicationId": "1"
+                }
+                """) Map<String, String> rejectData) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 String adminUsername = rejectData.get("adminUsername");

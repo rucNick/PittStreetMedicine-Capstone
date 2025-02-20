@@ -3,6 +3,13 @@ package com.backend.streetmed_backend.controller;
 import com.backend.streetmed_backend.entity.order_entity.Order;
 import com.backend.streetmed_backend.entity.order_entity.OrderItem;
 import com.backend.streetmed_backend.service.OrderService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
@@ -19,6 +26,7 @@ import java.util.concurrent.Executor;
 /**
  * REST Controller for handling all order-related operations.
  */
+@Tag(name = "Order Management", description = "APIs for managing orders, including creation, updates, and cancellation")
 @CrossOrigin(origins = "http://localhost:3000")
 @RestController
 @RequestMapping("/api/orders")
@@ -33,27 +41,39 @@ public class OrderController {
         this.asyncExecutor = asyncExecutor;
     }
 
-    /**
-     * Creates a new order for guest users.
-     * Request body example:
-     * {
-     *   "firstName": "John",
-     *   "lastName": "Doe",
-     *   "email": "john@example.com",    // optional
-     *   "phone": "412-555-0123",        // optional
-     *   "deliveryAddress": "123 Main St",
-     *   "notes": "Front door delivery",
-     *   "items": [
-     *     {
-     *       "itemName": "First Aid Kit",
-     *       "quantity": 1
-     *     }
-     *   ]
-     * }
-     */
+    @Operation(summary = "Create a guest order",
+            description = "Creates a new order for guest users without authentication")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Order created successfully",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(example = """
+                {
+                    "status": "success",
+                    "message": "Guest order created successfully",
+                    "orderId": 1,
+                    "orderStatus": "PENDING"
+                }
+                """))),
+            @ApiResponse(responseCode = "400", description = "Missing required fields or invalid input")
+    })
     @PostMapping("/guest/create")
     public CompletableFuture<ResponseEntity<Map<String, Object>>> createGuestOrder(
-            @RequestBody Map<String, Object> requestData) {
+            @RequestBody @Schema(example = """
+                {
+                    "firstName": "John",
+                    "lastName": "Doe",
+                    "email": "john@example.com",
+                    "phone": "412-555-0123",
+                    "deliveryAddress": "123 Main St",
+                    "notes": "Front door delivery",
+                    "items": [
+                        {
+                            "itemName": "First Aid Kit",
+                            "quantity": 1
+                        }
+                    ]
+                }
+                """) Map<String, Object> requestData) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 // Validate required fields
@@ -137,25 +157,38 @@ public class OrderController {
         }, asyncExecutor);
     }
 
-    /**
-     * Creates a new order.
-     * Request body example:
-     * {
-     *   "authenticated": true,
-     *   "userId": 1,
-     *   "deliveryAddress": "123 Main St",
-     *   "notes": "Front door delivery",
-     *   "items": [
-     *     {
-     *       "itemName": "First Aid Kit",
-     *       "quantity": 1
-     *     }
-     *   ]
-     * }
-     */
+    @Operation(summary = "Create a new order",
+              description = "Creates a new order for authenticated users")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Order created successfully",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(example = """
+                {
+                    "status": "success",
+                    "message": "Order created successfully",
+                    "orderId": 1,
+                    "authenticated": true
+                }
+                """))),
+            @ApiResponse(responseCode = "401", description = "Not authenticated"),
+            @ApiResponse(responseCode = "400", description = "Invalid input")
+    })
     @PostMapping("/create")
     public CompletableFuture<ResponseEntity<Map<String, Object>>> createOrder(
-            @RequestBody Map<String, Object> requestData) {
+            @RequestBody @Schema(example = """
+                {
+                    "authenticated": true,
+                    "userId": 1,
+                    "deliveryAddress": "123 Main St",
+                    "notes": "Front door delivery",
+                    "items": [
+                        {
+                            "itemName": "First Aid Kit",
+                            "quantity": 1
+                        }
+                    ]
+                }
+                """) Map<String, Object> requestData) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 Integer userId = (Integer) requestData.get("userId");
@@ -209,18 +242,45 @@ public class OrderController {
         }, asyncExecutor);
     }
 
-    /**
-     * Gets all orders (Volunteer only)
-     * Request body example:
-     * {
-     *   "authenticated": true,
-     *   "userId": 2,
-     *   "userRole": "VOLUNTEER"
-     * }
-     */
+    @Operation(summary = "Get all orders",
+            description = "Retrieves all orders. Only accessible by volunteers.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Orders retrieved successfully",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(example = """
+                {
+                    "status": "success",
+                    "orders": [
+                        {
+                            "orderId": 1,
+                            "userId": 1,
+                            "status": "PENDING",
+                            "deliveryAddress": "123 Main St",
+                            "notes": "Front door delivery",
+                            "requestTime": "2024-02-19T10:30:00",
+                            "orderItems": [
+                                {
+                                    "itemName": "First Aid Kit",
+                                    "quantity": 1
+                                }
+                            ]
+                        }
+                    ],
+                    "authenticated": true
+                }
+                """))),
+            @ApiResponse(responseCode = "401", description = "Not authenticated"),
+            @ApiResponse(responseCode = "403", description = "Unauthorized - Volunteer access only")
+    })
     @GetMapping("/all")
     public CompletableFuture<ResponseEntity<Map<String, Object>>> getAllOrders(
-            @RequestBody Map<String, Object> requestData) {
+            @RequestBody @Schema(example = """
+                {
+                    "authenticated": true,
+                    "userId": 2,
+                    "userRole": "VOLUNTEER"
+                }
+                """) Map<String, Object> requestData) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 Boolean authenticated = (Boolean) requestData.get("authenticated");
@@ -259,28 +319,50 @@ public class OrderController {
         }, asyncExecutor);
     }
 
-    /**
-     * Gets orders for a specific user.
-     * Request body example:
-     * {
-     *   "authenticated": true,
-     *   "userId": 1,
-     *   "userRole": "CLIENT"
-     * }
-     */
+    @Operation(summary = "Get user orders",
+            description = "Retrieves orders for a specific user. Users can only view their own orders, volunteers can view any user's orders.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Orders retrieved successfully",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(example = """
+                {
+                    "status": "success",
+                    "orders": [
+                        {
+                            "orderId": 1,
+                            "status": "PENDING",
+                            "deliveryAddress": "123 Main St",
+                            "notes": "Front door delivery",
+                            "requestTime": "2024-02-19T10:30:00",
+                            "orderItems": [
+                                {
+                                    "itemName": "First Aid Kit",
+                                    "quantity": 1
+                                }
+                            ]
+                        }
+                    ],
+                    "authenticated": true
+                }
+                """))),
+            @ApiResponse(responseCode = "401", description = "Not authenticated"),
+            @ApiResponse(responseCode = "403", description = "Unauthorized access")
+    })
     @GetMapping("/user/{targetUserId}")
     public CompletableFuture<ResponseEntity<Map<String, Object>>> getUserOrders(
+            @Parameter(description = "ID of the user whose orders to retrieve")
             @PathVariable("targetUserId") Integer targetUserId,
-            //@RequestBody Map<String, Object> requestData) {
-                @RequestParam("authenticated") boolean authenticated,
-                @RequestParam("userRole") String userRole,
-                @RequestParam("userId") Integer requestUserId) {
+            @Parameter(description = "Authentication status")
+            @RequestParam("authenticated") boolean authenticated,
+            @Parameter(description = "User role (CLIENT or VOLUNTEER)")
+            @RequestParam("userRole") String userRole,
+            @Parameter(description = "ID of the requesting user")
+            @RequestParam("userId") Integer requestUserId) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 //Boolean authenticated = (Boolean) requestData.get("authenticated");
                 //String userRole = (String) requestData.get("userRole");
                 //Integer requestUserId = (Integer) requestData.get("userId");
-
                 if (!Boolean.TRUE.equals(authenticated)) {
                     Map<String, Object> errorResponse = new HashMap<>();
                     errorResponse.put("status", "error");
@@ -314,20 +396,34 @@ public class OrderController {
         }, asyncExecutor);
     }
 
-    /**
-     * Updates order status (Volunteer only)
-     * Request body example:
-     * {
-     *   "authenticated": true,
-     *   "userId": 2,
-     *   "userRole": "VOLUNTEER",
-     *   "status": "PROCESSING"
-     * }
-     */
+    @Operation(summary = "Update order status",
+            description = "Updates the status of an order. Only accessible by volunteers.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Order status updated successfully",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(example = """
+                {
+                    "status": "success",
+                    "message": "Order status updated successfully",
+                    "orderStatus": "PROCESSING",
+                    "authenticated": true
+                }
+                """))),
+            @ApiResponse(responseCode = "401", description = "Not authenticated"),
+            @ApiResponse(responseCode = "403", description = "Unauthorized - Volunteer access only")
+    })
     @PutMapping("/{orderId}/status")
     public CompletableFuture<ResponseEntity<Map<String, Object>>> updateOrderStatus(
+            @Parameter(description = "ID of the order to update")
             @PathVariable("orderId") Integer orderId,
-            @RequestBody Map<String, Object> requestData) {
+            @RequestBody @Schema(example = """
+                {
+                    "authenticated": true,
+                    "userId": 2,
+                    "userRole": "VOLUNTEER",
+                    "status": "PROCESSING"
+                }
+                """) Map<String, Object> requestData) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 Boolean authenticated = (Boolean) requestData.get("authenticated");
@@ -370,19 +466,32 @@ public class OrderController {
         }, asyncExecutor);
     }
 
-    /**
-     * Cancels an order
-     * Request body example:
-     * {
-     *   "authenticated": true,
-     *   "userId": 1,
-     *   "userRole": "CLIENT"
-     * }
-     */
+    @Operation(summary = "Cancel order",
+            description = "Cancels an existing order. Users can only cancel their own orders, volunteers can cancel any order.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Order cancelled successfully",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(example = """
+                {
+                    "status": "success",
+                    "message": "Order cancelled successfully",
+                    "authenticated": true
+                }
+                """))),
+            @ApiResponse(responseCode = "401", description = "Not authenticated"),
+            @ApiResponse(responseCode = "403", description = "Unauthorized to cancel this order")
+    })
     @PostMapping("/{orderId}/cancel")
     public CompletableFuture<ResponseEntity<Map<String, Object>>> cancelOrder(
+            @Parameter(description = "ID of the order to cancel")
             @PathVariable("orderId") Integer orderId,
-            @RequestBody Map<String, Object> requestData) {
+            @RequestBody @Schema(example = """
+                {
+                    "authenticated": true,
+                    "userId": 1,
+                    "userRole": "CLIENT"
+                }
+                """) Map<String, Object> requestData) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 Boolean authenticated = (Boolean) requestData.get("authenticated");
