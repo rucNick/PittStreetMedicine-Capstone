@@ -1,3 +1,5 @@
+//=========================================== JS part ==============================================
+
 import React, { useState } from "react";
 import axios from "axios";
 
@@ -197,6 +199,8 @@ const Home = ({ username, userId, onLogout }) => {
     }
   };
 
+//=========================================== HTML part ==============================================
+
   return (
     <div style={styles.container}>
       {/* Navbar */}
@@ -368,6 +372,8 @@ const Home = ({ username, userId, onLogout }) => {
     </div>
   );
 };
+
+//=========================================== CSS part ==============================================
 
 const styles = {
   container: {

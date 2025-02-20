@@ -1,3 +1,5 @@
+//=========================================== JS part ==============================================
+
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
@@ -45,6 +47,8 @@ const Login = ({ onLoginSuccess }) => {
       setMessage('Login error: ' + (error.response?.data?.message || error.message));
     }
   };
+
+//=========================================== HTML part ==============================================
 
   return (
     <div style={styles.background}>
@@ -123,6 +127,8 @@ const Login = ({ onLoginSuccess }) => {
     </div>
   );
 };
+
+//=========================================== CSS part ==============================================
 
 const styles = {
   background: {

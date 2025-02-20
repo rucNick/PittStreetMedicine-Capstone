@@ -1,3 +1,5 @@
+//=========================================== JS part ==============================================
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -114,6 +116,8 @@ const Register = () => {
     navigate('/');
   };
 
+//=========================================== HTML part ==============================================
+
   return (
     <div style={styles.container}>
       <button style={styles.goBackButton} onClick={handleGoBack}>
@@ -189,6 +193,8 @@ const Register = () => {
     </div>
   );
 };
+
+//=========================================== CSS part ==============================================
 
 const styles = {
   container: {
