@@ -27,28 +27,28 @@ public class OrderService {
     }
 
     public Order createOrder(Order order, List<OrderItem> items) {
-        // Only validate user if it's not a guest order
         if (order.getUserId() != GUEST_USER_ID) {
             validateUser(order.getUserId());
         }
 
-        // Set initial order values
         order.setRequestTime(LocalDateTime.now());
         order.setStatus("PENDING");
 
-        // Set the first item's details to order (since schema requires it)
-        if (!items.isEmpty()) {
-            OrderItem firstItem = items.get(0);
-            order.setItemName(firstItem.getItemName());
-            order.setQuantity(firstItem.getQuantity());
-        } else {
+        if (items.isEmpty()) {
             throw new RuntimeException("Order must contain at least one item");
         }
 
-        // Set up bidirectional relationship
-        items.forEach(order::addOrderItem);
+        // Set summary information
+        order.setItemName(items.size() + " items"); // e.g. "3 items"
+        order.setQuantity(items.stream()
+                .mapToInt(OrderItem::getQuantity)
+                .sum()); // Total quantity
 
-        // Save and return order (cascade will save items)
+        // Set up bidirectional relationship
+        for (OrderItem item : items) {
+            order.addOrderItem(item);
+        }
+
         return orderRepository.save(order);
     }
 

@@ -1,9 +1,6 @@
-import {  useState } from "react";
 import {
   useJsApiLoader,
   GoogleMap,
-  Marker,
-  InfoWindow,
 } from "@react-google-maps/api";
 
 
