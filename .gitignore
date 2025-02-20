@@ -51,3 +51,4 @@ src/Backend/target/classes/com/backend/streetmed_backend/StreetMedBackendApplica
 src/Backend/target/classes/com/backend/streetmed_backend/security/PasswordHash.class
 src/Backend/target/test-classes/com/backend/streetmed_backend/StreetMedBackendApplicationTests.class
 src/Backend/target/maven-status/maven-compiler-plugin/testCompile/default-testCompile/inputFiles.lst
+src/Backend/target/classes/com/backend/streetmed_backend/StreetMedBackendApplication.class
