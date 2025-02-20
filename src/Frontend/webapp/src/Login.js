@@ -9,14 +9,20 @@ const Login = ({ onLoginSuccess }) => {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
 
-  // When the Login button in the top right corner is clicked, the login form (along with the logo) is displayed.
+  // show login form
   const handleLoginClick = () => {
     setShowLoginForm(true);
   };
 
-  // Register button
+  // jump to register
   const handleRegisterClick = () => {
     navigate('/register');
+  };
+
+  // continue as guest
+  const handleGuestClick = () => {
+    onLoginSuccess({ username: "Guest", userId: -1 });  // guest user_id = -1
+    navigate('/guest');
   };
 
   const handleSubmit = async (e) => {
@@ -30,7 +36,7 @@ const Login = ({ onLoginSuccess }) => {
       if (response.data.authenticated) {
         setMessage('Login success！');
         console.log('User info:', response.data);
-        // Pass the object, where response.data.userId is the numeric userId returned by the backend
+        // show re turned user_id
         onLoginSuccess({ username: username, userId: response.data.userId });
       } else {
         setMessage('Login failure: ' + response.data.message);
@@ -60,10 +66,14 @@ const Login = ({ onLoginSuccess }) => {
         </button>
       </div>
 
-      {/* The logo and Login form are displayed only when the Login button is clicked */}
+      {/* login form and logo */}
       {showLoginForm && (
         <>
-          <img src="/Untitled.png" alt="Logo" style={{...styles.logo, animation: 'fadeIn 0.5s ease-in-out'}} />
+          <img 
+            src="/Untitled.png" 
+            alt="Logo" 
+            style={{ ...styles.logo, animation: 'fadeIn 0.5s ease-in-out' }} 
+          />
 
           <div style={{ ...styles.loginFormContainer, animation: 'fadeIn 0.5s ease-in-out' }}>
             <form style={styles.form} onSubmit={handleSubmit}>
@@ -92,10 +102,20 @@ const Login = ({ onLoginSuccess }) => {
                 Login
               </button>
               <div style={styles.message}>{message}</div>
-              {/* Small words, click to jump to the registration page */}
               <p style={styles.registerText} onClick={handleRegisterClick}>
                 Don't have an account? Go to register
               </p>
+              {/* add guest button */}
+              <div style={styles.separator}>
+                <hr style={styles.hr} />
+                <span style={styles.orText}>or</span>
+                <hr style={styles.hr} />
+              </div>
+              <div style={styles.guestContainer}>
+                <button style={styles.guestButton} onClick={handleGuestClick}>
+                  Continue as a guest
+                </button>
+              </div>
             </form>
           </div>
         </>
@@ -195,6 +215,33 @@ const styles = {
     color: '#1890ff',
     cursor: 'pointer',
     textDecoration: 'underline',
+  },
+  separator: {
+    display: 'flex',
+    alignItems: 'center',
+    marginTop: '1rem',
+  },
+  hr: {
+    flex: 1,
+    border: 'none',
+    borderTop: '1px solid #ccc',
+  },
+  orText: {
+    margin: '0 10px',
+    fontSize: '12px',
+    color: '#888',
+  },
+  guestContainer: {
+    textAlign: 'center',
+    marginTop: '1rem',
+  },
+  guestButton: {
+    padding: '8px 16px',
+    backgroundColor: '#52c41a',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
   },
 };
 
