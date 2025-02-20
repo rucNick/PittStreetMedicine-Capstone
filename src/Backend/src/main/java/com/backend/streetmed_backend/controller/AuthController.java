@@ -33,12 +33,43 @@ public class AuthController {
         this.readOnlyExecutor = readOnlyExecutor;
     }
 
+    //update database with password hashing
+    @PostMapping("/migrate-passwords")
+    public CompletableFuture<ResponseEntity<Map<String, Object>>> migratePasswords(
+            @RequestHeader("Admin-Username") String adminUsername,
+            @RequestHeader("Authentication-Status") String authStatus) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                if (!"true".equals(authStatus)) {
+                    throw new RuntimeException("Not authenticated");
+                }
+
+                User admin = userService.findByUsername(adminUsername);
+                if (admin == null || !"ADMIN".equals(admin.getRole())) {
+                    throw new RuntimeException("Unauthorized access");
+                }
+
+                userService.migrateAllPasswordsToHashed();
+
+                Map<String, Object> response = new HashMap<>();
+                response.put("status", "success");
+                response.put("message", "All passwords have been migrated to hashed format");
+                return ResponseEntity.ok(response);
+
+            } catch (Exception e) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("status", "error");
+                errorResponse.put("message", e.getMessage());
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+            }
+        }, authExecutor);
+    }
+
     @PostMapping("/register")
     public CompletableFuture<ResponseEntity<Map<String, Object>>> register(
             @RequestBody Map<String, String> userData) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                // Pre-validate to avoid database contention
                 if (userData.get("username") == null || userData.get("email") == null ||
                         userData.get("password") == null) {
                     throw new RuntimeException("Missing required fields");
@@ -47,7 +78,7 @@ public class AuthController {
                 User newUser = new User();
                 newUser.setUsername(userData.get("username"));
                 newUser.setEmail(userData.get("email"));
-                newUser.setPassword(userData.get("password"));
+                newUser.setPassword(userData.get("password")); // Will be hashed in service layer
                 if (userData.containsKey("phone") && userData.get("phone") != null &&
                         !userData.get("phone").trim().isEmpty()) {
                     newUser.setPhone(userData.get("phone"));
@@ -77,17 +108,21 @@ public class AuthController {
             @RequestBody Map<String, String> credentials) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                String username = credentials.get("username");
+                String usernameOrEmail = credentials.get("username");
                 String password = credentials.get("password");
 
-                if (username == null || password == null) {
+                if (usernameOrEmail == null || password == null) {
                     throw new RuntimeException("Missing credentials");
                 }
 
-                User user = userService.findByUsername(username);
+                User user;
+                if (usernameOrEmail.contains("@")) {
+                    user = userService.findByEmail(usernameOrEmail);
+                } else {
+                    user = userService.findByUsername(usernameOrEmail);
+                }
 
-                if (user != null && password.equals(user.getPassword())) {
-                    // Handle last login update separately to avoid write contention
+                if (user != null && userService.verifyUserPassword(password, user.getPassword())) {
                     CompletableFuture.runAsync(() ->
                                     userService.updateLastLogin(user.getUserId()),
                             authExecutor

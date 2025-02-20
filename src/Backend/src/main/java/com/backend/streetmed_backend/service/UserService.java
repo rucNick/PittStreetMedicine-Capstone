@@ -4,6 +4,7 @@ package com.backend.streetmed_backend.service;
 import com.backend.streetmed_backend.entity.user_entity.User;
 import com.backend.streetmed_backend.entity.user_entity.UserMetadata;
 import com.backend.streetmed_backend.repository.UserRepository;
+import com.backend.streetmed_backend.security.PasswordHash;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,30 +16,41 @@ import java.util.List;
 @Transactional
 public class UserService {
     private final UserRepository userRepository;
+    private final PasswordHash passwordHash;
 
     @Autowired
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository, PasswordHash passwordHash) {
         this.userRepository = userRepository;
+        this.passwordHash = passwordHash;
     }
 
     @Transactional
     public User createUser(User user) {
         validateNewUser(user);
 
-        // Create new user
+        // Create new user with hashed password
         User newUser = new User();
         newUser.setUsername(user.getUsername());
         newUser.setEmail(user.getEmail());
-        newUser.setPassword(user.getPassword());
+        newUser.setPassword(passwordHash.hashPassword(user.getPassword()));
         newUser.setPhone(user.getPhone());
         newUser.setRole(user.getRole());
 
         // Create metadata
         UserMetadata metadata = new UserMetadata();
-        newUser.setMetadata(metadata); // This sets up the bidirectional relationship
+        newUser.setMetadata(metadata);
 
-        // Save user (this will cascade to metadata due to CascadeType.ALL)
         return userRepository.saveAndFlush(newUser);
+    }
+
+    public boolean verifyUserPassword(String plainTextPassword, String hashedPassword) {
+        return passwordHash.verifyPassword(plainTextPassword, hashedPassword);
+    }
+
+    @Transactional(readOnly = true)
+    public User findByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElse(null);
     }
 
     @Transactional
@@ -81,4 +93,13 @@ public class UserService {
         userRepository.deleteById(userId);
     }
 
+    @Transactional
+    public void migrateAllPasswordsToHashed() {
+        List<User> users = userRepository.findAll();
+        for (User user : users) {
+            String hashedPassword = passwordHash.hashPassword(user.getPassword());
+            user.setPassword(hashedPassword);
+            userRepository.save(user);
+        }
+    }
 }
