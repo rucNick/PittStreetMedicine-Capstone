@@ -2,6 +2,8 @@ package com.backend.streetmed_backend.controller;
 
 import com.backend.streetmed_backend.entity.user_entity.User;
 import com.backend.streetmed_backend.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
@@ -33,11 +35,11 @@ public class AuthController {
         this.readOnlyExecutor = readOnlyExecutor;
     }
 
-    //update database with password hashing
+    @Operation(summary = "Migrate all passwords to hashed format")
     @PostMapping("/migrate-passwords")
     public CompletableFuture<ResponseEntity<Map<String, Object>>> migratePasswords(
-            @RequestHeader("Admin-Username") String adminUsername,
-            @RequestHeader("Authentication-Status") String authStatus) {
+            @Schema(example = "admin") @RequestHeader("Admin-Username") String adminUsername,
+            @Schema(example = "true") @RequestHeader("Authentication-Status") String authStatus) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 if (!"true".equals(authStatus)) {
@@ -65,8 +67,17 @@ public class AuthController {
         }, authExecutor);
     }
 
+    @Operation(summary = "Register a new user")
     @PostMapping("/register")
     public CompletableFuture<ResponseEntity<Map<String, Object>>> register(
+            @Schema(example = """
+                    {
+                        "username": "johndoe",
+                        "email": "john@example.com",
+                        "password": "securepass123",
+                        "phone": "412-555-0123"
+                    }
+                    """)
             @RequestBody Map<String, String> userData) {
         return CompletableFuture.supplyAsync(() -> {
             try {
@@ -78,7 +89,7 @@ public class AuthController {
                 User newUser = new User();
                 newUser.setUsername(userData.get("username"));
                 newUser.setEmail(userData.get("email"));
-                newUser.setPassword(userData.get("password")); // Will be hashed in service layer
+                newUser.setPassword(userData.get("password"));
                 if (userData.containsKey("phone") && userData.get("phone") != null &&
                         !userData.get("phone").trim().isEmpty()) {
                     newUser.setPhone(userData.get("phone"));
@@ -103,8 +114,15 @@ public class AuthController {
         }, authExecutor);
     }
 
+    @Operation(summary = "User login")
     @PostMapping("/login")
     public CompletableFuture<ResponseEntity<Map<String, Object>>> login(
+            @Schema(example = """
+                    {
+                        "username": "johndoe",
+                        "password": "securepass123"
+                    }
+                    """)
             @RequestBody Map<String, String> credentials) {
         return CompletableFuture.supplyAsync(() -> {
             try {
@@ -157,10 +175,181 @@ public class AuthController {
         }, readOnlyExecutor);
     }
 
+    @Operation(summary = "Update username")
+    @PutMapping("/update/username")
+    public CompletableFuture<ResponseEntity<Map<String, Object>>> updateUsername(
+            @Schema(example = """
+                    {
+                        "userId": "123",
+                        "newUsername": "newusername",
+                        "authenticated": "true"
+                    }
+                    """)
+            @RequestBody Map<String, String> updateData) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                String userId = updateData.get("userId");
+                String newUsername = updateData.get("newUsername");
+                String authStatus = updateData.get("authenticated");
+
+                if (!"true".equals(authStatus)) {
+                    throw new RuntimeException("Not authenticated");
+                }
+
+                if (userId == null || newUsername == null) {
+                    throw new RuntimeException("Missing required fields");
+                }
+
+                if (userService.findByUsername(newUsername) != null) {
+                    Map<String, Object> errorResponse = new HashMap<>();
+                    errorResponse.put("status", "error");
+                    errorResponse.put("message", "Username already taken");
+                    return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
+                }
+
+                User updatedUser = userService.updateUsername(Integer.parseInt(userId), newUsername);
+
+                Map<String, Object> response = new HashMap<>();
+                response.put("status", "success");
+                response.put("message", "Username updated successfully");
+                response.put("username", updatedUser.getUsername());
+
+                return ResponseEntity.ok(response);
+
+            } catch (Exception e) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("status", "error");
+                errorResponse.put("message", e.getMessage());
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+            }
+        }, authExecutor);
+    }
+
+    @Operation(summary = "Update password")
+    @PutMapping("/update/password")
+    public CompletableFuture<ResponseEntity<Map<String, Object>>> updatePassword(
+            @Schema(example = """
+                    {
+                        "userId": "123",
+                        "currentPassword": "oldpass123",
+                        "newPassword": "newpass123",
+                        "authenticated": "true"
+                    }
+                    """)
+            @RequestBody Map<String, String> updateData) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                String userId = updateData.get("userId");
+                String currentPassword = updateData.get("currentPassword");
+                String newPassword = updateData.get("newPassword");
+                String authStatus = updateData.get("authenticated");
+
+                if (!"true".equals(authStatus)) {
+                    throw new RuntimeException("Not authenticated");
+                }
+
+                if (userId == null || currentPassword == null || newPassword == null) {
+                    throw new RuntimeException("Missing required fields");
+                }
+
+                User user = userService.findById(Integer.parseInt(userId));
+                if (user == null) {
+                    throw new RuntimeException("User not found");
+                }
+
+                if (!userService.verifyUserPassword(currentPassword, user.getPassword())) {
+                    Map<String, Object> errorResponse = new HashMap<>();
+                    errorResponse.put("status", "error");
+                    errorResponse.put("message", "Current password is incorrect");
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+                }
+
+                userService.updatePasswordWithVerification(Integer.parseInt(userId), currentPassword, newPassword);
+
+                Map<String, Object> response = new HashMap<>();
+                response.put("status", "success");
+                response.put("message", "Password updated successfully");
+
+                return ResponseEntity.ok(response);
+
+            } catch (Exception e) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("status", "error");
+                errorResponse.put("message", e.getMessage());
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+            }
+        }, authExecutor);
+    }
+
+    @Operation(summary = "Update email")
+    @PutMapping("/update/email")
+    public CompletableFuture<ResponseEntity<Map<String, Object>>> updateEmail(
+            @Schema(example = """
+                    {
+                        "userId": "123",
+                        "currentPassword": "securepass123",
+                        "newEmail": "newemail@example.com",
+                        "authenticated": "true"
+                    }
+                    """)
+            @RequestBody Map<String, String> updateData) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                String userId = updateData.get("userId");
+                String currentPassword = updateData.get("currentPassword");
+                String newEmail = updateData.get("newEmail");
+                String authStatus = updateData.get("authenticated");
+
+                if (!"true".equals(authStatus)) {
+                    throw new RuntimeException("Not authenticated");
+                }
+
+                if (userId == null || currentPassword == null || newEmail == null) {
+                    throw new RuntimeException("Missing required fields");
+                }
+
+                User user = userService.findById(Integer.parseInt(userId));
+                if (user == null) {
+                    throw new RuntimeException("User not found");
+                }
+
+                if (!userService.verifyUserPassword(currentPassword, user.getPassword())) {
+                    Map<String, Object> errorResponse = new HashMap<>();
+                    errorResponse.put("status", "error");
+                    errorResponse.put("message", "Current password is incorrect");
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+                }
+
+                if (userService.findByEmail(newEmail) != null) {
+                    Map<String, Object> errorResponse = new HashMap<>();
+                    errorResponse.put("status", "error");
+                    errorResponse.put("message", "Email already in use");
+                    return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
+                }
+
+                User updatedUser = userService.updateEmailWithVerification(Integer.parseInt(userId), currentPassword, newEmail);
+
+                Map<String, Object> response = new HashMap<>();
+                response.put("status", "success");
+                response.put("message", "Email updated successfully");
+                response.put("email", updatedUser.getEmail());
+
+                return ResponseEntity.ok(response);
+
+            } catch (Exception e) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("status", "error");
+                errorResponse.put("message", e.getMessage());
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+            }
+        }, authExecutor);
+    }
+
+    @Operation(summary = "Get all users (Admin only)")
     @GetMapping("/users")
     public CompletableFuture<ResponseEntity<Map<String, Object>>> getAllUsers(
-            @RequestHeader("Admin-Username") String adminUsername,
-            @RequestHeader("Authentication-Status") String authStatus) {
+            @Schema(example = "admin") @RequestHeader("Admin-Username") String adminUsername,
+            @Schema(example = "true") @RequestHeader("Authentication-Status") String authStatus) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 if (!"true".equals(authStatus)) {
@@ -171,14 +360,8 @@ public class AuthController {
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
                 }
 
-                User admin = userService.findByUsername(adminUsername);
-                if (admin == null || !"ADMIN".equals(admin.getRole())) {
-                    Map<String, Object> errorResponse = new HashMap<>();
-                    errorResponse.put("status", "error");
-                    errorResponse.put("message", "Unauthorized access");
-                    errorResponse.put("authenticated", true);
-                    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
-                }
+                ResponseEntity<Map<String, Object>> errorResponse = getMapResponseEntity(adminUsername);
+                if (errorResponse != null) return errorResponse;
 
                 List<User> allUsers = userService.getAllUsers();
                 List<Map<String, String>> clientUsers = new ArrayList<>();
@@ -217,8 +400,16 @@ public class AuthController {
         }, readOnlyExecutor);
     }
 
+    @Operation(summary = "Delete user (Admin only)")
     @DeleteMapping("/delete")
     public CompletableFuture<ResponseEntity<Map<String, Object>>> deleteUser(
+            @Schema(example = """
+                    {
+                        "authenticated": "true",
+                        "adminUsername": "admin",
+                        "username": "usertodelete"
+                    }
+                    """)
             @RequestBody Map<String, String> deleteRequest) {
         return CompletableFuture.supplyAsync(() -> {
             try {
@@ -234,14 +425,8 @@ public class AuthController {
                 String adminUsername = deleteRequest.get("adminUsername");
                 String userToDelete = deleteRequest.get("username");
 
-                User admin = userService.findByUsername(adminUsername);
-                if (admin == null || !"ADMIN".equals(admin.getRole())) {
-                    Map<String, Object> errorResponse = new HashMap<>();
-                    errorResponse.put("status", "error");
-                    errorResponse.put("message", "Unauthorized access");
-                    errorResponse.put("authenticated", true);
-                    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
-                }
+                ResponseEntity<Map<String, Object>> errorResponse1 = getMapResponseEntity(adminUsername);
+                if (errorResponse1 != null) return errorResponse1;
 
                 User userToBeDeleted = userService.findByUsername(userToDelete);
                 if (userToBeDeleted == null) {
@@ -269,5 +454,17 @@ public class AuthController {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
             }
         }, authExecutor);
+    }
+
+    private ResponseEntity<Map<String, Object>> getMapResponseEntity(String adminUsername) {
+        User admin = userService.findByUsername(adminUsername);
+        if (admin == null || !"ADMIN".equals(admin.getRole())) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("status", "error");
+            errorResponse.put("message", "Unauthorized access");
+            errorResponse.put("authenticated", true);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
+        }
+        return null;
     }
 }

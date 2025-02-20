@@ -6,19 +6,21 @@
 - [Authentication API](#authentication-api)
   - [Register](#register)
   - [Login](#login)
+  - [Profile Management](#profile-management)
   - [Admin Access](#admin-access)
 - [Order API](#order-api)
   - [Create Order](#create-order)
+  - [Create Guest Order](#create-guest-order)
   - [View Orders](#view-orders)
   - [Update Order Status](#update-order-status)
   - [Cancel Order](#cancel-order)
 - [Volunteer API](#volunteer-api)
-  - [Submit Volunteer Application](#submit-volunteer-application)
-  - [Get All Applications (Admin Only)](#get-all-applications-admin-only)
-  - [Get Pending Applications (Admin Only)](#get-pending-applications-admin-only)
-  - [Check Volunteer Application Status](#check-volunteer-application-status)
-  - [Approve Volunteer Application](#approve-volunteer-application)
-  - [Reject Volunteer Application](#reject-volunteer-application)
+  - [Submit Application](#submit-volunteer-application)
+  - [Get All Applications](#get-all-applications-admin-only)
+  - [Get Pending Applications](#get-pending-applications-admin-only)
+  - [Check Application Status](#check-volunteer-application-status)
+  - [Approve Application](#approve-volunteer-application)
+  - [Reject Application](#reject-volunteer-application)
 - [Business Logic](#business-logic)
   - [Authentication Flow](#authentication-flow)
   - [Order Flow](#order-flow)
@@ -31,6 +33,7 @@
 - SQLite Database
 - JPA/Hibernate
 - Maven
+- Cross-Origin Resource Sharing (CORS) enabled for localhost:3000
 
 ## Project Structure
 ```
@@ -57,7 +60,6 @@ com.backend.streetmed_backend/
     ├── UserService.java
     ├── OrderService.java
     └── VolunteerApplicationService.java
-
 ```
 
 ## Authentication API
@@ -81,12 +83,6 @@ Response:
     "message": "User registered successfully",
     "userId": number
 }
-
-Error Response:
-{
-    "status": "error",
-    "message": "Error message"
-}
 ```
 
 ### Login
@@ -96,7 +92,7 @@ Content-Type: application/json
 
 Request Body:
 {
-    "username": "string",
+    "username": "string",  // Can be username or email
     "password": "string"
 }
 
@@ -110,27 +106,79 @@ Response:
     "username": string,
     "email": string
 }
+```
 
-Error Response:
+### Profile Management
+
+#### Update Username
+```http
+PUT /api/auth/update/username
+Content-Type: application/json
+
+Request Body:
 {
-    "status": "error",
-    "message": "Invalid credentials",
-    "authenticated": false
+    "userId": "string",
+    "newUsername": "string",
+    "authenticated": "true"
+}
+
+Response:
+{
+    "status": "success",
+    "message": "Username updated successfully",
+    "username": "string"
+}
+```
+
+#### Update Password
+```http
+PUT /api/auth/update/password
+Content-Type: application/json
+
+Request Body:
+{
+    "userId": "string",
+    "currentPassword": "string",
+    "newPassword": "string",
+    "authenticated": "true"
+}
+
+Response:
+{
+    "status": "success",
+    "message": "Password updated successfully"
+}
+```
+
+#### Update Email
+```http
+PUT /api/auth/update/email
+Content-Type: application/json
+
+Request Body:
+{
+    "userId": "string",
+    "currentPassword": "string",
+    "newEmail": "string",
+    "authenticated": "true"
+}
+
+Response:
+{
+    "status": "success",
+    "message": "Email updated successfully",
+    "email": "string"
 }
 ```
 
 ### Admin Access
 
-#### Admin get all users
+#### Get All Users
 ```http
 GET /api/auth/users
-
-Request Body:
-{
-    "authenticated": true,
-    "userId": number,
-    "userRole": "ADMIN"
-}
+Headers:
+  Admin-Username: string
+  Authentication-Status: "true"
 
 Response:
 {
@@ -144,26 +192,24 @@ Response:
 }
 ```
 
-#### Admin delete users
+#### Delete User
 ```http
 DELETE /api/auth/delete
-
+Content-Type: application/json
 
 Request Body:
 {
-  "authenticated": "true",
-  "adminUsername": "string",
-  "username": "userToDelete"
+    "authenticated": "true",
+    "adminUsername": "string",
+    "username": "string"
 }
 
 Response:
 {
-  "status": "success",
-  "message": "User deleted successfully",
-  "authenticated": true
+    "status": "success",
+    "message": "User deleted successfully",
+    "authenticated": true
 }
-
-
 ```
 
 ## Order API
@@ -188,13 +234,27 @@ Request Body:
         }
     ]
 }
+```
 
-Response:
+### Create Guest Order
+```http
+POST /api/orders/guest/create
+Content-Type: application/json
+
+Request Body:
 {
-    "status": "success",
-    "message": "Order created successfully",
-    "orderId": number,
-    "authenticated": true
+    "firstName": "string",
+    "lastName": "string",
+    "email": "string" (optional),
+    "phone": "string" (optional),
+    "deliveryAddress": "string",
+    "notes": "string",
+    "items": [
+        {
+            "itemName": "string",
+            "quantity": number
+        }
+    ]
 }
 ```
 
@@ -203,6 +263,7 @@ Response:
 #### Get All Orders (Volunteer Only)
 ```http
 GET /api/orders/all
+Content-Type: application/json
 
 Request Body:
 {
@@ -210,80 +271,34 @@ Request Body:
     "userId": number,
     "userRole": "VOLUNTEER"
 }
-
-Response:
-{
-    "status": "success",
-    "orders": [...],
-    "authenticated": true
-}
 ```
 
 #### Get User Orders
 ```http
 GET /api/orders/user/{targetUserId}
-
-Request Body:
-{
-    "authenticated": true,
-    "userId": number,
-    "userRole": string
-}
-
-Response:
-{
-    "status": "success",
-    "orders": [...],
-    "authenticated": true
-}
+Query Parameters:
+  authenticated: boolean
+  userRole: string
+  userId: number
 ```
 
 ### Update Order Status
 ```http
 PUT /api/orders/{orderId}/status
+Content-Type: application/json
 
 Request Body:
 {
     "authenticated": true,
     "userId": number,
     "userRole": "VOLUNTEER",
-    "status": string  // "PENDING", "PROCESSING", "COMPLETED", "CANCELLED"
-}
-
-Response:
-{
-    "status": "success",
-    "message": "Order status updated successfully",
-    "orderStatus": string,
-    "authenticated": true
-}
-```
-
-### Cancel Order
-```http
-POST /api/orders/{orderId}/cancel
-
-Request Body:
-{
-    "authenticated": true,
-    "userId": number,
-    "userRole": string
-}
-
-Response:
-{
-    "status": "success",
-    "message": "Order cancelled successfully",
-    "authenticated": true
+    "status": "PENDING | PROCESSING | COMPLETED | CANCELLED"
 }
 ```
 
 ## Volunteer API
 
 ### Submit Volunteer Application
-**Endpoint:** `POST /api/volunteer/apply`  
-**Description:** Allows a user to submit an application to become a volunteer.
-
 ```http
 POST /api/volunteer/apply
 Content-Type: application/json
@@ -294,118 +309,32 @@ Request Body:
     "lastName": "string",
     "email": "string",
     "phone": "string",
-    "notes": "string"  // optional
-}
-
-Response:
-{
-    "status": "success",
-    "message": "Application submitted successfully",
-    "applicationId": number
-}
-
-Error Response:
-{
-    "status": "error",
-    "message": "Missing required fields" // or conflict error if an application exists
+    "notes": "string" (optional)
 }
 ```
 
 ### Get All Applications (Admin Only)
-**Endpoint:** `GET /api/volunteer/applications`  
-**Description:** Returns all volunteer applications grouped by status. Only accessible by an admin.
-
-**Headers:**
-- `Admin-Username: string`
-- `Authentication-Status: "true"`
-
 ```http
 GET /api/volunteer/applications
-```
-
-**Response:**
-```json
-{
-    "status": "success",
-    "data": {
-        "pending": [ { application objects } ],
-        "approved": [ { application objects } ],
-        "rejected": [ { application objects } ]
-    }
-}
-```
-
-**Error Response:**
-```json
-{
-    "status": "error",
-    "message": "Not authenticated"  // or "Unauthorized access"
-}
+Headers:
+  Admin-Username: string
+  Authentication-Status: "true"
 ```
 
 ### Get Pending Applications (Admin Only)
-**Endpoint:** `GET /api/volunteer/pending`  
-**Description:** Retrieves only the pending volunteer applications.
-
-**Headers:**
-- `Admin-Username: string`
-- `Authentication-Status: "true"`
-
 ```http
 GET /api/volunteer/pending
-```
-
-**Response:**
-```json
-{
-    "status": "success",
-    "data": [ { application objects } ]
-}
-```
-
-**Error Response:**
-```json
-{
-    "status": "error",
-    "message": "Not authenticated"  // or appropriate error message
-}
+Headers:
+  Admin-Username: string
+  Authentication-Status: "true"
 ```
 
 ### Check Volunteer Application Status
-**Endpoint:** `GET /api/volunteer/application/status/{email}`  
-**Description:** Checks the status of a volunteer application based on the applicant's email.
-
 ```http
 GET /api/volunteer/application/status/{email}
 ```
 
-**Response:**
-```json
-{
-    "status": "success",
-    "applicationId": integer,
-    "firstName": "string",
-    "lastName": "string",
-    "email": "string",
-    "phone": "string",
-    "applicationStatus": "PENDING | APPROVED | REJECTED",
-    "notes": "string",
-    "submissionDate": "datetime"
-}
-```
-
-**Error Response:**
-```json
-{
-    "status": "error",
-    "message": "No application found for this email"
-}
-```
-
 ### Approve Volunteer Application
-**Endpoint:** `POST /api/volunteer/approve`  
-**Description:** Approves a volunteer application and creates a volunteer account with an initial password.
-
 ```http
 POST /api/volunteer/approve
 Content-Type: application/json
@@ -416,29 +345,9 @@ Request Body:
     "authenticated": "true",
     "applicationId": "number"
 }
-
-Response:
-{
-    "status": "success",
-    "message": "Application approved and volunteer account created",
-    "applicationId": number,
-    "userId": number,
-    "initialPassword": "streetmed@pitt"
-}
-```
-
-**Error Response:**
-```json
-{
-    "status": "error",
-    "message": "Error message"
-}
 ```
 
 ### Reject Volunteer Application
-**Endpoint:** `POST /api/volunteer/reject`  
-**Description:** Rejects a volunteer application.
-
 ```http
 POST /api/volunteer/reject
 Content-Type: application/json
@@ -449,24 +358,7 @@ Request Body:
     "authenticated": "true",
     "applicationId": "number"
 }
-
-Response:
-{
-    "status": "success",
-    "message": "Application rejected",
-    "applicationId": number
-}
 ```
-
-**Error Response:**
-```json
-{
-    "status": "error",
-    "message": "Error message"
-}
-```
-
-
 
 ## Business Logic
 
@@ -474,72 +366,84 @@ Response:
 1. **Registration**
    - Users can only register as CLIENT role
    - System creates user metadata automatically
-   - Email uniqueness is validated
+   - Email and username uniqueness is validated
    - Phone number is optional
 
 2. **Login Process**
-   - Validates username and password
+   - Validates username/email and password
    - Updates last login timestamp
    - Returns user role and authentication status
-   - Maintains session information
 
-3. **Admin Access**
-   - Protected admin endpoints
-   - Role-based access control
+3. **Profile Management**
+   - Users can update their username
+   - Password changes require current password verification
+   - Email changes require current password verification
+   - All updates check for conflicts with existing users
+
+4. **Admin Access**
+   - Protected admin endpoints with role verification
    - User management capabilities
+   - System-wide operations (e.g., password migration)
 
 ### Order Flow
 1. **Order Creation**
-   - Must be authenticated
-   - Requires delivery address
-   - At least one item required
-   - Optional location coordinates
+   - Supports both authenticated and guest orders
+   - Requires delivery address and at least one item
+   - Optional coordinates and notes
    - Initial status: PENDING
 
 2. **Order Management**
    - Client Permissions:
-     - Create new orders
+     - Create orders
      - View own orders
      - Cancel own orders
    - Volunteer Permissions:
      - View all orders
      - Update order status
-     - Cancel any order
+     - Process orders
+   - Guest Orders:
+     - Basic order creation
+     - No authentication required
+     - Limited tracking capabilities
 
 3. **Order Status Lifecycle**
-   ```
-   [Created] -> PENDING -> PROCESSING -> COMPLETED
-                    |          |
-                    |          v
-                    +-------> CANCELLED
-   ```
+```
+[Created] -> PENDING -> PROCESSING -> COMPLETED
+                |          |
+                |          v
+                +-------> CANCELLED
+```
 
 ### Volunteer Application Flow
-- **Application Submission:**  
-  - Volunteers submit an application via `/api/volunteer/apply` with required details.
-  
-- **Admin Review:**  
-  - Admins can view all applications (or only pending ones) using `/api/volunteer/applications` or `/api/volunteer/pending`.
-  
-- **Application Status Check:**  
-  - Applicants can check their status via `/api/volunteer/application/status/{email}`.
-  
-- **Approval / Rejection:**  
-  - Approved applications trigger the creation of a volunteer account (initial password: `streetmed@pitt`) via `/api/volunteer/approve`.  
-  - Applications may also be rejected via `/api/volunteer/reject`.
+1. **Application Submission**
+   - Open to all users
+   - Required fields validation
+   - Duplicate application prevention
+
+2. **Application Processing**
+   - Admin review system
+   - Status tracking
+   - Email-based lookup
+
+3. **Account Creation**
+   - Automatic volunteer account creation upon approval
+   - Initial password provision
+   - Role assignment
 
 ### Access Control
-1. **Authentication Required**
-   - All endpoints require authenticated status
-   - Authentication status checked in request body
+1. **Authentication Requirements**
+   - Most endpoints require authentication
+   - Guest services for limited operations
+   - Token-based session management
 
 2. **Role-Based Access**
-   - CLIENT: Limited to own orders
-   - VOLUNTEER: Access to all orders
+   - CLIENT: Self-service operations
+   - VOLUNTEER: Extended order management
    - ADMIN: Full system access
+   - GUEST: Limited order creation
 
-3. **Error Handling**
-   - Authentication errors (401)
-   - Authorization errors (403)
-   - Validation errors (400)
-   - Server errors (500)
+3. **Security Measures**
+   - Password hashing
+   - Current password verification for sensitive changes
+   - Input validation
+   - CORS protection

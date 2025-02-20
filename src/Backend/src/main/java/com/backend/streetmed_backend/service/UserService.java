@@ -1,6 +1,5 @@
 package com.backend.streetmed_backend.service;
 
-
 import com.backend.streetmed_backend.entity.user_entity.User;
 import com.backend.streetmed_backend.entity.user_entity.UserMetadata;
 import com.backend.streetmed_backend.repository.UserRepository;
@@ -53,6 +52,12 @@ public class UserService {
                 .orElse(null);
     }
 
+    @Transactional(readOnly = true)
+    public User findById(Integer userId) {
+        return userRepository.findById(userId)
+                .orElse(null);
+    }
+
     @Transactional
     public void updateLastLogin(Integer userId) {
         userRepository.findById(userId).ifPresent(user -> {
@@ -101,5 +106,89 @@ public class UserService {
             user.setPassword(hashedPassword);
             userRepository.save(user);
         }
+    }
+
+    // New methods for profile management
+
+    @Transactional
+    public User updateUsername(Integer userId, String newUsername) {
+        // Check if new username is already taken
+        if (userRepository.existsByUsername(newUsername)) {
+            throw new RuntimeException("Username already exists");
+        }
+
+        User user = findById(userId);
+        if (user == null) {
+            throw new RuntimeException("User not found");
+        }
+
+        user.setUsername(newUsername);
+        return userRepository.save(user);
+    }
+
+    @Transactional
+    public User updatePassword(Integer userId, String newPassword) {
+        User user = findById(userId);
+        if (user == null) {
+            throw new RuntimeException("User not found");
+        }
+
+        // Hash and set new password
+        user.setPassword(passwordHash.hashPassword(newPassword));
+        return userRepository.save(user);
+    }
+
+    @Transactional
+    public User updatePasswordWithVerification(Integer userId, String currentPassword, String newPassword) {
+        User user = findById(userId);
+        if (user == null) {
+            throw new RuntimeException("User not found");
+        }
+
+        // Verify current password
+        if (!verifyUserPassword(currentPassword, user.getPassword())) {
+            throw new RuntimeException("Current password is incorrect");
+        }
+
+        // Hash and set new password
+        user.setPassword(passwordHash.hashPassword(newPassword));
+        return userRepository.save(user);
+    }
+
+    @Transactional
+    public User updateEmail(Integer userId, String newEmail) {
+        // Check if new email is already taken
+        if (userRepository.existsByEmail(newEmail)) {
+            throw new RuntimeException("Email already exists");
+        }
+
+        User user = findById(userId);
+        if (user == null) {
+            throw new RuntimeException("User not found");
+        }
+
+        user.setEmail(newEmail);
+        return userRepository.save(user);
+    }
+
+    @Transactional
+    public User updateEmailWithVerification(Integer userId, String currentPassword, String newEmail) {
+        // Check if new email is already taken
+        if (userRepository.existsByEmail(newEmail)) {
+            throw new RuntimeException("Email already exists");
+        }
+
+        User user = findById(userId);
+        if (user == null) {
+            throw new RuntimeException("User not found");
+        }
+
+        // Verify current password
+        if (!verifyUserPassword(currentPassword, user.getPassword())) {
+            throw new RuntimeException("Current password is incorrect");
+        }
+
+        user.setEmail(newEmail);
+        return userRepository.save(user);
     }
 }
