@@ -26,11 +26,12 @@ const Login = ({ onLoginSuccess }) => {
         username,
         password,
       });
-
+  
       if (response.data.authenticated) {
         setMessage('Login success！');
         console.log('User info:', response.data);
-        onLoginSuccess(username);
+        // Pass the object, where response.data.userId is the numeric userId returned by the backend
+        onLoginSuccess({ username: username, userId: response.data.userId });
       } else {
         setMessage('Login failure: ' + response.data.message);
       }

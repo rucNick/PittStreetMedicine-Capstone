@@ -6,35 +6,31 @@ import Register from "./Register";
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [username, setUsername] = useState("");
+  const [userData, setUserData] = useState({ username: "", userId: null });
 
-  // Callback for successful login
-  const handleLoginSuccess = (user) => {
+  const handleLoginSuccess = (data) => {
     setIsLoggedIn(true);
-    setUsername(user);
+    setUserData(data);
   };
 
-  // Logout callback
   const handleLogout = () => {
     setIsLoggedIn(false);
-    setUsername("");
+    setUserData({ username: "", userId: null });
   };
 
   return (
     <Router>
       <Routes>
-        {/* root path, which displays the Home or Login page depending on the login status */}
         <Route
           path="/"
           element={
             isLoggedIn ? (
-              <Home username={username} onLogout={handleLogout} />
+              <Home username={userData.username} userId={userData.userId} onLogout={handleLogout} />
             ) : (
               <Login onLoginSuccess={handleLoginSuccess} />
             )
           }
         />
-        {/* register */}
         <Route path="/register" element={<Register />} />
       </Routes>
     </Router>

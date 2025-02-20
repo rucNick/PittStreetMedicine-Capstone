@@ -19,6 +19,7 @@ import java.util.concurrent.Executor;
 /**
  * REST Controller for handling all order-related operations.
  */
+@CrossOrigin(origins = "http://localhost:3000")
 @RestController
 @RequestMapping("/api/orders")
 public class OrderController {
@@ -270,12 +271,15 @@ public class OrderController {
     @GetMapping("/user/{targetUserId}")
     public CompletableFuture<ResponseEntity<Map<String, Object>>> getUserOrders(
             @PathVariable("targetUserId") Integer targetUserId,
-            @RequestBody Map<String, Object> requestData) {
+            //@RequestBody Map<String, Object> requestData) {
+                @RequestParam("authenticated") boolean authenticated,
+                @RequestParam("userRole") String userRole,
+                @RequestParam("userId") Integer requestUserId) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                Boolean authenticated = (Boolean) requestData.get("authenticated");
-                String userRole = (String) requestData.get("userRole");
-                Integer requestUserId = (Integer) requestData.get("userId");
+                //Boolean authenticated = (Boolean) requestData.get("authenticated");
+                //String userRole = (String) requestData.get("userRole");
+                //Integer requestUserId = (Integer) requestData.get("userId");
 
                 if (!Boolean.TRUE.equals(authenticated)) {
                     Map<String, Object> errorResponse = new HashMap<>();
