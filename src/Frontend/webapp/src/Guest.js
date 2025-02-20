@@ -1,3 +1,5 @@
+//=========================================== JS part ==============================================
+
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
@@ -178,6 +180,8 @@ const Guest = ({ onLogout }) => {
       setCartError(error.response?.data?.message || "Order creation failed.");
     }
   };
+
+//=========================================== HTML part ==============================================
 
   return (
     <div style={styles.container}>
@@ -375,7 +379,8 @@ const Guest = ({ onLogout }) => {
   );
 };
 
-// 样式
+//=========================================== CSS part ==============================================
+
 const styles = {
   container: {
     minHeight: "100vh",
