@@ -1,3 +1,5 @@
+  //=========================================== JS part ==============================================
+
 import React, { useState } from "react";
 import axios from "axios";
 
@@ -31,7 +33,7 @@ const Home = ({ username, userId, onLogout }) => {
     availableItems.map((i) => ({ ...i }))
   );
 
-  // 新增自定义物品状态
+  // Added custom item status
   const [customItems, setCustomItems] = useState([]);
   const [customItemName, setCustomItemName] = useState("");
   const [customItemQuantity, setCustomItemQuantity] = useState(0);
@@ -103,7 +105,7 @@ const Home = ({ username, userId, onLogout }) => {
   const handleOpenNewOrder = () => {
     const resetItems = availableItems.map((i) => ({ ...i, quantity: 0 }));
     setTempItems(resetItems);
-    // 重置自定义物品
+    // Reset custom items
     setCustomItems([]);
     setCustomItemName("");
     setCustomItemQuantity(0);
@@ -116,15 +118,15 @@ const Home = ({ username, userId, onLogout }) => {
     setTempItems(updated);
   };
 
-  // 新增：处理自定义物品添加
+  // New: Handles custom item additions
   const handleAddCustomItem = () => {
     if (!customItemName.trim()) {
-      alert("请填写物品名称");
+      alert("Please fill in the item name");
       return;
     }
     const quantity = parseInt(customItemQuantity, 10);
     if (!quantity || quantity <= 0) {
-      alert("请填写正确的数量");
+      alert("Please fill in the correct quantity");
       return;
     }
     const newItem = { name: customItemName, quantity };
@@ -133,22 +135,22 @@ const Home = ({ username, userId, onLogout }) => {
     setCustomItemQuantity(0);
   };
 
-  // 新增：删除自定义物品
+  // New: Remove custom items
   const handleRemoveCustomItem = (index) => {
     const updated = [...customItems];
     updated.splice(index, 1);
     setCustomItems(updated);
   };
 
-  // 修改 Add to Cart，合并预设物品和自定义物品
+  // Modify Add to Cart to merge preset items and custom items
   const handleAddToCart = () => {
     const selected = tempItems.filter((i) => i.quantity > 0);
     if (selected.length === 0 && customItems.length === 0) {
-      alert("请至少选择或输入一个物品");
+      alert("Please select or enter at least one item");
       return;
     }
     const newCart = [...cart];
-    // 添加预设物品
+    // Add preset items
     selected.forEach((sel) => {
       const existingIndex = newCart.findIndex((c) => c.name === sel.name);
       if (existingIndex >= 0) {
@@ -157,7 +159,7 @@ const Home = ({ username, userId, onLogout }) => {
         newCart.push({ name: sel.name, quantity: sel.quantity });
       }
     });
-    // 添加自定义物品
+    // Add custom items
     customItems.forEach((item) => {
       const existingIndex = newCart.findIndex((c) => c.name === item.name);
       if (existingIndex >= 0) {
@@ -258,9 +260,15 @@ const Home = ({ username, userId, onLogout }) => {
       {/* Main content */}
       <div style={styles.content}>
         <h2>Welcome Back, {username}!</h2>
-        <button style={styles.toggleOrdersButton} onClick={toggleOrders}>
-          View Orders History
-        </button>
+        <div style={styles.buttonRow}>
+          <button style={styles.toggleOrdersButton} onClick={toggleOrders}>
+            View Orders History
+          </button>
+          <button style={styles.newOrderButton} onClick={handleOpenNewOrder}>
+            Make a New Order
+          </button>
+        </div>
+
         {ordersLoading && <p>Loading orders...</p>}
         {ordersError && <p style={styles.errorText}>{ordersError}</p>}
 
@@ -314,10 +322,6 @@ const Home = ({ username, userId, onLogout }) => {
             )}
           </div>
         )}
-
-        <button style={styles.newOrderButton} onClick={handleOpenNewOrder}>
-          Make a New Order
-        </button>
       </div>
 
       {/* “Make a New Order” modal */}
@@ -512,6 +516,15 @@ const styles = {
     boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
     textAlign: "center",
   },
+
+  buttonRow: {
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: "20px",
+    marginTop: "20px",
+    marginBottom: "20px",
+  },
   toggleOrdersButton: {
     padding: "10px 20px",
     backgroundColor: "#1890ff",
@@ -519,7 +532,14 @@ const styles = {
     borderRadius: "4px",
     cursor: "pointer",
     color: "white",
-    marginBottom: "10px",
+  },
+  newOrderButton: {
+    padding: "10px 20px",
+    backgroundColor: "#52c41a",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer",
+    color: "white",
   },
   ordersList: {
     marginTop: "10px",
@@ -531,15 +551,6 @@ const styles = {
   orderItem: {
     borderBottom: "1px solid #ddd",
     padding: "10px 0",
-  },
-  newOrderButton: {
-    padding: "10px 20px",
-    backgroundColor: "#52c41a",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    color: "white",
-    marginTop: "20px",
   },
   deleteButton: {
     marginTop: "10px",

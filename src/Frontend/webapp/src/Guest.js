@@ -34,6 +34,11 @@ const Guest = ({ onLogout }) => {
     availableItems.map((i) => ({ ...i }))
   );
 
+  // New: custom items state
+  const [customItems, setCustomItems] = useState([]);
+  const [customItemName, setCustomItemName] = useState("");
+  const [customItemQuantity, setCustomItemQuantity] = useState(0);
+
   // ========== current order box ==========
   const [showCurrentOrderModal, setShowCurrentOrderModal] = useState(false);
   const [currentOrder, setCurrentOrder] = useState(null);
@@ -49,6 +54,10 @@ const Guest = ({ onLogout }) => {
     // Reset temporary item selection
     const resetItems = availableItems.map((i) => ({ ...i, quantity: 0 }));
     setTempItems(resetItems);
+    // New: reset custom items state
+    setCustomItems([]);
+    setCustomItemName("");
+    setCustomItemQuantity(0);
     setShowNewOrderModal(true);
   };
 
@@ -59,20 +68,54 @@ const Guest = ({ onLogout }) => {
     setTempItems(updated);
   };
 
+  // New: handle adding a custom item
+  const handleAddCustomItem = () => {
+    if (!customItemName.trim()) {
+      alert("Please enter the item name");
+      return;
+    }
+    const quantity = parseInt(customItemQuantity, 10);
+    if (!quantity || quantity <= 0) {
+      alert("Please enter a valid quantity");
+      return;
+    }
+    const newItem = { name: customItemName, quantity };
+    setCustomItems([...customItems, newItem]);
+    setCustomItemName("");
+    setCustomItemQuantity(0);
+  };
+
+  // New: handle removing a custom item
+  const handleRemoveCustomItem = (index) => {
+    const updated = [...customItems];
+    updated.splice(index, 1);
+    setCustomItems(updated);
+  };
+
   // move seleted item to cart
   const handleAddToCart = () => {
     const selected = tempItems.filter((i) => i.quantity > 0);
-    if (selected.length === 0) {
-      alert("Please select at least one item.");
+    if (selected.length === 0 && customItems.length === 0) {
+      alert("Please select or add at least one item.");
       return;
     }
     const newCart = [...cart];
+    // Add preset items
     selected.forEach((sel) => {
       const existingIndex = newCart.findIndex((c) => c.name === sel.name);
       if (existingIndex >= 0) {
         newCart[existingIndex].quantity += sel.quantity;
       } else {
         newCart.push({ name: sel.name, quantity: sel.quantity });
+      }
+    });
+    // Add custom items
+    customItems.forEach((item) => {
+      const existingIndex = newCart.findIndex((c) => c.name === item.name);
+      if (existingIndex >= 0) {
+        newCart[existingIndex].quantity += item.quantity;
+      } else {
+        newCart.push({ name: item.name, quantity: item.quantity });
       }
     });
     setCart(newCart);
@@ -216,11 +259,55 @@ const Guest = ({ onLogout }) => {
                   type="number"
                   min="0"
                   value={item.quantity}
-                  onChange={(e) => handleItemQuantityChange(index, e.target.value)}
+                  onChange={(e) =>
+                    handleItemQuantityChange(index, e.target.value)
+                  }
                   style={{ width: "60px" }}
                 />
               </div>
             ))}
+            {/* New: Custom item input section */}
+            <div style={{ marginTop: "20px", textAlign: "center" }}>
+              <p>Didn't find the item you're looking for? Enter it below</p>
+              <div style={styles.itemRow}>
+                <input
+                  type="text"
+                  placeholder="Item Name"
+                  value={customItemName}
+                  onChange={(e) => setCustomItemName(e.target.value)}
+                  style={styles.input}
+                />
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="Quantity"
+                  value={customItemQuantity}
+                  onChange={(e) => setCustomItemQuantity(e.target.value)}
+                  style={{ width: "60px", marginLeft: "10px" }}
+                />
+                <button
+                  onClick={handleAddCustomItem}
+                  style={styles.addCustomButton}
+                >
+                  Add
+                </button>
+              </div>
+              {customItems.length > 0 && (
+                <ul style={{ marginTop: "10px", paddingLeft: "20px" }}>
+                  {customItems.map((item, index) => (
+                    <li key={index} style={{ marginBottom: "5px" }}>
+                      {item.name} x {item.quantity}{" "}
+                      <button
+                        onClick={() => handleRemoveCustomItem(index)}
+                        style={styles.removeButton}
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
             <div style={{ marginTop: "20px", textAlign: "center" }}>
               <button style={styles.button} onClick={handleAddToCart}>
                 Add to Cart
@@ -252,7 +339,9 @@ const Guest = ({ onLogout }) => {
                     type="number"
                     min="0"
                     value={c.quantity}
-                    onChange={(e) => handleCartQuantityChange(index, e.target.value)}
+                    onChange={(e) =>
+                      handleCartQuantityChange(index, e.target.value)
+                    }
                     style={{ width: "60px", marginLeft: "10px", marginRight: "10px" }}
                   />
                   <button
@@ -345,8 +434,7 @@ const Guest = ({ onLogout }) => {
           <div style={styles.modalContent}>
             {/* red note */}
             <p style={{ color: "red", fontSize: "18px", fontStyle: "italic" }}>
-              NOTE: Please be sure to remember this information! Make sure you have
-              taken a screenshot or written it down!
+              NOTE: Please be sure to remember this information! Make sure you have taken a screenshot or written it down!
             </p>
 
             <h3>Current Order</h3>
@@ -477,6 +565,15 @@ const styles = {
     marginTop: "4px",
     border: "1px solid #ddd",
     borderRadius: "4px",
+  },
+  addCustomButton: {
+    padding: "6px 12px",
+    backgroundColor: "#52c41a",
+    color: "white",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer",
+    marginLeft: "10px",
   },
   button: {
     width: "100%",

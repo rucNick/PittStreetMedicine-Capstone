@@ -4,6 +4,7 @@ import Login from "./Login";
 import Home from "./Home";
 import Register from "./Register";
 import Guest from "./Guest";
+import VolunteerAppli from "./volunteer_appli"; // 新增：引入 volunteer_appli.js
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -42,6 +43,7 @@ function App() {
         />
         <Route path="/register" element={<Register />} />
         <Route path="/guest" element={<Guest onLogout={handleLogout} />} />
+        <Route path="/volunteer" element={<VolunteerAppli />} />
       </Routes>
     </Router>
   );

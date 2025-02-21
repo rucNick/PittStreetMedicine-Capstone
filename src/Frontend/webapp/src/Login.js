@@ -27,6 +27,11 @@ const Login = ({ onLoginSuccess }) => {
     navigate('/guest');
   };
 
+  // go to volunteer
+  const handleVolunteerClick = () => {
+    navigate('/volunteer');  // 确保路由配置里有 <Route path="/volunteer" ... />
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -65,12 +70,15 @@ const Login = ({ onLoginSuccess }) => {
       </style>
 
       <div style={styles.topRightContainer}>
-        <button style={styles.topRightButton} onClick={handleLoginClick}>
-          Login
-        </button>
-        <button style={styles.topRightButton} onClick={handleRegisterClick}>
-          Register
-        </button>
+        <div style={styles.topLeftText}>Street Med Go Delivery service</div>
+        <div style={styles.buttonContainer}>
+          <button style={styles.topRightButton} onClick={handleLoginClick}>
+            Login
+          </button>
+          <button style={styles.topRightButton} onClick={handleRegisterClick}>
+            Register
+          </button>
+        </div>
       </div>
 
       {/* login form and logo */}
@@ -84,7 +92,7 @@ const Login = ({ onLoginSuccess }) => {
 
           <div style={{ ...styles.loginFormContainer, animation: 'fadeIn 0.5s ease-in-out' }}>
             <form style={styles.form} onSubmit={handleSubmit}>
-              <h2>PITT STREET MEDICINE</h2>
+              <h2>Street Med at PITT</h2>
               <div style={styles.formGroup}>
                 <label>Username:</label>
                 <input
@@ -121,6 +129,19 @@ const Login = ({ onLoginSuccess }) => {
               <div style={styles.guestContainer}>
                 <button style={styles.guestButton} onClick={handleGuestClick}>
                   Continue as a guest
+                </button>
+              </div>
+
+              {/* 下面是新需求：在 guest 按钮下方再加一条横线 + or，以及“Want to be a volunteer?”蓝色字和按钮 */}
+              <div style={styles.separator}>
+                <hr style={styles.hr} />
+                <span style={styles.orText}>or</span>
+                <hr style={styles.hr} />
+              </div>
+              <p style={styles.volunteerText}>Want to be a volunteer?</p>
+              <div style={styles.volunteerContainer}>
+                <button style={styles.volunteerButton} onClick={handleVolunteerClick}>
+                  LET‘s GO！！！！！！！
                 </button>
               </div>
             </form>
@@ -161,7 +182,7 @@ const styles = {
     width: '100%',
     height: '60px',
     display: 'flex',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
     alignItems: 'center',
     gap: '20px',
     padding: '0 20px',
@@ -169,6 +190,16 @@ const styles = {
     backdropFilter: 'blur(10px)',
     zIndex: 1000,
     boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+  },
+  topLeftText: {
+    fontSize: '35px',
+    fontWeight: 'bold',
+    color: 'white',
+    marginLeft: '35px'
+  },
+  buttonContainer: {
+    display: 'flex',
+    gap: '10px', 
   },
   topRightButton: {
     padding: '10px 20px',
@@ -247,6 +278,25 @@ const styles = {
   guestButton: {
     padding: '8px 16px',
     backgroundColor: '#52c41a',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+  },
+  // 新增：Volunteer 相关的样式
+  volunteerText: {
+    marginTop: '1rem',
+    textAlign: 'center',
+    fontSize: '12px',
+    color: '#1890ff',
+  },
+  volunteerContainer: {
+    textAlign: 'center',
+    marginTop: '1rem',
+  },
+  volunteerButton: {
+    padding: '8px 16px',
+    backgroundColor: 'red',
     color: 'white',
     border: 'none',
     borderRadius: '4px',
