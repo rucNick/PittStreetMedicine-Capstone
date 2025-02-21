@@ -224,6 +224,67 @@ public class AuthController {
             }
         }, authExecutor);
     }
+    
+    @Operation(summary = "Update phone number")
+    @PutMapping("/update/phone")
+    public CompletableFuture<ResponseEntity<Map<String, Object>>> updatePhone(
+            @Schema(example = """
+                {
+                    "userId": "123",
+                    "currentPassword": "securepass123",
+                    "newPhone": "412-555-0124",
+                    "authenticated": "true"
+                }
+                """)
+            @RequestBody Map<String, String> updateData) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                String userId = updateData.get("userId");
+                String currentPassword = updateData.get("currentPassword");
+                String newPhone = updateData.get("newPhone");
+                String authStatus = updateData.get("authenticated");
+
+                if (!"true".equals(authStatus)) {
+                    throw new RuntimeException("Not authenticated");
+                }
+
+                if (userId == null || currentPassword == null || newPhone == null) {
+                    throw new RuntimeException("Missing required fields");
+                }
+
+                User user = userService.findById(Integer.parseInt(userId));
+                if (user == null) {
+                    throw new RuntimeException("User not found");
+                }
+
+                if (!userService.verifyUserPassword(currentPassword, user.getPassword())) {
+                    Map<String, Object> errorResponse = new HashMap<>();
+                    errorResponse.put("status", "error");
+                    errorResponse.put("message", "Current password is incorrect");
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+                }
+
+                User updatedUser = userService.updatePhoneWithVerification(
+                        Integer.parseInt(userId),
+                        currentPassword,
+                        newPhone
+                );
+
+                Map<String, Object> response = new HashMap<>();
+                response.put("status", "success");
+                response.put("message", "Phone number updated successfully");
+                response.put("phone", updatedUser.getPhone());
+
+                return ResponseEntity.ok(response);
+
+            } catch (Exception e) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("status", "error");
+                errorResponse.put("message", e.getMessage());
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+            }
+        }, authExecutor);
+    }
 
     @Operation(summary = "Update password")
     @PutMapping("/update/password")

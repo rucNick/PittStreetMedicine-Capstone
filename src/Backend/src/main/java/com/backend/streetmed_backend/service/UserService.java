@@ -172,6 +172,22 @@ public class UserService {
     }
 
     @Transactional
+    public User updatePhoneWithVerification(Integer userId, String currentPassword, String newPhone) {
+        User user = findById(userId);
+        if (user == null) {
+            throw new RuntimeException("User not found");
+        }
+
+        // Verify current password for security
+        if (!verifyUserPassword(currentPassword, user.getPassword())) {
+            throw new RuntimeException("Current password is incorrect");
+        }
+
+        user.setPhone(newPhone);
+        return userRepository.save(user);
+    }
+
+    @Transactional
     public User updateEmailWithVerification(Integer userId, String currentPassword, String newEmail) {
         // Check if new email is already taken
         if (userRepository.existsByEmail(newEmail)) {
