@@ -36,12 +36,15 @@ const Login = ({ onLoginSuccess }) => {
       });
   
       if (response.data.authenticated) {
-        setMessage('Login success！');
-        console.log('User info:', response.data);
-        // show re turned user_id
-        onLoginSuccess({ username: username, userId: response.data.userId });
+        setMessage("Login success!");
+        console.log("User info:", response.data);
+        // Use the username from the server's response
+        onLoginSuccess({ 
+          username: response.data.username, 
+          userId: response.data.userId 
+        });
       } else {
-        setMessage('Login failure: ' + response.data.message);
+        setMessage("Login failure: " + response.data.message);
       }
     } catch (error) {
       setMessage('Login error: ' + (error.response?.data?.message || error.message));
