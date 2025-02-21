@@ -1,5 +1,3 @@
-//=========================================== JS part ==============================================
-
 import React, { useState } from "react";
 import axios from "axios";
 
@@ -32,6 +30,11 @@ const Home = ({ username, userId, onLogout }) => {
   const [tempItems, setTempItems] = useState(
     availableItems.map((i) => ({ ...i }))
   );
+
+  // 新增自定义物品状态
+  const [customItems, setCustomItems] = useState([]);
+  const [customItemName, setCustomItemName] = useState("");
+  const [customItemQuantity, setCustomItemQuantity] = useState(0);
 
   // ============== Fetch order history ==============
   const toggleOrders = async () => {
@@ -100,6 +103,10 @@ const Home = ({ username, userId, onLogout }) => {
   const handleOpenNewOrder = () => {
     const resetItems = availableItems.map((i) => ({ ...i, quantity: 0 }));
     setTempItems(resetItems);
+    // 重置自定义物品
+    setCustomItems([]);
+    setCustomItemName("");
+    setCustomItemQuantity(0);
     setShowNewOrderModal(true);
   };
 
@@ -109,19 +116,54 @@ const Home = ({ username, userId, onLogout }) => {
     setTempItems(updated);
   };
 
+  // 新增：处理自定义物品添加
+  const handleAddCustomItem = () => {
+    if (!customItemName.trim()) {
+      alert("请填写物品名称");
+      return;
+    }
+    const quantity = parseInt(customItemQuantity, 10);
+    if (!quantity || quantity <= 0) {
+      alert("请填写正确的数量");
+      return;
+    }
+    const newItem = { name: customItemName, quantity };
+    setCustomItems([...customItems, newItem]);
+    setCustomItemName("");
+    setCustomItemQuantity(0);
+  };
+
+  // 新增：删除自定义物品
+  const handleRemoveCustomItem = (index) => {
+    const updated = [...customItems];
+    updated.splice(index, 1);
+    setCustomItems(updated);
+  };
+
+  // 修改 Add to Cart，合并预设物品和自定义物品
   const handleAddToCart = () => {
     const selected = tempItems.filter((i) => i.quantity > 0);
-    if (selected.length === 0) {
-      alert("Please select at least one item.");
+    if (selected.length === 0 && customItems.length === 0) {
+      alert("请至少选择或输入一个物品");
       return;
     }
     const newCart = [...cart];
+    // 添加预设物品
     selected.forEach((sel) => {
       const existingIndex = newCart.findIndex((c) => c.name === sel.name);
       if (existingIndex >= 0) {
         newCart[existingIndex].quantity += sel.quantity;
       } else {
         newCart.push({ name: sel.name, quantity: sel.quantity });
+      }
+    });
+    // 添加自定义物品
+    customItems.forEach((item) => {
+      const existingIndex = newCart.findIndex((c) => c.name === item.name);
+      if (existingIndex >= 0) {
+        newCart[existingIndex].quantity += item.quantity;
+      } else {
+        newCart.push({ name: item.name, quantity: item.quantity });
       }
     });
     setCart(newCart);
@@ -199,8 +241,7 @@ const Home = ({ username, userId, onLogout }) => {
     }
   };
 
-//=========================================== HTML part ==============================================
-
+  //=========================================== HTML part ==============================================
   return (
     <div style={styles.container}>
       {/* Navbar */}
@@ -230,18 +271,24 @@ const Home = ({ username, userId, onLogout }) => {
             ) : (
               orders.map((order, idx) => (
                 <div key={idx} style={styles.orderItem}>
-                  <p><strong>Order ID:</strong> {order.orderId}</p>
-                  <p><strong>Address:</strong> {order.deliveryAddress}</p>
-                  <p><strong>Notes:</strong> {order.notes}</p>
-                  <p><strong>Request Time:</strong> {order.requestTime}</p>
-
-                  {/* 
-                    Instead of displaying the single itemName/quantity 
-                    from the orders table, we show the items from orderItems 
-                  */}
+                  <p>
+                    <strong>Order ID:</strong> {order.orderId}
+                  </p>
+                  <p>
+                    <strong>Address:</strong> {order.deliveryAddress}
+                  </p>
+                  <p>
+                    <strong>Notes:</strong> {order.notes}
+                  </p>
+                  <p>
+                    <strong>Request Time:</strong> {order.requestTime}
+                  </p>
                   {order.orderItems && order.orderItems.length > 0 ? (
                     <>
-                      <p><strong>Total Items:</strong> {order.orderItems.length}</p>
+                      <p>
+                        <strong>Total Items:</strong>{" "}
+                        {order.orderItems.length}
+                      </p>
                       <ul style={{ marginLeft: "20px" }}>
                         {order.orderItems.map((item, iidx) => (
                           <li key={iidx}>
@@ -251,17 +298,16 @@ const Home = ({ username, userId, onLogout }) => {
                       </ul>
                     </>
                   ) : (
-                    <p><em>No items found for this order.</em></p>
+                    <p>
+                      <em>No items found for this order.</em>
+                    </p>
                   )}
-
-                  {/* Cancel (Delete) button */}
                   <button
                     style={styles.deleteButton}
                     onClick={() => handleCancelOrder(order.orderId)}
                   >
                     Delete
                   </button>
-
                   <hr />
                 </div>
               ))
@@ -293,6 +339,48 @@ const Home = ({ username, userId, onLogout }) => {
                 />
               </div>
             ))}
+            {/* Manually enter items that are not in the list */}
+            <div style={{ marginTop: "20px" }}>
+              <p>Don't see what you're looking for? Enter below</p>
+              <div style={styles.itemRow}>
+                <input
+                  type="text"
+                  placeholder="Item name"
+                  value={customItemName}
+                  onChange={(e) => setCustomItemName(e.target.value)}
+                  style={styles.input}
+                />
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="Quantity"
+                  value={customItemQuantity}
+                  onChange={(e) => setCustomItemQuantity(e.target.value)}
+                  style={{ width: "60px", marginLeft: "10px" }}
+                />
+                <button
+                  onClick={handleAddCustomItem}
+                  style={styles.addCustomButton}
+                >
+                  Add
+                </button>
+              </div>
+              {customItems.length > 0 && (
+                <ul style={{ marginTop: "10px", paddingLeft: "20px" }}>
+                  {customItems.map((item, index) => (
+                    <li key={index} style={{ marginBottom: "5px" }}>
+                      {item.name} x {item.quantity}{" "}
+                      <button
+                        onClick={() => handleRemoveCustomItem(index)}
+                        style={styles.removeButton}
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
             <div style={{ marginTop: "20px", textAlign: "center" }}>
               <button style={styles.button} onClick={handleAddToCart}>
                 Add to Cart
@@ -324,8 +412,14 @@ const Home = ({ username, userId, onLogout }) => {
                     type="number"
                     min="0"
                     value={c.quantity}
-                    onChange={(e) => handleCartQuantityChange(index, e.target.value)}
-                    style={{ width: "60px", marginLeft: "10px", marginRight: "10px" }}
+                    onChange={(e) =>
+                      handleCartQuantityChange(index, e.target.value)
+                    }
+                    style={{
+                      width: "60px",
+                      marginLeft: "10px",
+                      marginRight: "10px",
+                    }}
                   />
                   <button
                     style={styles.removeButton}
@@ -374,7 +468,6 @@ const Home = ({ username, userId, onLogout }) => {
 };
 
 //=========================================== CSS part ==============================================
-
 const styles = {
   container: {
     minHeight: "100vh",
@@ -502,6 +595,15 @@ const styles = {
     marginTop: "4px",
     border: "1px solid #ddd",
     borderRadius: "4px",
+  },
+  addCustomButton: {
+    padding: "6px 12px",
+    backgroundColor: "#52c41a",
+    color: "white",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer",
+    marginLeft: "10px",
   },
   button: {
     width: "100%",
