@@ -29,7 +29,7 @@ const Login = ({ onLoginSuccess }) => {
 
   // go to volunteer
   const handleVolunteerClick = () => {
-    navigate('/volunteer');  // 确保路由配置里有 <Route path="/volunteer" ... />
+    navigate('/volunteer');
   };
 
   const handleSubmit = async (e) => {
@@ -132,7 +132,7 @@ const Login = ({ onLoginSuccess }) => {
                 </button>
               </div>
 
-              {/* 下面是新需求：在 guest 按钮下方再加一条横线 + or，以及“Want to be a volunteer?”蓝色字和按钮 */}
+              {/* add volunteer button */}
               <div style={styles.separator}>
                 <hr style={styles.hr} />
                 <span style={styles.orText}>or</span>
@@ -283,7 +283,6 @@ const styles = {
     borderRadius: '4px',
     cursor: 'pointer',
   },
-  // 新增：Volunteer 相关的样式
   volunteerText: {
     marginTop: '1rem',
     textAlign: 'center',
