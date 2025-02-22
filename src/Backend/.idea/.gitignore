@@ -6,3 +6,14 @@
 # Datasource local storage ignored files
 /dataSources/
 /dataSources.local.xml
+
+# Exclude MongoDB logs and temporary files
+*.log
+*.tmp
+*.pid
+
+# Include data directory but exclude its contents
+!data/
+!data/mongodb/
+data/mongodb/*
+!data/mongodb/.gitkeep

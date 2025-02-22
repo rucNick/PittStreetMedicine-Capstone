@@ -55,3 +55,9 @@ src/Backend/target/classes/com/backend/streetmed_backend/StreetMedBackendApplica
 src/Backend/target/classes/com/backend/streetmed_backend/StreetMedBackendApplication.class
 src/Backend/target/test-classes/com/backend/streetmed_backend/StreetMedBackendApplicationTests.class
 src/Backend/target/maven-status/maven-compiler-plugin/testCompile/default-testCompile/inputFiles.lst
+src/Backend/target/classes/com/backend/streetmed_backend/config/MongoConfig.class
+src/Backend/target/classes/com/backend/streetmed_backend/document/CargoImage.class
+src/Backend/target/classes/com/backend/streetmed_backend/service/CargoImageService.class
+src/Backend/target/classes/com/backend/streetmed_backend/repository/CargoImageRepository.class
+src/Backend/target/classes/com/backend/streetmed_backend/controller/MongoDbTestController.class
+src/Backend/target/classes/com/backend/streetmed_backend/config/DatabaseInitializer.class
