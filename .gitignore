@@ -66,3 +66,15 @@ src/Backend/target/classes/com/backend/streetmed_backend/controller/CargoImageCo
 src/Backend/target/classes/com/backend/streetmed_backend/repository/CargoItemRepository.class
 src/Backend/target/classes/com/backend/streetmed_backend/service/CargoItemService.class
 src/Backend/target/classes/com/backend/streetmed_backend/entity/CargoItem.class
+src/Backend/target/classes/com/backend/streetmed_backend/controller/FeedbackController.class
+src/Backend/target/classes/com/backend/streetmed_backend/entity/Feedback.class
+src/Backend/target/classes/com/backend/streetmed_backend/service/FeedbackService.class
+src/Backend/target/classes/com/backend/streetmed_backend/repository/FeedbackRepository.class
+# Compiled class files
+*.class
+
+# Build folders
+target/
+build/
+out/
+bin/
