@@ -1,8 +1,10 @@
 package com.backend.streetmed_backend.service;
 
-import com.backend.streetmed_backend.entity.CargoItem;
 import com.backend.streetmed_backend.document.CargoImage;
+import com.backend.streetmed_backend.entity.CargoItem;
 import com.backend.streetmed_backend.repository.CargoItemRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,9 +14,6 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @Service
 @Transactional

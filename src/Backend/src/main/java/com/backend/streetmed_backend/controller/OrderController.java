@@ -41,39 +41,112 @@ public class OrderController {
         this.asyncExecutor = asyncExecutor;
     }
 
-    @Operation(summary = "Create a guest order",
-            description = "Creates a new order for guest users without authentication")
+    @Operation(summary = "Create a new order",
+            description = "Creates a new order for authenticated users. Phone number can be provided and will be stored with the order.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Order created successfully",
                     content = @Content(mediaType = "application/json",
                             schema = @Schema(example = """
-                {
-                    "status": "success",
-                    "message": "Guest order created successfully",
-                    "orderId": 1,
-                    "orderStatus": "PENDING"
-                }
-                """))),
-            @ApiResponse(responseCode = "400", description = "Missing required fields or invalid input")
+            {
+                "status": "success",
+                "message": "Order created successfully",
+                "orderId": 1,
+                "authenticated": true
+            }
+            """))),
+            @ApiResponse(responseCode = "401", description = "Not authenticated"),
+            @ApiResponse(responseCode = "400", description = "Invalid input")
     })
+    @PostMapping("/create")
+    public CompletableFuture<ResponseEntity<Map<String, Object>>> createOrder(
+            @RequestBody @Schema(example = """
+            {
+                "authenticated": true,
+                "userId": 1,
+                "deliveryAddress": "123 Main St",
+                "notes": "Front door delivery",
+                "phoneNumber": "412-555-0123",
+                "items": [
+                    {
+                        "itemName": "First Aid Kit",
+                        "quantity": 1
+                    }
+                ]
+            }
+            """) Map<String, Object> requestData) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                Integer userId = (Integer) requestData.get("userId");
+                Boolean authenticated = (Boolean) requestData.get("authenticated");
+
+                if (!Boolean.TRUE.equals(authenticated) || userId == null) {
+                    Map<String, Object> errorResponse = new HashMap<>();
+                    errorResponse.put("status", "error");
+                    errorResponse.put("message", "Not authenticated");
+                    errorResponse.put("authenticated", false);
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+                }
+
+                Order order = new Order(Order.OrderType.CLIENT);
+                order.setUserId(userId);
+                order.setNotes((String) requestData.get("notes"));
+                order.setDeliveryAddress((String) requestData.get("deliveryAddress"));
+                order.setPhoneNumber((String) requestData.get("phoneNumber")); // Set phone number
+
+                if (requestData.get("latitude") != null && requestData.get("longitude") != null) {
+                    order.setLatitude(Double.valueOf(requestData.get("latitude").toString()));
+                    order.setLongitude(Double.valueOf(requestData.get("longitude").toString()));
+                }
+
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> itemsData = (List<Map<String, Object>>) requestData.get("items");
+                List<OrderItem> orderItems = itemsData.stream()
+                        .map(itemData -> {
+                            OrderItem item = new OrderItem();
+                            item.setItemName((String) itemData.get("itemName"));
+                            item.setQuantity((Integer) itemData.get("quantity"));
+                            return item;
+                        })
+                        .toList();
+
+                Order savedOrder = orderService.createOrder(order, orderItems);
+
+                Map<String, Object> response = new HashMap<>();
+                response.put("status", "success");
+                response.put("message", "Order created successfully");
+                response.put("orderId", savedOrder.getOrderId());
+                response.put("authenticated", true);
+
+                return ResponseEntity.ok(response);
+            } catch (Exception e) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("status", "error");
+                errorResponse.put("message", e.getMessage());
+                errorResponse.put("authenticated", false);
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+            }
+        }, asyncExecutor);
+    }
+
+    // Update the guest order creation method to handle phone number similarly:
     @PostMapping("/guest/create")
     public CompletableFuture<ResponseEntity<Map<String, Object>>> createGuestOrder(
             @RequestBody @Schema(example = """
-                {
-                    "firstName": "John",
-                    "lastName": "Doe",
-                    "email": "john@example.com",
-                    "phone": "412-555-0123",
-                    "deliveryAddress": "123 Main St",
-                    "notes": "Front door delivery",
-                    "items": [
-                        {
-                            "itemName": "First Aid Kit",
-                            "quantity": 1
-                        }
-                    ]
-                }
-                """) Map<String, Object> requestData) {
+            {
+                "firstName": "John",
+                "lastName": "Doe",
+                "email": "john@example.com",
+                "phone": "412-555-0123",
+                "deliveryAddress": "123 Main St",
+                "notes": "Front door delivery",
+                "items": [
+                    {
+                        "itemName": "First Aid Kit",
+                        "quantity": 1
+                    }
+                ]
+            }
+            """) Map<String, Object> requestData) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 // Validate required fields
@@ -94,19 +167,16 @@ public class OrderController {
                 order.setStatus("PENDING");
                 order.setRequestTime(LocalDateTime.now());
                 order.setDeliveryAddress(deliveryAddress);
+                order.setPhoneNumber((String) requestData.get("phone")); // Set phone number for guest order
                 order.setNotes(String.format("Guest Order - %s %s", firstName, lastName));
 
-                // Add contact information to notes if provided
+                // Add contact information to notes
                 StringBuilder additionalNotes = new StringBuilder();
                 String email = (String) requestData.get("email");
-                String phone = (String) requestData.get("phone");
                 String userNotes = (String) requestData.get("notes");
 
                 if (email != null) {
                     additionalNotes.append("Email: ").append(email).append("\n");
-                }
-                if (phone != null) {
-                    additionalNotes.append("Phone: ").append(phone).append("\n");
                 }
                 if (userNotes != null) {
                     additionalNotes.append("Notes: ").append(userNotes);
@@ -152,91 +222,6 @@ public class OrderController {
                 Map<String, Object> errorResponse = new HashMap<>();
                 errorResponse.put("status", "error");
                 errorResponse.put("message", e.getMessage());
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
-            }
-        }, asyncExecutor);
-    }
-
-    @Operation(summary = "Create a new order",
-              description = "Creates a new order for authenticated users")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Order created successfully",
-                    content = @Content(mediaType = "application/json",
-                            schema = @Schema(example = """
-                {
-                    "status": "success",
-                    "message": "Order created successfully",
-                    "orderId": 1,
-                    "authenticated": true
-                }
-                """))),
-            @ApiResponse(responseCode = "401", description = "Not authenticated"),
-            @ApiResponse(responseCode = "400", description = "Invalid input")
-    })
-    @PostMapping("/create")
-    public CompletableFuture<ResponseEntity<Map<String, Object>>> createOrder(
-            @RequestBody @Schema(example = """
-                {
-                    "authenticated": true,
-                    "userId": 1,
-                    "deliveryAddress": "123 Main St",
-                    "notes": "Front door delivery",
-                    "items": [
-                        {
-                            "itemName": "First Aid Kit",
-                            "quantity": 1
-                        }
-                    ]
-                }
-                """) Map<String, Object> requestData) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                Integer userId = (Integer) requestData.get("userId");
-                Boolean authenticated = (Boolean) requestData.get("authenticated");
-
-                if (!Boolean.TRUE.equals(authenticated) || userId == null) {
-                    Map<String, Object> errorResponse = new HashMap<>();
-                    errorResponse.put("status", "error");
-                    errorResponse.put("message", "Not authenticated");
-                    errorResponse.put("authenticated", false);
-                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
-                }
-
-                Order order = new Order(Order.OrderType.CLIENT);
-                order.setUserId(userId);
-                order.setNotes((String) requestData.get("notes"));
-                order.setDeliveryAddress((String) requestData.get("deliveryAddress"));
-
-                if (requestData.get("latitude") != null && requestData.get("longitude") != null) {
-                    order.setLatitude(Double.valueOf(requestData.get("latitude").toString()));
-                    order.setLongitude(Double.valueOf(requestData.get("longitude").toString()));
-                }
-
-                @SuppressWarnings("unchecked")
-                List<Map<String, Object>> itemsData = (List<Map<String, Object>>) requestData.get("items");
-                List<OrderItem> orderItems = itemsData.stream()
-                        .map(itemData -> {
-                            OrderItem item = new OrderItem();
-                            item.setItemName((String) itemData.get("itemName"));
-                            item.setQuantity((Integer) itemData.get("quantity"));
-                            return item;
-                        })
-                        .toList();
-
-                Order savedOrder = orderService.createOrder(order, orderItems);
-
-                Map<String, Object> response = new HashMap<>();
-                response.put("status", "success");
-                response.put("message", "Order created successfully");
-                response.put("orderId", savedOrder.getOrderId());
-                response.put("authenticated", true);
-
-                return ResponseEntity.ok(response);
-            } catch (Exception e) {
-                Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put("status", "error");
-                errorResponse.put("message", e.getMessage());
-                errorResponse.put("authenticated", false);
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
             }
         }, asyncExecutor);
