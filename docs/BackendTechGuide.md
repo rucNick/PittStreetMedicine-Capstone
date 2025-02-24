@@ -14,6 +14,15 @@
   - [View Orders](#view-orders)
   - [Update Order Status](#update-order-status)
   - [Cancel Order](#cancel-order)
+- [Cargo Management API](#cargo-management-api)
+  - [Add Item](#add-cargo-item)
+  - [Update Item](#update-cargo-item)
+  - [Get Items](#get-cargo-items)
+  - [Low Stock Items](#get-low-stock-items)
+- [Cargo Image API](#cargo-image-api)
+  - [Upload Image](#upload-image)
+  - [Get Image](#get-image)
+  - [Delete Image](#delete-image)
 - [Volunteer API](#volunteer-api)
   - [Submit Application](#submit-volunteer-application)
   - [Get All Applications](#get-all-applications-admin-only)
@@ -24,6 +33,7 @@
 - [Business Logic](#business-logic)
   - [Authentication Flow](#authentication-flow)
   - [Order Flow](#order-flow)
+  - [Cargo Management Flow](#cargo-management-flow)
   - [Volunteer Application Flow](#volunteer-application-flow)
   - [Access Control](#access-control)
 
@@ -31,6 +41,7 @@
 - Spring Boot 3.x
 - Java 17
 - SQLite Database
+- MongoDB (for image storage)
 - JPA/Hibernate
 - Maven
 - Cross-Origin Resource Sharing (CORS) enabled for localhost:3000
@@ -41,24 +52,33 @@ com.backend.streetmed_backend/
 ├── controller/
 │   ├── AuthController.java
 │   ├── OrderController.java
+│   ├── CargoController.java
+│   ├── CargoImageController.java
 │   └── VolunteerController.java
 ├── entity/
 │   ├── user_entity/
 │   │   ├── User.java
 │   │   ├── UserMetadata.java
 │   │   └── VolunteerApplication.java
-│   └── order_entity/
-│       ├── Order.java
-│       └── OrderItem.java
+│   ├── order_entity/
+│   │   ├── Order.java
+│   │   └── OrderItem.java
+│   └── CargoItem.java
+├── document/
+│   └── CargoImage.java
 ├── repository/
 │   ├── UserRepository.java
 │   ├── UserMetadataRepository.java
 │   ├── OrderRepository.java
 │   ├── OrderItemRepository.java
+│   ├── CargoItemRepository.java
+│   ├── CargoImageRepository.java
 │   └── VolunteerApplicationRepository.java
 └── service/
     ├── UserService.java
     ├── OrderService.java
+    ├── CargoItemService.java
+    ├── CargoImageService.java
     └── VolunteerApplicationService.java
 ```
 
@@ -225,6 +245,7 @@ Request Body:
     "userId": number,
     "deliveryAddress": "string",
     "notes": "string",
+    "phoneNumber": "string" (optional),
     "latitude": number (optional),
     "longitude": number (optional),
     "items": [
@@ -233,6 +254,14 @@ Request Body:
             "quantity": number
         }
     ]
+}
+
+Response:
+{
+    "status": "success",
+    "message": "Order created successfully",
+    "orderId": number,
+    "authenticated": true
 }
 ```
 
@@ -256,6 +285,14 @@ Request Body:
         }
     ]
 }
+
+Response:
+{
+    "status": "success",
+    "message": "Guest order created successfully",
+    "orderId": number,
+    "orderStatus": "string"
+}
 ```
 
 ### View Orders
@@ -271,6 +308,13 @@ Request Body:
     "userId": number,
     "userRole": "VOLUNTEER"
 }
+
+Response:
+{
+    "status": "success",
+    "orders": [...],
+    "authenticated": true
+}
 ```
 
 #### Get User Orders
@@ -280,6 +324,13 @@ Query Parameters:
   authenticated: boolean
   userRole: string
   userId: number
+
+Response:
+{
+    "status": "success",
+    "orders": [...],
+    "authenticated": true
+}
 ```
 
 ### Update Order Status
@@ -293,6 +344,199 @@ Request Body:
     "userId": number,
     "userRole": "VOLUNTEER",
     "status": "PENDING | PROCESSING | COMPLETED | CANCELLED"
+}
+
+Response:
+{
+    "status": "success",
+    "message": "Order status updated successfully",
+    "orderStatus": "string",
+    "authenticated": true
+}
+```
+
+### Cancel Order
+```http
+POST /api/orders/{orderId}/cancel
+Content-Type: application/json
+
+Request Body:
+{
+    "authenticated": true,
+    "userId": number,
+    "userRole": "string"
+}
+
+Response:
+{
+    "status": "success",
+    "message": "Order cancelled successfully",
+    "authenticated": true
+}
+```
+
+## Cargo Management API
+
+### Add Cargo Item
+```http
+POST /api/cargo/items
+Content-Type: multipart/form-data
+
+Headers:
+  Admin-Username: string
+  Authentication-Status: "true"
+
+Form Data:
+  data: {  // JSON object as blob
+    "name": "string",
+    "quantity": number,
+    "description": "string" (optional),
+    "category": "string" (optional),
+    "minQuantity": number (optional),
+    "sizeQuantities": {
+      "S": number,
+      "M": number,
+      "L": number,
+      "XL": number
+    } (optional)
+  }
+  image: file (optional)
+
+Response:
+{
+    "status": "success",
+    "message": "Item added successfully",
+    "itemId": number
+}
+```
+
+### Update Cargo Item
+```http
+PUT /api/cargo/items/{id}
+Content-Type: application/json
+
+Headers:
+  Admin-Username: string
+  Authentication-Status: "true"
+
+Request Body:
+{
+    "name": "string",
+    "description": "string",
+    "category": "string",
+    "quantity": number,
+    "minQuantity": number,
+    "isAvailable": boolean,
+    "needsPrescription": boolean,
+    "sizeQuantities": {
+        "S": number,
+        "M": number,
+        "L": number,
+        "XL": number
+    }
+}
+
+Response:
+{
+    "status": "success",
+    "message": "Item updated successfully",
+    "item": {
+        // Updated item properties
+    }
+}
+```
+
+### Get Cargo Items
+```http
+GET /api/cargo/items
+
+Response:
+[
+    {
+        "id": number,
+        "name": "string",
+        "description": "string",
+        "category": "string",
+        "quantity": number,
+        "sizeQuantities": {
+            "S": number,
+            "M": number,
+            "L": number,
+            "XL": number
+        },
+        "imageId": "string",
+        "isAvailable": boolean,
+        "minQuantity": number,
+        "needsPrescription": boolean,
+        "createdAt": "string (date-time)",
+        "updatedAt": "string (date-time)"
+    }
+]
+```
+
+### Get Low Stock Items
+```http
+GET /api/cargo/items/low-stock
+
+Headers:
+  Admin-Username: string
+  Authentication-Status: "true"
+
+Response:
+[
+    {
+        "id": number,
+        "name": "string",
+        "description": "string",
+        "category": "string",
+        "quantity": number,
+        "minQuantity": number
+        // Other item properties
+    }
+]
+```
+
+## Cargo Image API
+
+### Upload Image
+```http
+POST /api/cargo/images/upload
+Content-Type: multipart/form-data
+
+Headers:
+  Authentication-Status: "true"
+
+Form Data:
+  file: file (image)
+  cargoItemId: number (optional)
+
+Response:
+{
+    "status": "success",
+    "imageId": "string",
+    "message": "Image uploaded successfully"
+}
+```
+
+### Get Image
+```http
+GET /api/cargo/images/{imageId}
+
+Response:
+  Binary image data with appropriate content-type
+```
+
+### Delete Image
+```http
+DELETE /api/cargo/images/{imageId}
+
+Headers:
+  Authentication-Status: "true"
+
+Response:
+{
+    "status": "success",
+    "message": "Image deleted successfully"
 }
 ```
 
@@ -311,6 +555,13 @@ Request Body:
     "phone": "string",
     "notes": "string" (optional)
 }
+
+Response:
+{
+    "status": "success",
+    "message": "Application submitted successfully",
+    "applicationId": number
+}
 ```
 
 ### Get All Applications (Admin Only)
@@ -319,6 +570,27 @@ GET /api/volunteer/applications
 Headers:
   Admin-Username: string
   Authentication-Status: "true"
+
+Response:
+{
+    "status": "success",
+    "data": {
+        "pending": [
+            {
+                "applicationId": number,
+                "firstName": "string",
+                "lastName": "string",
+                "email": "string",
+                "phone": "string",
+                "status": "PENDING",
+                "notes": "string",
+                "submissionDate": "string (date-time)"
+            }
+        ],
+        "approved": [...],
+        "rejected": [...]
+    }
+}
 ```
 
 ### Get Pending Applications (Admin Only)
@@ -327,11 +599,40 @@ GET /api/volunteer/pending
 Headers:
   Admin-Username: string
   Authentication-Status: "true"
+
+Response:
+{
+    "status": "success",
+    "data": [
+        {
+            "applicationId": number,
+            "firstName": "string",
+            "lastName": "string",
+            "email": "string",
+            "phone": "string",
+            "notes": "string",
+            "submissionDate": "string (date-time)"
+        }
+    ]
+}
 ```
 
 ### Check Volunteer Application Status
 ```http
 GET /api/volunteer/application/status/{email}
+
+Response:
+{
+    "status": "success",
+    "applicationId": number,
+    "firstName": "string",
+    "lastName": "string",
+    "email": "string",
+    "phone": "string",
+    "applicationStatus": "PENDING | APPROVED | REJECTED",
+    "notes": "string",
+    "submissionDate": "string (date-time)"
+}
 ```
 
 ### Approve Volunteer Application
@@ -343,7 +644,16 @@ Request Body:
 {
     "adminUsername": "string",
     "authenticated": "true",
-    "applicationId": "number"
+    "applicationId": "string"
+}
+
+Response:
+{
+    "status": "success",
+    "message": "Application approved and volunteer account created",
+    "applicationId": number,
+    "userId": number,
+    "initialPassword": "string"
 }
 ```
 
@@ -356,7 +666,14 @@ Request Body:
 {
     "adminUsername": "string",
     "authenticated": "true",
-    "applicationId": "number"
+    "applicationId": "string"
+}
+
+Response:
+{
+    "status": "success",
+    "message": "Application rejected",
+    "applicationId": number
 }
 ```
 
@@ -414,11 +731,31 @@ Request Body:
                 +-------> CANCELLED
 ```
 
+### Cargo Management Flow
+1. **Inventory Management**
+   - Admin can add items to inventory
+   - Support for sized items (clothing sizes)
+   - Optional image upload
+   - Minimum quantity tracking
+
+2. **Inventory Operations**
+   - Update item quantities
+   - Mark items as available/unavailable
+   - Delete items from inventory
+   - Track low stock items
+
+3. **Image Management**
+   - Upload images for items
+   - Store images in MongoDB
+   - Retrieve images by ID
+   - Delete images when no longer needed
+
 ### Volunteer Application Flow
 1. **Application Submission**
    - Open to all users
    - Required fields validation
    - Duplicate application prevention
+   - Optional notes
 
 2. **Application Processing**
    - Admin review system
@@ -439,7 +776,7 @@ Request Body:
 2. **Role-Based Access**
    - CLIENT: Self-service operations
    - VOLUNTEER: Extended order management
-   - ADMIN: Full system access
+   - ADMIN: Full system access including cargo management
    - GUEST: Limited order creation
 
 3. **Security Measures**
