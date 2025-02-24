@@ -23,7 +23,7 @@ public class Order {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "order_type", nullable = false)
-    private OrderType orderType = OrderType.CLIENT;  // Default to CLIENT
+    private OrderType orderType;  // Default to CLIENT
 
     @Column(name = "item_name", nullable = false)
     private String itemName;

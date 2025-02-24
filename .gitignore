@@ -61,3 +61,8 @@ src/Backend/target/classes/com/backend/streetmed_backend/service/CargoImageServi
 src/Backend/target/classes/com/backend/streetmed_backend/repository/CargoImageRepository.class
 src/Backend/target/classes/com/backend/streetmed_backend/controller/MongoDbTestController.class
 src/Backend/target/classes/com/backend/streetmed_backend/config/DatabaseInitializer.class
+src/Backend/target/classes/com/backend/streetmed_backend/controller/CargoController.class
+src/Backend/target/classes/com/backend/streetmed_backend/controller/CargoImageController.class
+src/Backend/target/classes/com/backend/streetmed_backend/repository/CargoItemRepository.class
+src/Backend/target/classes/com/backend/streetmed_backend/service/CargoItemService.class
+src/Backend/target/classes/com/backend/streetmed_backend/entity/CargoItem.class
