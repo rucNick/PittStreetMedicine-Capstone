@@ -23,7 +23,7 @@ const Login = ({ onLoginSuccess }) => {
 
   // continue as guest
   const handleGuestClick = () => {
-    onLoginSuccess({ username: "Guest", userId: -1 });  // guest user_id = -1
+    onLoginSuccess({ username: "Guest", userId: -1, role: "GUEST" });  // guest user_id = -1
     navigate('/guest');
   };
 
@@ -43,11 +43,17 @@ const Login = ({ onLoginSuccess }) => {
       if (response.data.authenticated) {
         setMessage("Login success!");
         console.log("User info:", response.data);
-        // Use the username from the server's response
-        onLoginSuccess({ 
+        // Assume the server returns a "role" field along with username and userId.
+        const user = { 
           username: response.data.username, 
-          userId: response.data.userId 
-        });
+          userId: response.data.userId,
+          role: response.data.role 
+        };
+        onLoginSuccess(user);
+        // if role is VOLUNTEER，jump to VolunteerOrders page
+        if(response.data.role === "VOLUNTEER") {
+          navigate('/VolunteerOrders');
+        }
       } else {
         setMessage("Login failure: " + response.data.message);
       }
@@ -81,7 +87,7 @@ const Login = ({ onLoginSuccess }) => {
         </div>
       </div>
 
-      {/* login form and logo */}
+      {/* The logo and Login form are displayed only when the Login button is clicked */}
       {showLoginForm && (
         <>
           <img 
@@ -117,6 +123,7 @@ const Login = ({ onLoginSuccess }) => {
                 Login
               </button>
               <div style={styles.message}>{message}</div>
+              {/* Small words, click to jump to the registration page */}
               <p style={styles.registerText} onClick={handleRegisterClick}>
                 Don't have an account? Go to register
               </p>
@@ -141,7 +148,7 @@ const Login = ({ onLoginSuccess }) => {
               <p style={styles.volunteerText}>Want to be a volunteer?</p>
               <div style={styles.volunteerContainer}>
                 <button style={styles.volunteerButton} onClick={handleVolunteerClick}>
-                  LET‘s GO！！！！！！！
+                  LET‘s GO！！！！！！!
                 </button>
               </div>
             </form>
