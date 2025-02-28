@@ -23,13 +23,13 @@ const Login = ({ onLoginSuccess }) => {
 
   // continue as guest
   const handleGuestClick = () => {
-    onLoginSuccess({ username: "Guest", userId: -1, role: "GUEST" });  // guest user_id = -1
+    onLoginSuccess({ username: "Guest", userId: -1 });  // guest user_id = -1
     navigate('/guest');
   };
 
   // go to volunteer
   const handleVolunteerClick = () => {
-    navigate('/volunteer');
+    navigate('/volunteerAppli');
   };
 
   const handleSubmit = async (e) => {
@@ -43,17 +43,12 @@ const Login = ({ onLoginSuccess }) => {
       if (response.data.authenticated) {
         setMessage("Login success!");
         console.log("User info:", response.data);
-        // Assume the server returns a "role" field along with username and userId.
-        const user = { 
+        // Pass username, userId, and role
+        onLoginSuccess({ 
           username: response.data.username, 
           userId: response.data.userId,
-          role: response.data.role 
-        };
-        onLoginSuccess(user);
-        // if role is VOLUNTEER，jump to VolunteerOrders page
-        if(response.data.role === "VOLUNTEER") {
-          navigate('/VolunteerOrders');
-        }
+          role: response.data.role
+        });
       } else {
         setMessage("Login failure: " + response.data.message);
       }

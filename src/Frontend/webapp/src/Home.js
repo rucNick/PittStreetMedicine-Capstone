@@ -1,4 +1,4 @@
-  //=========================================== JS part ==============================================
+//=========================================== JS part ==============================================
 
 import React, { useState } from "react";
 import axios from "axios";
@@ -24,6 +24,7 @@ const Home = ({ username, userId, onLogout }) => {
   const [cart, setCart] = useState([]);
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [notes, setNotes] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState(""); // <-- new phone number state
   const [cartError, setCartError] = useState("");
   const [cartMessage, setCartMessage] = useState("");
 
@@ -33,7 +34,7 @@ const Home = ({ username, userId, onLogout }) => {
     availableItems.map((i) => ({ ...i }))
   );
 
-  // Added custom item status
+  // Custom item state
   const [customItems, setCustomItems] = useState([]);
   const [customItemName, setCustomItemName] = useState("");
   const [customItemQuantity, setCustomItemQuantity] = useState(0);
@@ -75,7 +76,7 @@ const Home = ({ username, userId, onLogout }) => {
     setShowOrders(!showOrders);
   };
 
-  // ============== Cancel order (set status to CANCEL) ==============
+  // ============== Cancel order (set status to CANCELLED) ==============
   const handleCancelOrder = async (orderId) => {
     try {
       const payload = {
@@ -118,7 +119,7 @@ const Home = ({ username, userId, onLogout }) => {
     setTempItems(updated);
   };
 
-  // New: Handles custom item additions
+  // Handle custom items
   const handleAddCustomItem = () => {
     if (!customItemName.trim()) {
       alert("Please fill in the item name");
@@ -135,14 +136,13 @@ const Home = ({ username, userId, onLogout }) => {
     setCustomItemQuantity(0);
   };
 
-  // New: Remove custom items
   const handleRemoveCustomItem = (index) => {
     const updated = [...customItems];
     updated.splice(index, 1);
     setCustomItems(updated);
   };
 
-  // Modify Add to Cart to merge preset items and custom items
+  // Add to cart
   const handleAddToCart = () => {
     const selected = tempItems.filter((i) => i.quantity > 0);
     if (selected.length === 0 && customItems.length === 0) {
@@ -150,6 +150,7 @@ const Home = ({ username, userId, onLogout }) => {
       return;
     }
     const newCart = [...cart];
+
     // Add preset items
     selected.forEach((sel) => {
       const existingIndex = newCart.findIndex((c) => c.name === sel.name);
@@ -168,6 +169,7 @@ const Home = ({ username, userId, onLogout }) => {
         newCart.push({ name: item.name, quantity: item.quantity });
       }
     });
+
     setCart(newCart);
     setShowNewOrderModal(false);
   };
@@ -197,20 +199,21 @@ const Home = ({ username, userId, onLogout }) => {
       setCartError("Your cart is empty.");
       return;
     }
-    if (!deliveryAddress.trim() || !notes.trim()) {
-      setCartError("Please fill in delivery address and notes.");
+    if (!deliveryAddress.trim() || !notes.trim() || !phoneNumber.trim()) {
+      setCartError("Please fill in delivery address, phone number, and notes.");
       return;
     }
     setCartError("");
     setCartMessage("");
 
     try {
-      // Single payload for the entire cart
+      // We include phoneNumber in the payload
       const payload = {
         authenticated: true,
         userId,
         deliveryAddress,
         notes,
+        phoneNumber, // <-- new field
         items: cart.map((item) => ({
           itemName: item.name,
           quantity: item.quantity,
@@ -232,6 +235,7 @@ const Home = ({ username, userId, onLogout }) => {
       setCart([]);
       setDeliveryAddress("");
       setNotes("");
+      setPhoneNumber(""); // reset phone number as well
 
       // If orders are open, refresh them
       if (showOrders) {
@@ -435,13 +439,22 @@ const Home = ({ username, userId, onLogout }) => {
               ))
             )}
 
-            {/* Address & notes */}
+            {/* Delivery address, phone number, and notes */}
             <div style={styles.formGroup}>
               <label>Delivery Address:</label>
               <input
                 type="text"
                 value={deliveryAddress}
                 onChange={(e) => setDeliveryAddress(e.target.value)}
+                style={styles.input}
+              />
+            </div>
+            <div style={styles.formGroup}>
+              <label>Phone Number:</label>
+              <input
+                type="text"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
                 style={styles.input}
               />
             </div>

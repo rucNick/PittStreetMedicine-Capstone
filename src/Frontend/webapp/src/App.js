@@ -5,7 +5,8 @@ import Home from "./Home";
 import Register from "./Register";
 import Guest from "./Guest";
 import VolunteerAppli from "./volunteer_appli";
-import VolunteerOrders from "./VolunteerOrders";  // add volunteerorders
+import Volunteer from "./Volunteer";
+import Admin from "./Admin";  // Import the Admin component
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -30,8 +31,10 @@ function App() {
             isLoggedIn ? (
               userData.username === "Guest" ? (
                 <Guest onLogout={handleLogout} />
-              ) : userData.role === "VOLUNTEER" ? (  // add: if User's role is VOLUNTEER
-                <VolunteerOrders onLogout={handleLogout} />
+              ) : userData.role === "VOLUNTEER" ? (
+                <Volunteer onLogout={handleLogout} userData={userData} />
+              ) : userData.role === "ADMIN" ? (
+                <Admin onLogout={handleLogout} userData={userData} />
               ) : (
                 <Home
                   username={userData.username}
@@ -46,8 +49,7 @@ function App() {
         />
         <Route path="/register" element={<Register />} />
         <Route path="/guest" element={<Guest onLogout={handleLogout} />} />
-        <Route path="/volunteer" element={<VolunteerAppli />} />
-        <Route path="/VolunteerOrders" element={<VolunteerOrders onLogout={handleLogout} />} />  {/* Add VolunteerOrder route */}
+        <Route path="/volunteerAppli" element={<VolunteerAppli />} />
       </Routes>
     </Router>
   );
