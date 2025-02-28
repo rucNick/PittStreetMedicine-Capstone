@@ -259,18 +259,11 @@ public class OrderController {
     })
     @GetMapping("/all")
     public CompletableFuture<ResponseEntity<Map<String, Object>>> getAllOrders(
-            @RequestBody @Schema(example = """
-                {
-                    "authenticated": true,
-                    "userId": 2,
-                    "userRole": "VOLUNTEER"
-                }
-                """) Map<String, Object> requestData) {
+            @RequestParam("authenticated") Boolean authenticated,
+            @RequestParam("userId") Integer userId,
+            @RequestParam("userRole") String userRole) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                Boolean authenticated = (Boolean) requestData.get("authenticated");
-                String userRole = (String) requestData.get("userRole");
-
                 if (!Boolean.TRUE.equals(authenticated)) {
                     Map<String, Object> errorResponse = new HashMap<>();
                     errorResponse.put("status", "error");
