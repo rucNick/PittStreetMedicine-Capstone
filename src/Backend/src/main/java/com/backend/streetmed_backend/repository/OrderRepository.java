@@ -1,6 +1,6 @@
 package com.backend.streetmed_backend.repository;
 
-import com.backend.streetmed_backend.controller.entity.order_entity.Order;
+import com.backend.streetmed_backend.entity.order_entity.Order;
 import org.apache.ibatis.annotations.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
