@@ -194,7 +194,27 @@ const Home = ({ username, userId, onLogout }) => {
   };
 
   // ============== Place new order (CLIENT) ==============
-  const handlePlaceOrder = async () => {
+  // New: This function tries to get the user's geolocation before placing the order.
+  const handlePlaceOrder = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          // New: If geolocation is successful, call the order function with lat/lon
+          placeOrderWithLocation(position.coords.latitude, position.coords.longitude);
+        },
+        () => {
+          // New: If user denies or fails to get location, place order without lat/lon
+          placeOrderWithLocation(null, null);
+        }
+      );
+    } else {
+      // New: If geolocation is not supported, place order without lat/lon
+      placeOrderWithLocation(null, null);
+    }
+  };
+
+  // New: This function executes the actual order creation request.
+  const placeOrderWithLocation = async (latitude, longitude) => {
     if (cart.length === 0) {
       setCartError("Your cart is empty.");
       return;
@@ -207,18 +227,24 @@ const Home = ({ username, userId, onLogout }) => {
     setCartMessage("");
 
     try {
-      // We include phoneNumber in the payload
+      // We include phoneNumber and optionally lat/lon in the payload
       const payload = {
         authenticated: true,
         userId,
         deliveryAddress,
         notes,
-        phoneNumber, // <-- new field
+        phoneNumber, // <-- existing phone number field
         items: cart.map((item) => ({
           itemName: item.name,
           quantity: item.quantity,
         })),
       };
+
+      // New: If lat/lon exist, add them to the payload
+      if (latitude !== null && longitude !== null) {
+        payload.latitude = latitude;
+        payload.longitude = longitude;
+      }
 
       const response = await axios.post(
         "http://localhost:8080/api/orders/create",
