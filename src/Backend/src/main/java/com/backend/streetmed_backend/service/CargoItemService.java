@@ -1,7 +1,7 @@
 package com.backend.streetmed_backend.service;
 
 import com.backend.streetmed_backend.document.CargoImage;
-import com.backend.streetmed_backend.entity.CargoItem;
+import com.backend.streetmed_backend.controller.entity.CargoItem;
 import com.backend.streetmed_backend.repository.CargoItemRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

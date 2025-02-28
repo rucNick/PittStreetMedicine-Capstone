@@ -1,8 +1,8 @@
 package com.backend.streetmed_backend.controller;
 
-import com.backend.streetmed_backend.entity.user_entity.User;
-import com.backend.streetmed_backend.entity.user_entity.UserMetadata;
-import com.backend.streetmed_backend.entity.user_entity.VolunteerApplication;
+import com.backend.streetmed_backend.controller.entity.user_entity.User;
+import com.backend.streetmed_backend.controller.entity.user_entity.UserMetadata;
+import com.backend.streetmed_backend.controller.entity.user_entity.VolunteerApplication;
 import com.backend.streetmed_backend.service.VolunteerApplicationService;
 import com.backend.streetmed_backend.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;

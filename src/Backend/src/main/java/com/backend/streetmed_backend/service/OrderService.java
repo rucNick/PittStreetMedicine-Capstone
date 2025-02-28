@@ -1,8 +1,8 @@
 package com.backend.streetmed_backend.service;
 
-import com.backend.streetmed_backend.entity.order_entity.Order;
-import com.backend.streetmed_backend.entity.order_entity.OrderItem;
-import com.backend.streetmed_backend.entity.user_entity.User;
+import com.backend.streetmed_backend.controller.entity.order_entity.Order;
+import com.backend.streetmed_backend.controller.entity.order_entity.OrderItem;
+import com.backend.streetmed_backend.controller.entity.user_entity.User;
 import com.backend.streetmed_backend.repository.OrderRepository;
 import com.backend.streetmed_backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;

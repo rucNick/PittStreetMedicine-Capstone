@@ -1,4 +1,4 @@
-package com.backend.streetmed_backend.entity.user_entity;
+package com.backend.streetmed_backend.controller.entity.user_entity;
 
 import jakarta.persistence.*;
 

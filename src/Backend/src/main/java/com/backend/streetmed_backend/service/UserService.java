@@ -1,7 +1,7 @@
 package com.backend.streetmed_backend.service;
 
-import com.backend.streetmed_backend.entity.user_entity.User;
-import com.backend.streetmed_backend.entity.user_entity.UserMetadata;
+import com.backend.streetmed_backend.controller.entity.user_entity.User;
+import com.backend.streetmed_backend.controller.entity.user_entity.UserMetadata;
 import com.backend.streetmed_backend.repository.UserRepository;
 import com.backend.streetmed_backend.security.PasswordHash;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,4 +1,4 @@
-package com.backend.streetmed_backend.entity.order_entity;
+package com.backend.streetmed_backend.controller.entity.order_entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
