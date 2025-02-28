@@ -1,6 +1,6 @@
 package com.backend.streetmed_backend.controller;
 
-import com.backend.streetmed_backend.controller.entity.user_entity.User;
+import com.backend.streetmed_backend.entity.user_entity.User;
 import com.backend.streetmed_backend.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;

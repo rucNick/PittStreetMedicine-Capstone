@@ -1,4 +1,4 @@
-package com.backend.streetmed_backend.controller.entity;
+package com.backend.streetmed_backend.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;

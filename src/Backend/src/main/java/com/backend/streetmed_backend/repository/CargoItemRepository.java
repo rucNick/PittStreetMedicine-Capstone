@@ -1,6 +1,6 @@
 package com.backend.streetmed_backend.repository;
 
-import com.backend.streetmed_backend.controller.entity.CargoItem;
+import com.backend.streetmed_backend.entity.CargoItem;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
