@@ -1,13 +1,12 @@
 package com.backend.streetmed_backend.repository;
 
-import com.backend.streetmed_backend.entity.CargoItem;
+import com.backend.streetmed_backend.controller.entity.CargoItem;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.Optional;
 
 @Repository
 public interface CargoItemRepository extends JpaRepository<CargoItem, Integer> {

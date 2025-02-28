@@ -1,6 +1,6 @@
 package com.backend.streetmed_backend.controller;
 
-import com.backend.streetmed_backend.entity.user_entity.User;
+import com.backend.streetmed_backend.controller.entity.user_entity.User;
 import com.backend.streetmed_backend.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -432,11 +432,16 @@ public class AuthController {
                 for (User user : allUsers) {
                     Map<String, String> userInfo = new HashMap<>();
                     userInfo.put("username", user.getUsername());
+                    userInfo.put("email", user.getEmail());
+                    // Handle possible null phone values
+                    userInfo.put("phone", user.getPhone() != null ? user.getPhone() : "");
                     userInfo.put("role", user.getRole());
+
                     switch (user.getRole()) {
                         case "CLIENT" -> clientUsers.add(userInfo);
                         case "VOLUNTEER" -> volunteerUsers.add(userInfo);
                         case "ADMIN" -> adminUsers.add(userInfo);
+                        default -> {} // Optionally handle unexpected roles
                     }
                 }
 
@@ -460,6 +465,7 @@ public class AuthController {
             }
         }, readOnlyExecutor);
     }
+
 
     @Operation(summary = "Delete user (Admin only)")
     @DeleteMapping("/delete")

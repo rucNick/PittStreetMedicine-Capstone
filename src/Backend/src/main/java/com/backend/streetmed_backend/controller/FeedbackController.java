@@ -1,7 +1,7 @@
 package com.backend.streetmed_backend.controller;
 
-import com.backend.streetmed_backend.entity.Feedback;
-import com.backend.streetmed_backend.entity.user_entity.User;
+import com.backend.streetmed_backend.controller.entity.Feedback;
+import com.backend.streetmed_backend.controller.entity.user_entity.User;
 import com.backend.streetmed_backend.service.FeedbackService;
 import com.backend.streetmed_backend.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
