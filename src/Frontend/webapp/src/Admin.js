@@ -192,6 +192,9 @@ const Admin = ({ onLogout, userData }) => {
         <button onClick={() => setActiveTab("applications")} style={styles.navButton}>
           Volunteer Applications
         </button>
+        <button onClick={() => navigate('/cargo_admin')} style={styles.navButton}>
+          Cargo Admin
+        </button>
       </div>
 
       <div style={styles.content}>

@@ -7,6 +7,7 @@ import Guest from "./Guest";
 import VolunteerAppli from "./volunteer_appli";
 import Volunteer from "./Volunteer";
 import Admin from "./Admin";  // Import the Admin component
+import CargoAdmin from "./Cargo_Admin"; //add admin cargo system
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -50,6 +51,8 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/guest" element={<Guest onLogout={handleLogout} />} />
         <Route path="/volunteerAppli" element={<VolunteerAppli />} />
+        {/* Cargo_Admin */}
+        <Route path="/cargo_admin" element={<CargoAdmin userData={userData}/>} />
       </Routes>
     </Router>
   );
