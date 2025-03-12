@@ -6,7 +6,7 @@ const Cargo_Admin = ({ userData }) => {
   const navigate = useNavigate();
 
   // -------------------- Tabs (Inventory / Images) --------------------
-  const [activeTab, setActiveTab] = useState('inventory'); 
+  const [activeTab, setActiveTab] = useState('inventory');
 
   // ==================== 1. Inventory Management ====================
   // 1.1 Show all items
@@ -23,24 +23,71 @@ const Cargo_Admin = ({ userData }) => {
     }
   }, []);
 
-  // 1.2 add items
+  // 1.2 Add items - Basic information + multiple size options
   const [newItemData, setNewItemData] = useState({
     name: '',
     description: '',
     category: '',
-    quantity: 0,
+    quantity: 0, // If there is no size, the user can manually input the quantity
   });
+  // Store size input entries: each object in the array has the format { size: string, quantity: number }
+  const [newSizeEntries, setNewSizeEntries] = useState([]);
   const [newItemImage, setNewItemImage] = useState(null);
 
+  // Add a new size input row
+  const handleAddSizeEntry = () => {
+    setNewSizeEntries([...newSizeEntries, { size: '', quantity: 0 }]);
+  };
+
+  // Update the size information for a specific row
+  const handleSizeEntryChange = (index, field, value) => {
+    const updated = [...newSizeEntries];
+    updated[index] = {
+      ...updated[index],
+      [field]: field === 'quantity' ? Number(value) : value,
+    };
+    setNewSizeEntries(updated);
+  };
+
+  // Delete a specific row's size information
+  const handleRemoveSizeEntry = (index) => {
+    const updated = newSizeEntries.filter((_, i) => i !== index);
+    setNewSizeEntries(updated);
+  };
+
+  /**
+   * When adding a new item, if there is size data then the final quantity is the sum of all size quantities;
+   * if there is no size data then the quantity entered by the user is used.
+   */
   const handleAddNewItem = async () => {
     try {
+      // Construct the sizeQuantities object
+      const sizeQuantities = {};
+      newSizeEntries.forEach((entry) => {
+        if (entry.size) {
+          sizeQuantities[entry.size] = entry.quantity;
+        }
+      });
+
+      // If there is size data, sum up all the size quantities as the final quantity
+      let finalQuantity = newItemData.quantity;
+      if (Object.keys(sizeQuantities).length > 0) {
+        finalQuantity = Object.values(sizeQuantities).reduce((acc, cur) => acc + cur, 0);
+      }
+
+      // Merge data, overriding quantity with the final computed value
+      const dataToSend = {
+        ...newItemData,
+        quantity: finalQuantity,
+        sizeQuantities,
+      };
+
       const formData = new FormData();
-      // form ==> JSON
       formData.append(
         'data',
-        new Blob([JSON.stringify(newItemData)], { type: 'application/json' })
+        new Blob([JSON.stringify(dataToSend)], { type: 'application/json' })
       );
-      // If there is an image, append it to FormData
+      // If there is an image, then add it
       if (newItemImage) {
         formData.append('image', newItemImage);
       }
@@ -58,17 +105,18 @@ const Cargo_Admin = ({ userData }) => {
       );
 
       alert(response.data.message || 'Item added successfully');
-      // Clear input
+      // Clear the input fields
       setNewItemData({ name: '', description: '', category: '', quantity: 0 });
+      setNewSizeEntries([]);
       setNewItemImage(null);
-      // Refreshing the list
+      // Refresh the list
       fetchAllItems();
     } catch (error) {
       alert(error.response?.data?.message || error.message);
     }
   };
 
-  // 1.3 update items
+  // 1.3 Update items (if you need to update size, you can extend this as needed)
   const [updateItemId, setUpdateItemId] = useState('');
   const [updateItemData, setUpdateItemData] = useState({
     name: '',
@@ -85,7 +133,7 @@ const Cargo_Admin = ({ userData }) => {
     }
 
     try {
-      // First, PUT updates the text data
+      // First update the text data
       const itemUpdateRes = await axios.put(
         `http://localhost:8080/api/cargo/items/${updateItemId}`,
         updateItemData,
@@ -97,7 +145,7 @@ const Cargo_Admin = ({ userData }) => {
         }
       );
 
-      // If the image needs to be updated, it is PUT separately
+      // If the image needs to be updated, handle it separately
       if (updateItemImage) {
         const formData = new FormData();
         formData.append('image', updateItemImage);
@@ -193,7 +241,7 @@ const Cargo_Admin = ({ userData }) => {
         Back to Admin page
       </button>
 
-      {/* navi Tab */}
+      {/* Navi Tab */}
       <div style={styles.tabContainer}>
         <button
           style={activeTab === 'inventory' ? styles.activeTabButton : styles.tabButton}
@@ -214,7 +262,7 @@ const Cargo_Admin = ({ userData }) => {
         <div style={styles.section}>
           <h2>Inventory Management</h2>
 
-          {/* 1.1 show all the items */}
+          {/* 1.1 Show all items */}
           <div style={styles.block}>
             <h3>All Items</h3>
             {allItemsError && <p style={{ color: 'red' }}>{allItemsError}</p>}
@@ -230,19 +278,33 @@ const Cargo_Admin = ({ userData }) => {
               </thead>
               <tbody>
                 {allItems.map((item) => (
-                  <tr key={item.id}>
-                    <td>{item.id}</td>
-                    <td>{item.name}</td>
-                    <td>{item.description}</td>
-                    <td>{item.category}</td>
-                    <td>{item.quantity}</td>
-                  </tr>
+                  <React.Fragment key={item.id}>
+                    <tr>
+                      <td>{item.id}</td>
+                      <td>{item.name}</td>
+                      <td>{item.description}</td>
+                      <td>{item.category}</td>
+                      <td>{item.quantity}</td>
+                    </tr>
+                    {/* If there is size information, display additional rows */}
+                    {item.sizeQuantities && Object.keys(item.sizeQuantities).length > 0 && (
+                      Object.entries(item.sizeQuantities).map(([size, qty]) => (
+                        <tr key={item.id + size}>
+                          <td></td>
+                          <td></td>
+                          <td></td>
+                          <td>{size}</td>
+                          <td>{qty}</td>
+                        </tr>
+                      ))
+                    )}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
           </div>
 
-          {/* 1.2 add items */}
+          {/* 1.2 Add New Item */}
           <div style={styles.block}>
             <h3>Add New Item</h3>
             <input
@@ -269,22 +331,49 @@ const Cargo_Admin = ({ userData }) => {
             <input
               style={styles.input}
               type="number"
-              placeholder="Quantity"
+              placeholder="Quantity (if no sizes)"
               value={newItemData.quantity}
               onChange={(e) => setNewItemData({ ...newItemData, quantity: Number(e.target.value) })}
             />
 
-            <input
-              type="file"
-              onChange={(e) => setNewItemImage(e.target.files[0])}
-            />
+            {/* Size Options */}
+            <div style={{ marginTop: '10px' }}>
+              <h4>Size Options (optional)</h4>
+              {newSizeEntries.map((entry, index) => (
+                <div key={index} style={{ marginBottom: '5px' }}>
+                  <input
+                    style={styles.input}
+                    type="text"
+                    placeholder="Size (e.g., S, M, L)"
+                    value={entry.size}
+                    onChange={(e) => handleSizeEntryChange(index, 'size', e.target.value)}
+                  />
+                  <input
+                    style={styles.input}
+                    type="number"
+                    placeholder="Quantity for this size"
+                    value={entry.quantity}
+                    onChange={(e) => handleSizeEntryChange(index, 'quantity', e.target.value)}
+                  />
+                  <button style={styles.smallButton} onClick={() => handleRemoveSizeEntry(index)}>
+                    Remove
+                  </button>
+                </div>
+              ))}
+              <button style={styles.button} onClick={handleAddSizeEntry}>
+                Add Size Option
+              </button>
+            </div>
 
+            <div style={{ marginTop: '10px' }}>
+              <input type="file" onChange={(e) => setNewItemImage(e.target.files[0])} />
+            </div>
             <button style={styles.button} onClick={handleAddNewItem}>
               Add Item
             </button>
           </div>
 
-          {/* 1.3 update item */}
+          {/* 1.3 Update Item */}
           <div style={styles.block}>
             <h3>Update Item</h3>
             <input
@@ -323,11 +412,9 @@ const Cargo_Admin = ({ userData }) => {
               onChange={(e) => setUpdateItemData({ ...updateItemData, quantity: Number(e.target.value) })}
             />
 
-            <input
-              type="file"
-              onChange={(e) => setUpdateItemImage(e.target.files[0])}
-            />
-
+            <div style={{ marginTop: '10px' }}>
+              <input type="file" onChange={(e) => setUpdateItemImage(e.target.files[0])} />
+            </div>
             <button style={styles.button} onClick={handleUpdateItem}>
               Update
             </button>
@@ -340,13 +427,10 @@ const Cargo_Admin = ({ userData }) => {
         <div style={styles.section}>
           <h2>Image Management</h2>
 
-          {/* 2.1 upload image */}
+          {/* 2.1 Upload Image */}
           <div style={styles.block}>
             <h3>Upload Image</h3>
-            <input
-              type="file"
-              onChange={(e) => setUploadImageFile(e.target.files[0])}
-            />
+            <input type="file" onChange={(e) => setUploadImageFile(e.target.files[0])} />
             <input
               style={styles.input}
               type="text"
@@ -359,7 +443,7 @@ const Cargo_Admin = ({ userData }) => {
             </button>
           </div>
 
-          {/* 2.2 delete image */}
+          {/* 2.2 Delete Image */}
           <div style={styles.block}>
             <h3>Delete Image</h3>
             <input
@@ -433,6 +517,7 @@ const styles = {
     border: '1px solid #ccc',
   },
   button: {
+    marginTop: '10px',
     marginLeft: '10px',
     padding: '8px 16px',
     backgroundColor: '#52c41a',
@@ -440,6 +525,15 @@ const styles = {
     border: 'none',
     borderRadius: '4px',
     cursor: 'pointer',
+  },
+  smallButton: {
+    padding: '4px 8px',
+    backgroundColor: '#f5222d',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    marginLeft: '5px',
   },
   table: {
     margin: '0 auto',

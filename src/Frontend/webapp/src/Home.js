@@ -3,43 +3,51 @@
 import React, { useState } from "react";
 import axios from "axios";
 
-// List of example items (unchanged)
-const availableItems = [
-  { name: "Water", quantity: 0 },
-  { name: "Ensure", quantity: 0 },
-  { name: "Snapple", quantity: 0 },
-  { name: "Wipes", quantity: 0 },
-  { name: "Slim Jims", quantity: 0 },
-];
-
-const Home = ({ username, userId, onLogout }) => {
-  // Order history state
+const Home = ({ username, email, password, phone, userId, onLogout }) => {
+  // ============== Order History & UI States ==============
   const [orders, setOrders] = useState([]);
   const [showOrders, setShowOrders] = useState(false);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState("");
 
-  // Cart state
+  // ============== Cart States ==============
   const [showCart, setShowCart] = useState(false);
   const [cart, setCart] = useState([]);
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [notes, setNotes] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState(""); // <-- new phone number state
+  const [phoneNumber, setPhoneNumber] = useState(""); // If empty, will use registered phone
   const [cartError, setCartError] = useState("");
   const [cartMessage, setCartMessage] = useState("");
 
-  // "Make a New Order" modal
-  const [showNewOrderModal, setShowNewOrderModal] = useState(false);
-  const [tempItems, setTempItems] = useState(
-    availableItems.map((i) => ({ ...i }))
-  );
+  // ============== "Make a New Order" - Cargo Items ==============
+  const [showNewOrder, setShowNewOrder] = useState(false);
+  const [cargoItems, setCargoItems] = useState([]);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [showItemDetailModal, setShowItemDetailModal] = useState(false);
+  const [selectedSize, setSelectedSize] = useState("");
+  const [selectedQuantity, setSelectedQuantity] = useState(1);
 
-  // Custom item state
-  const [customItems, setCustomItems] = useState([]);
-  const [customItemName, setCustomItemName] = useState("");
-  const [customItemQuantity, setCustomItemQuantity] = useState(0);
+  // ============== Feedback States ==============
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackContent, setFeedbackContent] = useState("");
+  const [feedbackPhoneNumber, setFeedbackPhoneNumber] = useState("");
+  const [feedbackError, setFeedbackError] = useState("");
+  const [feedbackMessage, setFeedbackMessage] = useState("");
 
-  // ============== Fetch order history ==============
+  // ============== Profile Update States ==============
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  // Field selection state: "username", "email", "password", or "phone"
+  const [profileOption, setProfileOption] = useState("username");
+  // Input states for profile update
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newUsername, setNewUsername] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [profileError, setProfileError] = useState("");
+  const [profileMessage, setProfileMessage] = useState("");
+
+  // ================= Order History, Cancel Order, Fetch Cargo Items, etc. =================
   const toggleOrders = async () => {
     if (!userId || typeof userId !== "number") {
       setOrdersError("Order history is not available for guest users.");
@@ -53,16 +61,10 @@ const Home = ({ username, userId, onLogout }) => {
         setOrdersError("");
         const response = await axios.get(
           `http://localhost:8080/api/orders/user/${userId}`,
-          {
-            params: { authenticated: true, userRole: "CLIENT", userId },
-          }
+          { params: { authenticated: true, userRole: "CLIENT", userId } }
         );
-
         if (response.data.status === "success") {
-          // Filter out cancelled orders
-          const filtered = response.data.orders.filter(
-            (o) => o.status !== "CANCELLED"
-          );
+          const filtered = response.data.orders.filter((o) => o.status !== "CANCELLED");
           setOrders(filtered);
         } else {
           setOrdersError(response.data.message || "Failed to load orders.");
@@ -76,20 +78,14 @@ const Home = ({ username, userId, onLogout }) => {
     setShowOrders(!showOrders);
   };
 
-  // ============== Cancel order (set status to CANCELLED) ==============
   const handleCancelOrder = async (orderId) => {
     try {
-      const payload = {
-        authenticated: true,
-        userId,
-        userRole: "CLIENT",
-      };
+      const payload = { authenticated: true, userId, userRole: "CLIENT" };
       const response = await axios.post(
         `http://localhost:8080/api/orders/${orderId}/cancel`,
         payload
       );
       if (response.data.status === "success") {
-        // Refresh orders if currently shown
         if (showOrders) {
           await toggleOrders();
           await toggleOrders();
@@ -102,79 +98,53 @@ const Home = ({ username, userId, onLogout }) => {
     }
   };
 
-  // ============== Make a New Order ==============
+  const fetchCargoItems = async () => {
+    try {
+      const response = await axios.get("http://localhost:8080/api/cargo/items");
+      setCargoItems(response.data);
+    } catch (error) {
+      console.error("Failed to fetch cargo items:", error);
+    }
+  };
+
   const handleOpenNewOrder = () => {
-    const resetItems = availableItems.map((i) => ({ ...i, quantity: 0 }));
-    setTempItems(resetItems);
-    // Reset custom items
-    setCustomItems([]);
-    setCustomItemName("");
-    setCustomItemQuantity(0);
-    setShowNewOrderModal(true);
+    setShowNewOrder(true);
+    fetchCargoItems();
   };
 
-  const handleItemQuantityChange = (index, newQuantity) => {
-    const updated = [...tempItems];
-    updated[index].quantity = parseInt(newQuantity, 10) || 0;
-    setTempItems(updated);
+  const handleSelectItem = (item) => {
+    setSelectedItem(item);
+    setShowItemDetailModal(true);
+    const sizes = item.sizeQuantities ? Object.keys(item.sizeQuantities) : [];
+    setSelectedSize(sizes.length > 0 ? sizes[0] : "");
+    setSelectedQuantity(1);
   };
 
-  // Handle custom items
-  const handleAddCustomItem = () => {
-    if (!customItemName.trim()) {
-      alert("Please fill in the item name");
+  const closeItemDetailModal = () => {
+    setShowItemDetailModal(false);
+    setSelectedItem(null);
+    setSelectedSize("");
+    setSelectedQuantity(1);
+  };
+
+  const handleAddSelectedItemToCart = () => {
+    if (!selectedItem) return;
+    if (selectedQuantity <= 0) {
+      alert("Please enter a valid quantity.");
       return;
     }
-    const quantity = parseInt(customItemQuantity, 10);
-    if (!quantity || quantity <= 0) {
-      alert("Please fill in the correct quantity");
-      return;
-    }
-    const newItem = { name: customItemName, quantity };
-    setCustomItems([...customItems, newItem]);
-    setCustomItemName("");
-    setCustomItemQuantity(0);
-  };
-
-  const handleRemoveCustomItem = (index) => {
-    const updated = [...customItems];
-    updated.splice(index, 1);
-    setCustomItems(updated);
-  };
-
-  // Add to cart
-  const handleAddToCart = () => {
-    const selected = tempItems.filter((i) => i.quantity > 0);
-    if (selected.length === 0 && customItems.length === 0) {
-      alert("Please select or enter at least one item");
-      return;
-    }
+    const itemName = selectedSize ? `${selectedItem.name} (${selectedSize})` : selectedItem.name;
     const newCart = [...cart];
-
-    // Add preset items
-    selected.forEach((sel) => {
-      const existingIndex = newCart.findIndex((c) => c.name === sel.name);
-      if (existingIndex >= 0) {
-        newCart[existingIndex].quantity += sel.quantity;
-      } else {
-        newCart.push({ name: sel.name, quantity: sel.quantity });
-      }
-    });
-    // Add custom items
-    customItems.forEach((item) => {
-      const existingIndex = newCart.findIndex((c) => c.name === item.name);
-      if (existingIndex >= 0) {
-        newCart[existingIndex].quantity += item.quantity;
-      } else {
-        newCart.push({ name: item.name, quantity: item.quantity });
-      }
-    });
-
+    const existingIndex = newCart.findIndex((c) => c.name === itemName);
+    if (existingIndex >= 0) {
+      newCart[existingIndex].quantity += selectedQuantity;
+    } else {
+      newCart.push({ name: itemName, quantity: selectedQuantity });
+    }
     setCart(newCart);
-    setShowNewOrderModal(false);
+    closeItemDetailModal();
   };
 
-  // ============== Cart toggling ==============
   const toggleCart = () => {
     setShowCart(!showCart);
     setCartError("");
@@ -193,27 +163,21 @@ const Home = ({ username, userId, onLogout }) => {
     setCart(updated);
   };
 
-  // ============== Place new order (CLIENT) ==============
-  // New: This function tries to get the user's geolocation before placing the order.
   const handlePlaceOrder = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          // New: If geolocation is successful, call the order function with lat/lon
           placeOrderWithLocation(position.coords.latitude, position.coords.longitude);
         },
         () => {
-          // New: If user denies or fails to get location, place order without lat/lon
           placeOrderWithLocation(null, null);
         }
       );
     } else {
-      // New: If geolocation is not supported, place order without lat/lon
       placeOrderWithLocation(null, null);
     }
   };
 
-  // New: This function executes the actual order creation request.
   const placeOrderWithLocation = async (latitude, longitude) => {
     if (cart.length === 0) {
       setCartError("Your cart is empty.");
@@ -225,45 +189,29 @@ const Home = ({ username, userId, onLogout }) => {
     }
     setCartError("");
     setCartMessage("");
-
     try {
-      // We include phoneNumber and optionally lat/lon in the payload
       const payload = {
         authenticated: true,
         userId,
         deliveryAddress,
         notes,
-        phoneNumber, // <-- existing phone number field
-        items: cart.map((item) => ({
-          itemName: item.name,
-          quantity: item.quantity,
-        })),
+        phoneNumber,
+        items: cart.map((item) => ({ itemName: item.name, quantity: item.quantity })),
       };
-
-      // New: If lat/lon exist, add them to the payload
       if (latitude !== null && longitude !== null) {
         payload.latitude = latitude;
         payload.longitude = longitude;
       }
-
-      const response = await axios.post(
-        "http://localhost:8080/api/orders/create",
-        payload
-      );
-
+      const response = await axios.post("http://localhost:8080/api/orders/create", payload);
       if (response.data.status !== "success") {
         setCartError(response.data.message || "Order creation failed");
         return;
       }
-
       setCartMessage("Order placed successfully!");
-      // Clear cart and fields
       setCart([]);
       setDeliveryAddress("");
       setNotes("");
-      setPhoneNumber(""); // reset phone number as well
-
-      // If orders are open, refresh them
+      setPhoneNumber("");
       if (showOrders) {
         await toggleOrders();
         await toggleOrders();
@@ -273,12 +221,197 @@ const Home = ({ username, userId, onLogout }) => {
     }
   };
 
-  //=========================================== HTML part ==============================================
+  const handleOpenFeedbackModal = () => {
+    setFeedbackContent("");
+    setFeedbackPhoneNumber("");
+    setFeedbackError("");
+    setFeedbackMessage("");
+    setShowFeedbackModal(true);
+  };
+
+  const handleCloseFeedbackModal = () => {
+    setShowFeedbackModal(false);
+  };
+
+  const handleSubmitFeedback = async () => {
+    if (!feedbackContent.trim()) {
+      setFeedbackError("Feedback content cannot be empty.");
+      return;
+    }
+    if (!feedbackPhoneNumber.trim()) {
+      setFeedbackError("Phone number is required.");
+      return;
+    }
+    setFeedbackError("");
+    try {
+      const payload = {
+        name: username,
+        phoneNumber: feedbackPhoneNumber,
+        content: feedbackContent
+      };
+      const response = await axios.post("http://localhost:8080/api/feedback/submit", payload);
+      if (response.data.status === "success") {
+        setFeedbackMessage("Feedback submitted successfully!");
+        setTimeout(() => {
+          setShowFeedbackModal(false);
+          setFeedbackContent("");
+          setFeedbackPhoneNumber("");
+          setFeedbackMessage("");
+        }, 1500);
+      } else {
+        setFeedbackError(response.data.message || "Failed to submit feedback.");
+      }
+    } catch (error) {
+      setFeedbackError(error.response?.data?.message || "Failed to submit feedback.");
+    }
+  };
+
+  // ------------- Profile Modal Operations -------------
+
+  // Open profile modal and clear previous inputs
+  const handleOpenProfileModal = () => {
+    setCurrentPassword("");
+    setNewUsername("");
+    setNewEmail("");
+    setNewPassword("");
+    setNewPhone("");
+    setProfileError("");
+    setProfileMessage("");
+    setProfileOption("username"); // Default option
+    setShowProfileModal(true);
+  };
+
+  const handleCloseProfileModal = () => {
+    setShowProfileModal(false);
+  };
+
+  // Handle submit of profile update based on selected option
+  const handleSubmitProfile = async () => {
+    // For username update
+    if (profileOption === "username") {
+      // Validate new username: only letters and must differ from current username
+      const usernameRegex = /^[A-Za-z]+$/;
+      if (!newUsername.trim() || !usernameRegex.test(newUsername.trim())) {
+        setProfileError("Username must contain only letters.");
+        return;
+      }
+      if (newUsername.trim() === username) {
+        setProfileError("New username must be different from the old one.");
+        return;
+      }
+      try {
+        await axios.put("http://localhost:8080/api/auth/update/username", {
+          userId,
+          newUsername: newUsername.trim(),
+          authenticated: "true"
+        });
+        setProfileMessage("You have successfully updated your information. Please log out to update your information.");
+        setTimeout(() => onLogout(), 1500);
+      } catch (error) {
+        setProfileError(error.response?.data?.message || "Failed to update username.");
+      }
+    }
+    // For email update
+    else if (profileOption === "email") {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!newEmail.trim() || !emailRegex.test(newEmail.trim())) {
+        setProfileError("Please enter a valid email address.");
+        return;
+      }
+      if (newEmail.trim() === email) {
+        setProfileError("New email must be different from the old one.");
+        return;
+      }
+      if (!currentPassword.trim()) {
+        setProfileError("Current password is required.");
+        return;
+      }
+      try {
+        await axios.put("http://localhost:8080/api/auth/update/email", {
+          userId,
+          currentPassword: currentPassword.trim(),
+          newEmail: newEmail.trim(),
+          authenticated: "true"
+        });
+        setProfileMessage("You have successfully updated your information. Please log out to update your information.");
+        setTimeout(() => onLogout(), 1500);
+      } catch (error) {
+        setProfileError(error.response?.data?.message || "Failed to update email.");
+      }
+    }
+    // For password update
+    else if (profileOption === "password") {
+      const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
+      if (!newPassword.trim() || !passwordRegex.test(newPassword.trim())) {
+        setProfileError("Password must be alphanumeric and at least 8 characters long.");
+        return;
+      }
+      if (newPassword.trim() === password) {
+        setProfileError("New password must be different from the old one.");
+        return;
+      }
+      if (!currentPassword.trim()) {
+        setProfileError("Current password is required.");
+        return;
+      }
+      try {
+        await axios.put("http://localhost:8080/api/auth/update/password", {
+          userId,
+          currentPassword: currentPassword.trim(),
+          newPassword: newPassword.trim(),
+          authenticated: "true"
+        });
+        setProfileMessage("You have successfully updated your information. Please log out to update your information.");
+        setTimeout(() => onLogout(), 1500);
+      } catch (error) {
+        setProfileError(error.response?.data?.message || "Failed to update password.");
+      }
+    }
+    // For phone update
+    else if (profileOption === "phone") {
+      const phoneRegex = /^\d{10}$/;
+      if (!newPhone.trim() || !phoneRegex.test(newPhone.trim())) {
+        setProfileError("Phone number must be a 10-digit US number.");
+        return;
+      }
+      if (newPhone.trim() === phone) {
+        setProfileError("New phone number must be different from the old one.");
+        return;
+      }
+      if (!currentPassword.trim()) {
+        setProfileError("Current password is required.");
+        return;
+      }
+      try {
+        await axios.put("http://localhost:8080/api/auth/update/phone", {
+          userId,
+          currentPassword: currentPassword.trim(),
+          newPhone: newPhone.trim(),
+          authenticated: "true"
+        });
+        setProfileMessage("You have successfully updated your information. Please log out to update your information.");
+        setTimeout(() => onLogout(), 1500);
+      } catch (error) {
+        setProfileError(error.response?.data?.message || "Failed to update phone number.");
+      }
+    }
+  };
+
+  // ================= Rendering Section =================
   return (
     <div style={styles.container}>
       {/* Navbar */}
       <div style={styles.navbar}>
-        <div style={styles.navGreeting}>Hello, {username}!</div>
+        <div style={styles.navGreeting}>
+          {/* Display current username and Profile button */}
+          Hello, {username}!
+          <button style={styles.profileButton} onClick={handleOpenProfileModal}>
+            Profile
+          </button>
+        </div>
+        <button style={styles.feedbackButton} onClick={handleOpenFeedbackModal}>
+          Feedback
+        </button>
         <button style={styles.cartButton} onClick={toggleCart}>
           Cart
         </button>
@@ -287,7 +420,7 @@ const Home = ({ username, userId, onLogout }) => {
         </button>
       </div>
 
-      {/* Main content */}
+      {/* Main Content */}
       <div style={styles.content}>
         <h2>Welcome Back, {username}!</h2>
         <div style={styles.buttonRow}>
@@ -298,10 +431,8 @@ const Home = ({ username, userId, onLogout }) => {
             Make a New Order
           </button>
         </div>
-
         {ordersLoading && <p>Loading orders...</p>}
         {ordersError && <p style={styles.errorText}>{ordersError}</p>}
-
         {showOrders && !ordersLoading && (
           <div style={styles.ordersList}>
             {orders.length === 0 ? (
@@ -309,24 +440,13 @@ const Home = ({ username, userId, onLogout }) => {
             ) : (
               orders.map((order, idx) => (
                 <div key={idx} style={styles.orderItem}>
-                  <p>
-                    <strong>Order ID:</strong> {order.orderId}
-                  </p>
-                  <p>
-                    <strong>Address:</strong> {order.deliveryAddress}
-                  </p>
-                  <p>
-                    <strong>Notes:</strong> {order.notes}
-                  </p>
-                  <p>
-                    <strong>Request Time:</strong> {order.requestTime}
-                  </p>
+                  <p><strong>Order ID:</strong> {order.orderId}</p>
+                  <p><strong>Address:</strong> {order.deliveryAddress}</p>
+                  <p><strong>Notes:</strong> {order.notes}</p>
+                  <p><strong>Request Time:</strong> {order.requestTime}</p>
                   {order.orderItems && order.orderItems.length > 0 ? (
                     <>
-                      <p>
-                        <strong>Total Items:</strong>{" "}
-                        {order.orderItems.length}
-                      </p>
+                      <p><strong>Total Items:</strong> {order.orderItems.length}</p>
                       <ul style={{ marginLeft: "20px" }}>
                         {order.orderItems.map((item, iidx) => (
                           <li key={iidx}>
@@ -336,9 +456,7 @@ const Home = ({ username, userId, onLogout }) => {
                       </ul>
                     </>
                   ) : (
-                    <p>
-                      <em>No items found for this order.</em>
-                    </p>
+                    <p><em>No items found for this order.</em></p>
                   )}
                   <button
                     style={styles.deleteButton}
@@ -352,86 +470,116 @@ const Home = ({ username, userId, onLogout }) => {
             )}
           </div>
         )}
-      </div>
-
-      {/* “Make a New Order” modal */}
-      {showNewOrderModal && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalContent}>
-            <h3>Select Items</h3>
-            {tempItems.map((item, index) => (
-              <div key={item.name} style={styles.itemRow}>
-                <label style={{ marginRight: "10px" }}>{item.name}</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={item.quantity}
-                  onChange={(e) =>
-                    handleItemQuantityChange(index, e.target.value)
-                  }
-                  style={{ width: "60px" }}
-                />
-              </div>
-            ))}
-            {/* Manually enter items that are not in the list */}
-            <div style={{ marginTop: "20px" }}>
-              <p>Don't see what you're looking for? Enter below</p>
-              <div style={styles.itemRow}>
-                <input
-                  type="text"
-                  placeholder="Item name"
-                  value={customItemName}
-                  onChange={(e) => setCustomItemName(e.target.value)}
-                  style={styles.input}
-                />
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="Quantity"
-                  value={customItemQuantity}
-                  onChange={(e) => setCustomItemQuantity(e.target.value)}
-                  style={{ width: "60px", marginLeft: "10px" }}
-                />
-                <button
-                  onClick={handleAddCustomItem}
-                  style={styles.addCustomButton}
-                >
-                  Add
-                </button>
-              </div>
-              {customItems.length > 0 && (
-                <ul style={{ marginTop: "10px", paddingLeft: "20px" }}>
-                  {customItems.map((item, index) => (
-                    <li key={index} style={{ marginBottom: "5px" }}>
-                      {item.name} x {item.quantity}{" "}
-                      <button
-                        onClick={() => handleRemoveCustomItem(index)}
-                        style={styles.removeButton}
-                      >
-                        Remove
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+        {showNewOrder && (
+          <div style={{ marginTop: "20px", textAlign: "left" }}>
+            <h3>Available Items</h3>
+            <div style={styles.itemGrid}>
+              {cargoItems.length === 0 ? (
+                <p>No items found in cargo.</p>
+              ) : (
+                cargoItems.map((item) => (
+                  <div
+                    key={item.id}
+                    style={styles.itemCard}
+                    onClick={() => handleSelectItem(item)}
+                  >
+                    {item.imageId ? (
+                      <img
+                        src={`http://localhost:8080/api/cargo/images/${item.imageId}`}
+                        alt={item.name}
+                        style={styles.itemImage}
+                      />
+                    ) : (
+                      <div style={styles.itemImagePlaceholder}>
+                        No Image
+                      </div>
+                    )}
+                    <h4>{item.name}</h4>
+                    <p style={{ fontSize: "14px", color: "#999" }}>
+                      {item.category}
+                    </p>
+                    <p style={{ fontSize: "14px" }}>
+                      Total Stock: {item.quantity}
+                    </p>
+                  </div>
+                ))
               )}
             </div>
-            <div style={{ marginTop: "20px", textAlign: "center" }}>
-              <button style={styles.button} onClick={handleAddToCart}>
-                Add to Cart
-              </button>
-              <button
-                type="button"
-                style={styles.cancelButton}
-                onClick={() => setShowNewOrderModal(false)}
-              >
-                Cancel
-              </button>
+          </div>
+        )}
+      </div>
+
+      {/* Item Detail Modal */}
+      {showItemDetailModal && selectedItem && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalContent}>
+            <div style={{ textAlign: "center" }}>
+              {selectedItem.imageId ? (
+                <img
+                  src={`http://localhost:8080/api/cargo/images/${selectedItem.imageId}`}
+                  alt={selectedItem.name}
+                  style={{ width: "200px", marginBottom: "10px" }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: "200px",
+                    height: "200px",
+                    backgroundColor: "#eee",
+                    margin: "0 auto 10px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  No Image
+                </div>
+              )}
+              <h3>{selectedItem.name}</h3>
+              <p>{selectedItem.description}</p>
+              <p style={{ fontSize: "14px", color: "#999" }}>
+                Category: {selectedItem.category || "N/A"}
+              </p>
             </div>
+            {selectedItem.sizeQuantities &&
+              Object.keys(selectedItem.sizeQuantities).length > 0 && (
+                <div style={{ margin: "10px 0" }}>
+                  <label style={{ marginRight: "8px" }}>Size:</label>
+                  <select
+                    value={selectedSize}
+                    onChange={(e) => setSelectedSize(e.target.value)}
+                  >
+                    {Object.entries(selectedItem.sizeQuantities).map(
+                      ([size, qty]) => (
+                        <option key={size} value={size}>
+                          {size} (stock: {qty})
+                        </option>
+                      )
+                    )}
+                  </select>
+                </div>
+              )}
+            <div style={{ margin: "10px 0" }}>
+              <label style={{ marginRight: "8px" }}>Quantity:</label>
+              <input
+                type="number"
+                min="1"
+                value={selectedQuantity}
+                onChange={(e) => setSelectedQuantity(Number(e.target.value))}
+                style={{ width: "60px" }}
+              />
+            </div>
+            <button style={styles.button} onClick={handleAddSelectedItemToCart}>
+              Add to Cart
+            </button>
+            <button style={styles.cancelButton} onClick={closeItemDetailModal}>
+              Cancel
+            </button>
           </div>
         </div>
       )}
 
-      {/* Cart modal */}
+      {/* Cart Modal */}
       {showCart && (
         <div style={styles.modalOverlay}>
           <div style={styles.modalContent}>
@@ -440,20 +588,14 @@ const Home = ({ username, userId, onLogout }) => {
               <p>No items in cart.</p>
             ) : (
               cart.map((c, index) => (
-                <div key={c.name} style={styles.itemRow}>
+                <div key={index} style={styles.itemRow}>
                   <span>{c.name}</span>
                   <input
                     type="number"
                     min="0"
                     value={c.quantity}
-                    onChange={(e) =>
-                      handleCartQuantityChange(index, e.target.value)
-                    }
-                    style={{
-                      width: "60px",
-                      marginLeft: "10px",
-                      marginRight: "10px",
-                    }}
+                    onChange={(e) => handleCartQuantityChange(index, e.target.value)}
+                    style={{ width: "60px", marginLeft: "10px", marginRight: "10px" }}
                   />
                   <button
                     style={styles.removeButton}
@@ -464,8 +606,6 @@ const Home = ({ username, userId, onLogout }) => {
                 </div>
               ))
             )}
-
-            {/* Delivery address, phone number, and notes */}
             <div style={styles.formGroup}>
               <label>Delivery Address:</label>
               <input
@@ -493,10 +633,8 @@ const Home = ({ username, userId, onLogout }) => {
                 style={styles.input}
               />
             </div>
-
             {cartError && <p style={styles.errorText}>{cartError}</p>}
             {cartMessage && <p style={styles.successText}>{cartMessage}</p>}
-
             <button style={styles.button} onClick={handlePlaceOrder}>
               Place Order
             </button>
@@ -506,11 +644,166 @@ const Home = ({ username, userId, onLogout }) => {
           </div>
         </div>
       )}
+
+      {/* Feedback Modal */}
+      {showFeedbackModal && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalContent}>
+            <h3>Submit Feedback</h3>
+            <div style={styles.formGroup}>
+              <label>Phone Number:</label>
+              <input
+                type="text"
+                value={feedbackPhoneNumber}
+                onChange={(e) => setFeedbackPhoneNumber(e.target.value)}
+                style={styles.input}
+              />
+            </div>
+            <div style={styles.formGroup}>
+              <label>Feedback:</label>
+              <textarea
+                value={feedbackContent}
+                onChange={(e) => setFeedbackContent(e.target.value)}
+                style={{ ...styles.input, height: "100px" }}
+              />
+            </div>
+            {feedbackError && <p style={styles.errorText}>{feedbackError}</p>}
+            {feedbackMessage && <p style={styles.successText}>{feedbackMessage}</p>}
+            <button style={styles.button} onClick={handleSubmitFeedback}>
+              Submit Feedback
+            </button>
+            <button style={styles.cancelButton} onClick={handleCloseFeedbackModal}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Profile Modal */}
+      {showProfileModal && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalContent}>
+            <h3>Update Profile</h3>
+            {/* Display current username */}
+            <p>Current Username: {username}</p>
+            {/* Radio buttons to choose which field to update */}
+            <div style={styles.formGroup}>
+              <label>Select field to update:</label>
+              <div>
+                <label>
+                  <input
+                    type="radio"
+                    value="username"
+                    checked={profileOption === "username"}
+                    onChange={(e) => setProfileOption(e.target.value)}
+                  />
+                  Username
+                </label>
+                <label style={{ marginLeft: "10px" }}>
+                  <input
+                    type="radio"
+                    value="email"
+                    checked={profileOption === "email"}
+                    onChange={(e) => setProfileOption(e.target.value)}
+                  />
+                  Email
+                </label>
+                <label style={{ marginLeft: "10px" }}>
+                  <input
+                    type="radio"
+                    value="password"
+                    checked={profileOption === "password"}
+                    onChange={(e) => setProfileOption(e.target.value)}
+                  />
+                  Password
+                </label>
+                <label style={{ marginLeft: "10px" }}>
+                  <input
+                    type="radio"
+                    value="phone"
+                    checked={profileOption === "phone"}
+                    onChange={(e) => setProfileOption(e.target.value)}
+                  />
+                  Phone Number
+                </label>
+              </div>
+            </div>
+            {/* Current password field is required for all updates except username */}
+            {(profileOption === "email" || profileOption === "password" || profileOption === "phone") && (
+              <div style={styles.formGroup}>
+                <label>Current Password:</label>
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  style={styles.input}
+                />
+              </div>
+            )}
+            {/* Conditionally render input based on selected option */}
+            {profileOption === "username" && (
+              <div style={styles.formGroup}>
+                <label>New Username:</label>
+                <input
+                  type="text"
+                  value={newUsername}
+                  onChange={(e) => setNewUsername(e.target.value)}
+                  style={styles.input}
+                  placeholder="Only letters"
+                />
+              </div>
+            )}
+            {profileOption === "email" && (
+              <div style={styles.formGroup}>
+                <label>New Email:</label>
+                <input
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  style={styles.input}
+                  placeholder="example@domain.com"
+                />
+              </div>
+            )}
+            {profileOption === "password" && (
+              <div style={styles.formGroup}>
+                <label>New Password:</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  style={styles.input}
+                  placeholder="Alphanumeric, min 8 chars"
+                />
+              </div>
+            )}
+            {profileOption === "phone" && (
+              <div style={styles.formGroup}>
+                <label>New Phone Number:</label>
+                <input
+                  type="text"
+                  value={newPhone}
+                  onChange={(e) => setNewPhone(e.target.value)}
+                  style={styles.input}
+                  placeholder="10-digit number"
+                />
+              </div>
+            )}
+            {profileError && <p style={styles.errorText}>{profileError}</p>}
+            {profileMessage && <p style={styles.successText}>{profileMessage}</p>}
+            <button style={styles.button} onClick={handleSubmitProfile}>
+              Submit Profile Update
+            </button>
+            <button style={styles.cancelButton} onClick={handleCloseProfileModal}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-//=========================================== CSS part ==============================================
 const styles = {
   container: {
     minHeight: "100vh",
@@ -529,6 +822,26 @@ const styles = {
   navGreeting: {
     marginRight: "auto",
     fontSize: "20px",
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+  },
+  profileButton: {
+    padding: "4px 8px",
+    backgroundColor: "#ffc107",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer",
+    color: "black",
+    fontSize: "14px",
+  },
+  feedbackButton: {
+    padding: "8px 16px",
+    backgroundColor: "#52c41a",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer",
+    color: "white",
   },
   cartButton: {
     padding: "8px 16px",
@@ -555,7 +868,6 @@ const styles = {
     boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
     textAlign: "center",
   },
-
   buttonRow: {
     display: "flex",
     justifyContent: "center",
@@ -620,6 +932,39 @@ const styles = {
     maxHeight: "80vh",
     overflowY: "auto",
     boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+    textAlign: "left",
+  },
+  itemGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+    gap: "20px",
+  },
+  itemCard: {
+    backgroundColor: "#fff",
+    border: "1px solid #ddd",
+    borderRadius: "4px",
+    padding: "10px",
+    cursor: "pointer",
+    textAlign: "center",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+  },
+  itemImage: {
+    width: "100%",
+    height: "120px",
+    objectFit: "cover",
+    marginBottom: "8px",
+    borderRadius: "4px",
+  },
+  itemImagePlaceholder: {
+    width: "100%",
+    height: "120px",
+    backgroundColor: "#eee",
+    borderRadius: "4px",
+    marginBottom: "8px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "#888",
   },
   itemRow: {
     display: "flex",
@@ -645,15 +990,6 @@ const styles = {
     marginTop: "4px",
     border: "1px solid #ddd",
     borderRadius: "4px",
-  },
-  addCustomButton: {
-    padding: "6px 12px",
-    backgroundColor: "#52c41a",
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    marginLeft: "10px",
   },
   button: {
     width: "100%",
