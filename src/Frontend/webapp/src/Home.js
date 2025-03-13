@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import axios from "axios";
+import "./Home.css";
 
 const Home = ({ username, email, password, phone, userId, onLogout }) => {
   // ============== Order History & UI States ==============
@@ -133,7 +134,9 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
       alert("Please enter a valid quantity.");
       return;
     }
-    const itemName = selectedSize ? `${selectedItem.name} (${selectedSize})` : selectedItem.name;
+    const itemName = selectedSize
+      ? `${selectedItem.name} (${selectedSize})`
+      : selectedItem.name;
     const newCart = [...cart];
     const existingIndex = newCart.findIndex((c) => c.name === itemName);
     if (existingIndex >= 0) {
@@ -247,7 +250,7 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
       const payload = {
         name: username,
         phoneNumber: feedbackPhoneNumber,
-        content: feedbackContent
+        content: feedbackContent,
       };
       const response = await axios.post("http://localhost:8080/api/feedback/submit", payload);
       if (response.data.status === "success") {
@@ -303,7 +306,7 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
         await axios.put("http://localhost:8080/api/auth/update/username", {
           userId,
           newUsername: newUsername.trim(),
-          authenticated: "true"
+          authenticated: "true",
         });
         setProfileMessage("You have successfully updated your information. Please log out to update your information.");
         setTimeout(() => onLogout(), 1500);
@@ -331,7 +334,7 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
           userId,
           currentPassword: currentPassword.trim(),
           newEmail: newEmail.trim(),
-          authenticated: "true"
+          authenticated: "true",
         });
         setProfileMessage("You have successfully updated your information. Please log out to update your information.");
         setTimeout(() => onLogout(), 1500);
@@ -359,7 +362,7 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
           userId,
           currentPassword: currentPassword.trim(),
           newPassword: newPassword.trim(),
-          authenticated: "true"
+          authenticated: "true",
         });
         setProfileMessage("You have successfully updated your information. Please log out to update your information.");
         setTimeout(() => onLogout(), 1500);
@@ -387,7 +390,7 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
           userId,
           currentPassword: currentPassword.trim(),
           newPhone: newPhone.trim(),
-          authenticated: "true"
+          authenticated: "true",
         });
         setProfileMessage("You have successfully updated your information. Please log out to update your information.");
         setTimeout(() => onLogout(), 1500);
@@ -399,47 +402,47 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
 
   // ================= Rendering Section =================
   return (
-    <div style={styles.container}>
+    <div className="container">
       {/* Navbar */}
-      <div style={styles.navbar}>
-        <div style={styles.navGreeting}>
+      <div className="navbar">
+        <div className="navGreeting">
           {/* Display current username and Profile button */}
           Hello, {username}!
-          <button style={styles.profileButton} onClick={handleOpenProfileModal}>
+          <button className="profileButton" onClick={handleOpenProfileModal}>
             Profile
           </button>
         </div>
-        <button style={styles.feedbackButton} onClick={handleOpenFeedbackModal}>
+        <button className="feedbackButton" onClick={handleOpenFeedbackModal}>
           Feedback
         </button>
-        <button style={styles.cartButton} onClick={toggleCart}>
+        <button className="cartButton" onClick={toggleCart}>
           Cart
         </button>
-        <button style={styles.logoutButton} onClick={onLogout}>
+        <button className="logoutButton" onClick={onLogout}>
           Log Out
         </button>
       </div>
 
       {/* Main Content */}
-      <div style={styles.content}>
+      <div className="content">
         <h2>Welcome Back, {username}!</h2>
-        <div style={styles.buttonRow}>
-          <button style={styles.toggleOrdersButton} onClick={toggleOrders}>
+        <div className="buttonRow">
+          <button className="toggleOrdersButton" onClick={toggleOrders}>
             View Orders History
           </button>
-          <button style={styles.newOrderButton} onClick={handleOpenNewOrder}>
+          <button className="newOrderButton" onClick={handleOpenNewOrder}>
             Make a New Order
           </button>
         </div>
         {ordersLoading && <p>Loading orders...</p>}
-        {ordersError && <p style={styles.errorText}>{ordersError}</p>}
+        {ordersError && <p className="errorText">{ordersError}</p>}
         {showOrders && !ordersLoading && (
-          <div style={styles.ordersList}>
+          <div className="ordersList">
             {orders.length === 0 ? (
               <p>No orders found.</p>
             ) : (
               orders.map((order, idx) => (
-                <div key={idx} style={styles.orderItem}>
+                <div key={idx} className="orderItem">
                   <p><strong>Order ID:</strong> {order.orderId}</p>
                   <p><strong>Address:</strong> {order.deliveryAddress}</p>
                   <p><strong>Notes:</strong> {order.notes}</p>
@@ -459,7 +462,7 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
                     <p><em>No items found for this order.</em></p>
                   )}
                   <button
-                    style={styles.deleteButton}
+                    className="deleteButton"
                     onClick={() => handleCancelOrder(order.orderId)}
                   >
                     Delete
@@ -473,24 +476,24 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
         {showNewOrder && (
           <div style={{ marginTop: "20px", textAlign: "left" }}>
             <h3>Available Items</h3>
-            <div style={styles.itemGrid}>
+            <div className="itemGrid">
               {cargoItems.length === 0 ? (
                 <p>No items found in cargo.</p>
               ) : (
                 cargoItems.map((item) => (
                   <div
                     key={item.id}
-                    style={styles.itemCard}
+                    className="itemCard"
                     onClick={() => handleSelectItem(item)}
                   >
                     {item.imageId ? (
                       <img
                         src={`http://localhost:8080/api/cargo/images/${item.imageId}`}
                         alt={item.name}
-                        style={styles.itemImage}
+                        className="itemImage"
                       />
                     ) : (
-                      <div style={styles.itemImagePlaceholder}>
+                      <div className="itemImagePlaceholder">
                         No Image
                       </div>
                     )}
@@ -511,8 +514,8 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
 
       {/* Item Detail Modal */}
       {showItemDetailModal && selectedItem && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalContent}>
+        <div className="modalOverlay">
+          <div className="modalContent">
             <div style={{ textAlign: "center" }}>
               {selectedItem.imageId ? (
                 <img
@@ -569,10 +572,10 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
                 style={{ width: "60px" }}
               />
             </div>
-            <button style={styles.button} onClick={handleAddSelectedItemToCart}>
+            <button className="button" onClick={handleAddSelectedItemToCart}>
               Add to Cart
             </button>
-            <button style={styles.cancelButton} onClick={closeItemDetailModal}>
+            <button className="cancelButton" onClick={closeItemDetailModal}>
               Cancel
             </button>
           </div>
@@ -581,14 +584,14 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
 
       {/* Cart Modal */}
       {showCart && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalContent}>
+        <div className="modalOverlay">
+          <div className="modalContent">
             <h3>Your Cart</h3>
             {cart.length === 0 ? (
               <p>No items in cart.</p>
             ) : (
               cart.map((c, index) => (
-                <div key={index} style={styles.itemRow}>
+                <div key={index} className="itemRow">
                   <span>{c.name}</span>
                   <input
                     type="number"
@@ -598,7 +601,7 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
                     style={{ width: "60px", marginLeft: "10px", marginRight: "10px" }}
                   />
                   <button
-                    style={styles.removeButton}
+                    className="removeButton"
                     onClick={() => handleRemoveCartItem(index)}
                   >
                     Remove
@@ -606,39 +609,39 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
                 </div>
               ))
             )}
-            <div style={styles.formGroup}>
+            <div className="formGroup">
               <label>Delivery Address:</label>
               <input
                 type="text"
                 value={deliveryAddress}
                 onChange={(e) => setDeliveryAddress(e.target.value)}
-                style={styles.input}
+                className="input"
               />
             </div>
-            <div style={styles.formGroup}>
+            <div className="formGroup">
               <label>Phone Number:</label>
               <input
                 type="text"
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
-                style={styles.input}
+                className="input"
               />
             </div>
-            <div style={styles.formGroup}>
+            <div className="formGroup">
               <label>Notes:</label>
               <input
                 type="text"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                style={styles.input}
+                className="input"
               />
             </div>
-            {cartError && <p style={styles.errorText}>{cartError}</p>}
-            {cartMessage && <p style={styles.successText}>{cartMessage}</p>}
-            <button style={styles.button} onClick={handlePlaceOrder}>
+            {cartError && <p className="errorText">{cartError}</p>}
+            {cartMessage && <p className="successText">{cartMessage}</p>}
+            <button className="button" onClick={handlePlaceOrder}>
               Place Order
             </button>
-            <button style={styles.cancelButton} onClick={toggleCart}>
+            <button className="cancelButton" onClick={toggleCart}>
               Close
             </button>
           </div>
@@ -647,32 +650,32 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
 
       {/* Feedback Modal */}
       {showFeedbackModal && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalContent}>
+        <div className="modalOverlay">
+          <div className="modalContent">
             <h3>Submit Feedback</h3>
-            <div style={styles.formGroup}>
+            <div className="formGroup">
               <label>Phone Number:</label>
               <input
                 type="text"
                 value={feedbackPhoneNumber}
                 onChange={(e) => setFeedbackPhoneNumber(e.target.value)}
-                style={styles.input}
+                className="input"
               />
             </div>
-            <div style={styles.formGroup}>
+            <div className="formGroup">
               <label>Feedback:</label>
               <textarea
                 value={feedbackContent}
                 onChange={(e) => setFeedbackContent(e.target.value)}
-                style={{ ...styles.input, height: "100px" }}
+                className="input textareaInput"
               />
             </div>
-            {feedbackError && <p style={styles.errorText}>{feedbackError}</p>}
-            {feedbackMessage && <p style={styles.successText}>{feedbackMessage}</p>}
-            <button style={styles.button} onClick={handleSubmitFeedback}>
+            {feedbackError && <p className="errorText">{feedbackError}</p>}
+            {feedbackMessage && <p className="successText">{feedbackMessage}</p>}
+            <button className="button" onClick={handleSubmitFeedback}>
               Submit Feedback
             </button>
-            <button style={styles.cancelButton} onClick={handleCloseFeedbackModal}>
+            <button className="cancelButton" onClick={handleCloseFeedbackModal}>
               Cancel
             </button>
           </div>
@@ -681,13 +684,13 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
 
       {/* Profile Modal */}
       {showProfileModal && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalContent}>
+        <div className="modalOverlay">
+          <div className="modalContent">
             <h3>Update Profile</h3>
             {/* Display current username */}
             <p>Current Username: {username}</p>
             {/* Radio buttons to choose which field to update */}
-            <div style={styles.formGroup}>
+            <div className="formGroup">
               <label>Select field to update:</label>
               <div>
                 <label>
@@ -730,71 +733,71 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
             </div>
             {/* Current password field is required for all updates except username */}
             {(profileOption === "email" || profileOption === "password" || profileOption === "phone") && (
-              <div style={styles.formGroup}>
+              <div className="formGroup">
                 <label>Current Password:</label>
                 <input
                   type="password"
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
-                  style={styles.input}
+                  className="input"
                 />
               </div>
             )}
             {/* Conditionally render input based on selected option */}
             {profileOption === "username" && (
-              <div style={styles.formGroup}>
+              <div className="formGroup">
                 <label>New Username:</label>
                 <input
                   type="text"
                   value={newUsername}
                   onChange={(e) => setNewUsername(e.target.value)}
-                  style={styles.input}
+                  className="input"
                   placeholder="Only letters"
                 />
               </div>
             )}
             {profileOption === "email" && (
-              <div style={styles.formGroup}>
+              <div className="formGroup">
                 <label>New Email:</label>
                 <input
                   type="email"
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
-                  style={styles.input}
+                  className="input"
                   placeholder="example@domain.com"
                 />
               </div>
             )}
             {profileOption === "password" && (
-              <div style={styles.formGroup}>
+              <div className="formGroup">
                 <label>New Password:</label>
                 <input
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  style={styles.input}
+                  className="input"
                   placeholder="Alphanumeric, min 8 chars"
                 />
               </div>
             )}
             {profileOption === "phone" && (
-              <div style={styles.formGroup}>
+              <div className="formGroup">
                 <label>New Phone Number:</label>
                 <input
                   type="text"
                   value={newPhone}
                   onChange={(e) => setNewPhone(e.target.value)}
-                  style={styles.input}
+                  className="input"
                   placeholder="10-digit number"
                 />
               </div>
             )}
-            {profileError && <p style={styles.errorText}>{profileError}</p>}
-            {profileMessage && <p style={styles.successText}>{profileMessage}</p>}
-            <button style={styles.button} onClick={handleSubmitProfile}>
+            {profileError && <p className="errorText">{profileError}</p>}
+            {profileMessage && <p className="successText">{profileMessage}</p>}
+            <button className="button" onClick={handleSubmitProfile}>
               Submit Profile Update
             </button>
-            <button style={styles.cancelButton} onClick={handleCloseProfileModal}>
+            <button className="cancelButton" onClick={handleCloseProfileModal}>
               Cancel
             </button>
           </div>
@@ -802,223 +805,6 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
       )}
     </div>
   );
-};
-
-const styles = {
-  container: {
-    minHeight: "100vh",
-    backgroundColor: "#f0f2f5",
-    fontFamily: "Arial, sans-serif",
-  },
-  navbar: {
-    display: "flex",
-    justifyContent: "flex-end",
-    alignItems: "center",
-    backgroundColor: "#1890ff",
-    color: "white",
-    padding: "10px 20px",
-    gap: "10px",
-  },
-  navGreeting: {
-    marginRight: "auto",
-    fontSize: "20px",
-    display: "flex",
-    alignItems: "center",
-    gap: "10px",
-  },
-  profileButton: {
-    padding: "4px 8px",
-    backgroundColor: "#ffc107",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    color: "black",
-    fontSize: "14px",
-  },
-  feedbackButton: {
-    padding: "8px 16px",
-    backgroundColor: "#52c41a",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    color: "white",
-  },
-  cartButton: {
-    padding: "8px 16px",
-    backgroundColor: "#faad14",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    color: "white",
-  },
-  logoutButton: {
-    padding: "8px 16px",
-    backgroundColor: "#ff4d4f",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    color: "white",
-  },
-  content: {
-    padding: "20px",
-    maxWidth: "800px",
-    margin: "20px auto",
-    backgroundColor: "white",
-    borderRadius: "8px",
-    boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-    textAlign: "center",
-  },
-  buttonRow: {
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: "20px",
-    marginTop: "20px",
-    marginBottom: "20px",
-  },
-  toggleOrdersButton: {
-    padding: "10px 20px",
-    backgroundColor: "#1890ff",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    color: "white",
-  },
-  newOrderButton: {
-    padding: "10px 20px",
-    backgroundColor: "#52c41a",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    color: "white",
-  },
-  ordersList: {
-    marginTop: "10px",
-    border: "1px solid #ddd",
-    borderRadius: "4px",
-    padding: "10px",
-    textAlign: "left",
-  },
-  orderItem: {
-    borderBottom: "1px solid #ddd",
-    padding: "10px 0",
-  },
-  deleteButton: {
-    marginTop: "10px",
-    backgroundColor: "#ff4d4f",
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
-    padding: "6px 12px",
-    cursor: "pointer",
-  },
-  modalOverlay: {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 2000,
-  },
-  modalContent: {
-    backgroundColor: "white",
-    padding: "20px",
-    borderRadius: "8px",
-    width: "400px",
-    maxHeight: "80vh",
-    overflowY: "auto",
-    boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
-    textAlign: "left",
-  },
-  itemGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
-    gap: "20px",
-  },
-  itemCard: {
-    backgroundColor: "#fff",
-    border: "1px solid #ddd",
-    borderRadius: "4px",
-    padding: "10px",
-    cursor: "pointer",
-    textAlign: "center",
-    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-  },
-  itemImage: {
-    width: "100%",
-    height: "120px",
-    objectFit: "cover",
-    marginBottom: "8px",
-    borderRadius: "4px",
-  },
-  itemImagePlaceholder: {
-    width: "100%",
-    height: "120px",
-    backgroundColor: "#eee",
-    borderRadius: "4px",
-    marginBottom: "8px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: "#888",
-  },
-  itemRow: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: "8px",
-  },
-  removeButton: {
-    backgroundColor: "#ff4d4f",
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
-    padding: "4px 8px",
-    cursor: "pointer",
-  },
-  formGroup: {
-    marginBottom: "1rem",
-    textAlign: "left",
-  },
-  input: {
-    width: "100%",
-    padding: "8px",
-    marginTop: "4px",
-    border: "1px solid #ddd",
-    borderRadius: "4px",
-  },
-  button: {
-    width: "100%",
-    padding: "10px",
-    backgroundColor: "#1890ff",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    color: "white",
-    marginTop: "1rem",
-  },
-  cancelButton: {
-    width: "100%",
-    padding: "10px",
-    backgroundColor: "#ff4d4f",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    color: "white",
-    marginTop: "1rem",
-  },
-  errorText: {
-    color: "red",
-    fontSize: "14px",
-  },
-  successText: {
-    color: "green",
-    fontSize: "14px",
-  },
 };
 
 export default Home;

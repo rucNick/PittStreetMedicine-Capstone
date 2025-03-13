@@ -3,14 +3,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-
-const availableItems = [
-  { name: "Water", quantity: 0 },
-  { name: "Ensure", quantity: 0 },
-  { name: "Snapple", quantity: 0 },
-  { name: "Wipes", quantity: 0 },
-  { name: "Slim Jims", quantity: 0 },
-];
+import "./Guest.css";
 
 const Guest = ({ onLogout }) => {
   const navigate = useNavigate();
@@ -28,17 +21,6 @@ const Guest = ({ onLogout }) => {
   const [cartError, setCartError] = useState("");
   const [cartMessage, setCartMessage] = useState("");
 
-  // ========== “Make a New Order” box ==========
-  const [showNewOrderModal, setShowNewOrderModal] = useState(false);
-  const [tempItems, setTempItems] = useState(
-    availableItems.map((i) => ({ ...i }))
-  );
-
-  // New: custom items state
-  const [customItems, setCustomItems] = useState([]);
-  const [customItemName, setCustomItemName] = useState("");
-  const [customItemQuantity, setCustomItemQuantity] = useState(0);
-
   // ========== current order box ==========
   const [showCurrentOrderModal, setShowCurrentOrderModal] = useState(false);
   const [currentOrder, setCurrentOrder] = useState(null);
@@ -49,102 +31,105 @@ const Guest = ({ onLogout }) => {
     navigate("/"); // back to login
   };
 
-  // ========== open “Make a New Order” box ==========
-  const handleOpenNewOrder = () => {
-    // Reset temporary item selection
-    const resetItems = availableItems.map((i) => ({ ...i, quantity: 0 }));
-    setTempItems(resetItems);
-    // New: reset custom items state
-    setCustomItems([]);
-    setCustomItemName("");
-    setCustomItemQuantity(0);
-    setShowNewOrderModal(true);
+  // ========== cargo items ==========
+  // New: We fetch cargo items from the backend and display them directly on the page
+  const [showCargoItems, setShowCargoItems] = useState(false);
+  const [cargoItems, setCargoItems] = useState([]);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [showItemDetailModal, setShowItemDetailModal] = useState(false);
+  const [selectedSize, setSelectedSize] = useState("");
+  const [selectedQuantity, setSelectedQuantity] = useState(1);
+
+  // When user clicks "Make a New Order", fetch cargo items and show them
+  const handleOpenNewOrder = async () => {
+    try {
+      const response = await axios.get("http://localhost:8080/api/cargo/items");
+      setCargoItems(response.data);
+      setShowCargoItems(true);
+    } catch (error) {
+      console.error("Failed to fetch cargo items:", error);
+    }
   };
 
-  // change item quantities in “Make a New Order” box
-  const handleItemQuantityChange = (index, newQuantity) => {
-    const updated = [...tempItems];
-    updated[index].quantity = parseInt(newQuantity, 10) || 0;
-    setTempItems(updated);
+  // Clicking an item -> show detail modal
+  const handleSelectItem = (item) => {
+    setSelectedItem(item);
+    setShowItemDetailModal(true);
+    const sizes = item.sizeQuantities ? Object.keys(item.sizeQuantities) : [];
+    setSelectedSize(sizes.length > 0 ? sizes[0] : "");
+    setSelectedQuantity(1);
   };
 
-  // New: handle adding a custom item
-  const handleAddCustomItem = () => {
-    if (!customItemName.trim()) {
-      alert("Please enter the item name");
+  // Close detail modal
+  const closeItemDetailModal = () => {
+    setSelectedItem(null);
+    setShowItemDetailModal(false);
+    setSelectedSize("");
+    setSelectedQuantity(1);
+  };
+
+  // Add selected item to cart
+  const handleAddSelectedItemToCart = () => {
+    if (!selectedItem) return;
+    if (selectedQuantity <= 0) {
+      alert("Please enter a valid quantity.");
       return;
     }
-    const quantity = parseInt(customItemQuantity, 10);
-    if (!quantity || quantity <= 0) {
-      alert("Please enter a valid quantity");
-      return;
-    }
-    const newItem = { name: customItemName, quantity };
-    setCustomItems([...customItems, newItem]);
-    setCustomItemName("");
-    setCustomItemQuantity(0);
-  };
-
-  // New: handle removing a custom item
-  const handleRemoveCustomItem = (index) => {
-    const updated = [...customItems];
-    updated.splice(index, 1);
-    setCustomItems(updated);
-  };
-
-  // move seleted item to cart
-  const handleAddToCart = () => {
-    const selected = tempItems.filter((i) => i.quantity > 0);
-    if (selected.length === 0 && customItems.length === 0) {
-      alert("Please select or add at least one item.");
-      return;
-    }
+    // combine name + size
+    const itemName = selectedSize
+      ? `${selectedItem.name} (${selectedSize})`
+      : selectedItem.name;
     const newCart = [...cart];
-    // Add preset items
-    selected.forEach((sel) => {
-      const existingIndex = newCart.findIndex((c) => c.name === sel.name);
-      if (existingIndex >= 0) {
-        newCart[existingIndex].quantity += sel.quantity;
-      } else {
-        newCart.push({ name: sel.name, quantity: sel.quantity });
-      }
-    });
-    // Add custom items
-    customItems.forEach((item) => {
-      const existingIndex = newCart.findIndex((c) => c.name === item.name);
-      if (existingIndex >= 0) {
-        newCart[existingIndex].quantity += item.quantity;
-      } else {
-        newCart.push({ name: item.name, quantity: item.quantity });
-      }
-    });
+    const existingIndex = newCart.findIndex((c) => c.name === itemName);
+    if (existingIndex >= 0) {
+      newCart[existingIndex].quantity += selectedQuantity;
+    } else {
+      newCart.push({ name: itemName, quantity: selectedQuantity });
+    }
     setCart(newCart);
-    setShowNewOrderModal(false);
+    closeItemDetailModal();
   };
 
-  // open cart
+  // open/close cart
   const toggleCart = () => {
     setShowCart(!showCart);
     setCartError("");
     setCartMessage("");
   };
 
-  // change quantitoes in cart
+  // change quantities in cart
   const handleCartQuantityChange = (index, newQuantity) => {
     const updated = [...cart];
     updated[index].quantity = parseInt(newQuantity, 10) || 0;
     setCart(updated);
   };
 
-  // remove items in cart
+  // remove item in cart
   const handleRemoveCartItem = (index) => {
     const updated = [...cart];
     updated.splice(index, 1);
     setCart(updated);
   };
 
-  // ========== place order：POST /api/orders/guest/create ==========
-  const handlePlaceOrder = async () => {
+  // ========== place order：POST /api/orders/guest/create with geolocation ==========
+  // 1) get geolocation
+  const handlePlaceOrder = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          placeOrderWithLocation(position.coords.latitude, position.coords.longitude);
+        },
+        () => {
+          placeOrderWithLocation(null, null);
+        }
+      );
+    } else {
+      placeOrderWithLocation(null, null);
+    }
+  };
+
+  // 2) actual post to backend
+  const placeOrderWithLocation = async (latitude, longitude) => {
     if (cart.length === 0) {
       setCartError("Your cart is empty.");
       return;
@@ -160,9 +145,7 @@ const Guest = ({ onLogout }) => {
       !phone.trim() ||
       !guestNotes.trim()
     ) {
-      setCartError(
-        "Please fill in first name, last name, email, phone, and notes."
-      );
+      setCartError("Please fill in first name, last name, email, phone, and notes.");
       return;
     }
     setCartError("");
@@ -170,7 +153,6 @@ const Guest = ({ onLogout }) => {
 
     try {
       const combinedUserNotes = `FirstName: ${guestFirstName}; LastName: ${guestLastName}; ${guestNotes}`;
-
       // payload
       const payload = {
         firstName: guestFirstName,
@@ -178,22 +160,22 @@ const Guest = ({ onLogout }) => {
         email,
         phone,
         deliveryAddress,
-        // notes include first name and last name
         notes: combinedUserNotes,
         items: cart.map((c) => ({
           itemName: c.name,
           quantity: c.quantity,
         })),
       };
-
+      if (latitude !== null && longitude !== null) {
+        payload.latitude = latitude;
+        payload.longitude = longitude;
+      }
       const response = await axios.post(
         "http://localhost:8080/api/orders/guest/create",
         payload
       );
-
       if (response.data.status === "success") {
         setCartMessage("Order placed successfully!");
-
         // generate currentOrder
         const newOrder = {
           orderId: response.data.orderId,
@@ -204,10 +186,8 @@ const Guest = ({ onLogout }) => {
           notes: combinedUserNotes,
           items: cart, // items in cart
         };
-
         setCurrentOrder(newOrder);
         setShowCurrentOrderModal(true);
-
         // clean cart & form
         setCart([]);
         setDeliveryAddress("");
@@ -227,125 +207,161 @@ const Guest = ({ onLogout }) => {
 //=========================================== HTML part ==============================================
 
   return (
-    <div style={styles.container}>
+    <div className="container">
       {/* top nav bar */}
-      <div style={styles.navbar}>
-        <div style={styles.navGreeting}>Welcome, Guest!</div>
-        <button style={styles.logoutButton} onClick={handleLogout}>
+      <div className="navbar">
+        <div className="navGreeting">Welcome, Guest!</div>
+        <button className="logoutButton" onClick={handleLogout}>
           Log Out
         </button>
       </div>
 
-      {/* Cannot view order history, can only place an order */}
-      <div style={styles.content}>
+      {/* Guest cannot view order history, only place an order */}
+      <div className="content">
         <h2>Make a New Order as Guest</h2>
-        <button style={styles.newOrderButton} onClick={handleOpenNewOrder}>
+        <button className="newOrderButton" onClick={handleOpenNewOrder}>
           Make a New Order
         </button>
-        <button style={styles.cartButton} onClick={toggleCart}>
+        <button className="cartButton" onClick={toggleCart}>
           Cart ({cart.length})
         </button>
-      </div>
 
-      {/* “Make a New Order” box open */}
-      {showNewOrderModal && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalContent}>
-            <h3>Select Items</h3>
-            {tempItems.map((item, index) => (
-              <div key={item.name} style={styles.itemRow}>
-                <label style={{ marginRight: "10px" }}>{item.name}</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={item.quantity}
-                  onChange={(e) =>
-                    handleItemQuantityChange(index, e.target.value)
-                  }
-                  style={{ width: "60px" }}
-                />
-              </div>
-            ))}
-            {/* New: Custom item input section */}
-            <div style={{ marginTop: "20px", textAlign: "center" }}>
-              <p>Didn't find the item you're looking for? Enter it below</p>
-              <div style={styles.itemRow}>
-                <input
-                  type="text"
-                  placeholder="Item Name"
-                  value={customItemName}
-                  onChange={(e) => setCustomItemName(e.target.value)}
-                  style={styles.input}
-                />
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="Quantity"
-                  value={customItemQuantity}
-                  onChange={(e) => setCustomItemQuantity(e.target.value)}
-                  style={{ width: "60px", marginLeft: "10px" }}
-                />
-                <button
-                  onClick={handleAddCustomItem}
-                  style={styles.addCustomButton}
-                >
-                  Add
-                </button>
-              </div>
-              {customItems.length > 0 && (
-                <ul style={{ marginTop: "10px", paddingLeft: "20px" }}>
-                  {customItems.map((item, index) => (
-                    <li key={index} style={{ marginBottom: "5px" }}>
-                      {item.name} x {item.quantity}{" "}
-                      <button
-                        onClick={() => handleRemoveCustomItem(index)}
-                        style={styles.removeButton}
-                      >
-                        Remove
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+        {/* If user has clicked "Make a New Order", show cargo items directly on page */}
+        {showCargoItems && (
+          <div style={{ marginTop: "20px", textAlign: "left" }}>
+            <h3>Available Items</h3>
+            <div className="itemGrid">
+              {cargoItems.length === 0 ? (
+                <p>No items found in cargo.</p>
+              ) : (
+                cargoItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="itemCard"
+                    onClick={() => handleSelectItem(item)}
+                  >
+                    {item.imageId ? (
+                      <img
+                        src={`http://localhost:8080/api/cargo/images/${item.id}`}
+                        alt={item.name}
+                        className="itemImage"
+                      />
+                    ) : (
+                      <div className="itemImagePlaceholder">
+                        No Image
+                      </div>
+                    )}
+                    <h4>{item.name}</h4>
+                    <p style={{ fontSize: "14px", color: "#999" }}>
+                      {item.category}
+                    </p>
+                    <p style={{ fontSize: "14px" }}>
+                      Total Stock: {item.quantity}
+                    </p>
+                  </div>
+                ))
               )}
             </div>
-            <div style={{ marginTop: "20px", textAlign: "center" }}>
-              <button style={styles.button} onClick={handleAddToCart}>
-                Add to Cart
-              </button>
-              <button
-                type="button"
-                style={styles.cancelButton}
-                onClick={() => setShowNewOrderModal(false)}
-              >
-                Cancel
-              </button>
+          </div>
+        )}
+      </div>
+
+      {/* Detail modal for a selected item */}
+      {showItemDetailModal && selectedItem && (
+        <div className="modalOverlay">
+          <div className="modalContent">
+            {/* Show image or placeholder */}
+            <div style={{ textAlign: "center" }}>
+              {selectedItem.imageId ? (
+                <img
+                  src={`http://localhost:8080/api/cargo/images/${selectedItem.id}`}
+                  alt={selectedItem.name}
+                  style={{ width: "200px", marginBottom: "10px" }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: "200px",
+                    height: "200px",
+                    backgroundColor: "#eee",
+                    margin: "0 auto 10px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  No Image
+                </div>
+              )}
+              <h3>{selectedItem.name}</h3>
+              <p>{selectedItem.description}</p>
+              <p style={{ fontSize: "14px", color: "#999" }}>
+                Category: {selectedItem.category || "N/A"}
+              </p>
             </div>
+
+            {/* If item has sizeQuantities, let user pick a size */}
+            {selectedItem.sizeQuantities &&
+              Object.keys(selectedItem.sizeQuantities).length > 0 && (
+                <div style={{ margin: "10px 0" }}>
+                  <label style={{ marginRight: "8px" }}>Size:</label>
+                  <select
+                    value={selectedSize}
+                    onChange={(e) => setSelectedSize(e.target.value)}
+                  >
+                    {Object.entries(selectedItem.sizeQuantities).map(
+                      ([size, qty]) => (
+                        <option key={size} value={size}>
+                          {size} (stock: {qty})
+                        </option>
+                      )
+                    )}
+                  </select>
+                </div>
+              )}
+
+            {/* quantity */}
+            <div style={{ margin: "10px 0" }}>
+              <label style={{ marginRight: "8px" }}>Quantity:</label>
+              <input
+                type="number"
+                min="1"
+                value={selectedQuantity}
+                onChange={(e) => setSelectedQuantity(Number(e.target.value))}
+                style={{ width: "60px" }}
+              />
+            </div>
+
+            <button className="button" onClick={handleAddSelectedItemToCart}>
+              Add to Cart
+            </button>
+            <button className="cancelButton" onClick={closeItemDetailModal}>
+              Cancel
+            </button>
           </div>
         </div>
       )}
 
       {/* cart box open */}
       {showCart && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalContent}>
+        <div className="modalOverlay">
+          <div className="modalContent">
             <h3>Your Cart</h3>
             {cart.length === 0 ? (
               <p>No items in cart.</p>
             ) : (
               cart.map((c, index) => (
-                <div key={c.name} style={styles.itemRow}>
+                <div key={c.name} className="itemRow">
                   <span>{c.name}</span>
                   <input
                     type="number"
                     min="0"
                     value={c.quantity}
-                    onChange={(e) =>
-                      handleCartQuantityChange(index, e.target.value)
-                    }
+                    onChange={(e) => handleCartQuantityChange(index, e.target.value)}
                     style={{ width: "60px", marginLeft: "10px", marginRight: "10px" }}
                   />
                   <button
-                    style={styles.removeButton}
+                    className="removeButton"
                     onClick={() => handleRemoveCartItem(index)}
                   >
                     Remove
@@ -355,73 +371,73 @@ const Guest = ({ onLogout }) => {
             )}
 
             {/* Required information: Address, firstName, lastName, email, phone, note */}
-            <div style={styles.formGroup}>
+            <div className="formGroup">
               <label>Delivery Address:</label>
               <input
                 type="text"
                 value={deliveryAddress}
                 onChange={(e) => setDeliveryAddress(e.target.value)}
-                style={styles.input}
+                className="input"
               />
             </div>
 
-            <div style={styles.formGroup}>
+            <div className="formGroup">
               <label>First Name:</label>
               <input
                 type="text"
                 value={guestFirstName}
                 onChange={(e) => setGuestFirstName(e.target.value)}
-                style={styles.input}
+                className="input"
               />
             </div>
 
-            <div style={styles.formGroup}>
+            <div className="formGroup">
               <label>Last Name:</label>
               <input
                 type="text"
                 value={guestLastName}
                 onChange={(e) => setGuestLastName(e.target.value)}
-                style={styles.input}
+                className="input"
               />
             </div>
 
-            <div style={styles.formGroup}>
+            <div className="formGroup">
               <label>Email:</label>
               <input
                 type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                style={styles.input}
+                className="input"
               />
             </div>
 
-            <div style={styles.formGroup}>
+            <div className="formGroup">
               <label>Phone:</label>
               <input
                 type="text"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                style={styles.input}
+                className="input"
               />
             </div>
 
-            <div style={styles.formGroup}>
+            <div className="formGroup">
               <label>Notes:</label>
               <input
                 type="text"
                 value={guestNotes}
                 onChange={(e) => setGuestNotes(e.target.value)}
-                style={styles.input}
+                className="input"
               />
             </div>
 
-            {cartError && <p style={styles.errorText}>{cartError}</p>}
-            {cartMessage && <p style={styles.successText}>{cartMessage}</p>}
+            {cartError && <p className="errorText">{cartError}</p>}
+            {cartMessage && <p className="successText">{cartMessage}</p>}
 
-            <button style={styles.button} onClick={handlePlaceOrder}>
+            <button className="button" onClick={handlePlaceOrder}>
               Place Order
             </button>
-            <button style={styles.cancelButton} onClick={toggleCart}>
+            <button className="cancelButton" onClick={toggleCart}>
               Close
             </button>
           </div>
@@ -430,13 +446,12 @@ const Guest = ({ onLogout }) => {
 
       {/* Current order information popup (only displayed after successful order) */}
       {showCurrentOrderModal && currentOrder && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalContent}>
+        <div className="modalOverlay">
+          <div className="modalContent">
             {/* red note */}
             <p style={{ color: "red", fontSize: "18px", fontStyle: "italic" }}>
               NOTE: Please be sure to remember this information! Make sure you have taken a screenshot or written it down!
             </p>
-
             <h3>Current Order</h3>
             <p><strong>Order ID:</strong> {currentOrder.orderId}</p>
             <p><strong>Status:</strong> {currentOrder.orderStatus}</p>
@@ -454,10 +469,7 @@ const Guest = ({ onLogout }) => {
                 </div>
               ))}
             </div>
-            <button
-              style={styles.button}
-              onClick={() => setShowCurrentOrderModal(false)}
-            >
+            <button className="button" onClick={() => setShowCurrentOrderModal(false)}>
               Close
             </button>
           </div>
@@ -465,144 +477,6 @@ const Guest = ({ onLogout }) => {
       )}
     </div>
   );
-};
-
-//=========================================== CSS part ==============================================
-
-const styles = {
-  container: {
-    minHeight: "100vh",
-    backgroundColor: "#f0f2f5",
-    fontFamily: "Arial, sans-serif",
-  },
-  navbar: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#1890ff",
-    color: "white",
-    padding: "10px 20px",
-  },
-  navGreeting: {
-    fontSize: "20px",
-  },
-  logoutButton: {
-    padding: "8px 16px",
-    backgroundColor: "#ff4d4f",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    color: "white",
-  },
-  content: {
-    padding: "20px",
-    maxWidth: "800px",
-    margin: "20px auto",
-    backgroundColor: "white",
-    borderRadius: "8px",
-    boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-    textAlign: "center",
-  },
-  newOrderButton: {
-    padding: "10px 20px",
-    backgroundColor: "#52c41a",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    color: "white",
-    marginRight: "10px",
-  },
-  cartButton: {
-    padding: "10px 20px",
-    backgroundColor: "#faad14",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    color: "white",
-  },
-  modalOverlay: {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 2000,
-  },
-  modalContent: {
-    backgroundColor: "white",
-    padding: "20px",
-    borderRadius: "8px",
-    width: "400px",
-    maxHeight: "80vh",
-    overflowY: "auto",
-    boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
-  },
-  itemRow: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: "8px",
-  },
-  removeButton: {
-    backgroundColor: "#ff4d4f",
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
-    padding: "4px 8px",
-    cursor: "pointer",
-  },
-  formGroup: {
-    marginBottom: "1rem",
-    textAlign: "left",
-  },
-  input: {
-    width: "100%",
-    padding: "8px",
-    marginTop: "4px",
-    border: "1px solid #ddd",
-    borderRadius: "4px",
-  },
-  addCustomButton: {
-    padding: "6px 12px",
-    backgroundColor: "#52c41a",
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    marginLeft: "10px",
-  },
-  button: {
-    width: "100%",
-    padding: "10px",
-    backgroundColor: "#1890ff",
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    marginTop: "1rem",
-  },
-  cancelButton: {
-    width: "100%",
-    padding: "10px",
-    backgroundColor: "#ff4d4f",
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    marginTop: "1rem",
-  },
-  errorText: {
-    color: "red",
-    fontSize: "14px",
-  },
-  successText: {
-    color: "green",
-    fontSize: "14px",
-  },
 };
 
 export default Guest;

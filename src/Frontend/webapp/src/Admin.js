@@ -27,8 +27,6 @@ const Admin = ({ onLogout, userData }) => {
           "Authentication-Status": "true"
         }
       });
-      // The backend returns an object with { data: { clients: [...], volunteers: [...], admins: [...] } }
-      // Each user object is expected to have username, email, phone, role, etc. (but we are no longer using userId)
       const data = response.data.data;
       const allUsers = [
         ...(data.clients || []),
@@ -72,7 +70,7 @@ const Admin = ({ onLogout, userData }) => {
   // ----- Orders state & functions -----
   const [orders, setOrders] = useState([]);
   const [ordersError, setOrdersError] = useState('');
-  const [orderFilter, setOrderFilter] = useState("PENDING"); // "PENDING" or "CANCELLED"
+  const [orderFilter, setOrderFilter] = useState("PENDING"); // "PENDING", "CANCELLED", "PROCESSING"
 
   // Fetch orders from the backend (we pass userRole="VOLUNTEER" to allow viewing all orders)
   const loadOrders = useCallback(async (status) => {
@@ -80,7 +78,7 @@ const Admin = ({ onLogout, userData }) => {
       const response = await axios.get('http://localhost:8080/api/orders/all', {
         params: {
           authenticated: true,
-          userId: userData.userId,  // This remains for the order queries
+          userId: userData.userId,
           userRole: "VOLUNTEER"
         }
       });
@@ -101,6 +99,7 @@ const Admin = ({ onLogout, userData }) => {
         userRole: "VOLUNTEER"
       });
       alert(response.data.message);
+      // Reload orders to refresh table
       loadOrders(orderFilter);
     } catch (error) {
       alert(error.response?.data?.message || error.message);
@@ -181,25 +180,25 @@ const Admin = ({ onLogout, userData }) => {
         </button>
       </div>
 
-      {/* Navigation Tabs */}
-      <div style={styles.navbar}>
-        <button onClick={() => setActiveTab("users")} style={styles.navButton}>
-          Users
-        </button>
-        <button onClick={() => setActiveTab("orders")} style={styles.navButton}>
-          Orders
-        </button>
-        <button onClick={() => setActiveTab("applications")} style={styles.navButton}>
-          Volunteer Applications
-        </button>
-        <button onClick={() => navigate('/cargo_admin')} style={styles.navButton}>
-          Cargo Admin
-        </button>
-      </div>
-
       <div style={styles.content}>
         <h1>Admin Dashboard</h1>
         <p style={styles.welcomeText}>Welcome back, {userData.username}!</p>
+
+        {/* Navigation Tabs */}
+        <div style={styles.navbar}>
+          <button onClick={() => setActiveTab("users")} style={styles.navButton}>
+            Users
+          </button>
+          <button onClick={() => setActiveTab("orders")} style={styles.navButton}>
+            Orders
+          </button>
+          <button onClick={() => setActiveTab("applications")} style={styles.navButton}>
+            Volunteer Applications
+          </button>
+          <button onClick={() => navigate('/cargo_admin')} style={styles.navButton}>
+            Cargo Admin
+          </button>
+        </div>
 
         {/* ========================= USERS SECTION ========================= */}
         {activeTab === "users" && (
@@ -212,7 +211,6 @@ const Admin = ({ onLogout, userData }) => {
               <table style={styles.table}>
                 <thead>
                   <tr>
-                    {/* Removed the "User ID" column */}
                     <th style={styles.tableHeaderCell}>Username</th>
                     <th style={styles.tableHeaderCell}>Email</th>
                     <th style={styles.tableHeaderCell}>Role</th>
@@ -223,7 +221,6 @@ const Admin = ({ onLogout, userData }) => {
                 <tbody>
                   {users.map((user, idx) => (
                     <tr key={idx}>
-                      {/* Removed the <td> for userId */}
                       <td style={styles.tableCell}>{user.username}</td>
                       <td style={styles.tableCell}>{user.email}</td>
                       <td style={styles.tableCell}>{user.role}</td>
@@ -310,6 +307,16 @@ const Admin = ({ onLogout, userData }) => {
               >
                 Cancelled Orders
               </button>
+              {/* Added: Button to view orders with PROCESSING status */}
+              <button
+                style={styles.filterButton}
+                onClick={() => {
+                  setOrderFilter("PROCESSING");
+                  loadOrders("PROCESSING");
+                }}
+              >
+                Processing Orders
+              </button>
             </div>
             {ordersError && <p style={{ color: 'red' }}>Error: {ordersError}</p>}
 
@@ -348,8 +355,8 @@ const Admin = ({ onLogout, userData }) => {
                         <td style={styles.tableCell}>{order.notes}</td>
                         <td style={styles.tableCell}>{order.orderType}</td>
                         <td style={styles.tableCell}>
-                          {/* Only show cancel button for pending orders */}
-                          {order.status === "PENDING" && (
+                          {/* Allow cancel only when order status is PENDING or PROCESSING */}
+                          {(order.status === "PENDING" || order.status === "PROCESSING") && (
                             <button
                               style={styles.actionButton}
                               onClick={() => cancelOrder(order.orderId)}
@@ -524,7 +531,7 @@ const styles = {
   },
   content: {
     textAlign: 'center',
-    maxWidth: '1200px',
+    width: '90%',
     margin: '0 auto',
   },
   welcomeText: {
@@ -540,7 +547,7 @@ const styles = {
   },
   tableContainer: {
     marginTop: '20px',
-    overflowX: 'auto', // horizontally scroll if needed
+    overflowX: 'auto',
   },
   tableHeader: {
     textAlign: 'left',
@@ -550,7 +557,6 @@ const styles = {
   table: {
     width: '100%',
     borderCollapse: 'collapse',
-    minWidth: '700px',
     border: '1px solid #ccc',
   },
   tableHeaderCell: {

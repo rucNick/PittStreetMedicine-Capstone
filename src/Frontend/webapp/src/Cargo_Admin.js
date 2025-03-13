@@ -30,7 +30,8 @@ const Cargo_Admin = ({ userData }) => {
     category: '',
     quantity: 0, // If there is no size, the user can manually input the quantity
   });
-  // Store size input entries: each object in the array has the format { size: string, quantity: number }
+
+  // Store size input entries: each object in the array has { size: string, quantity: number }
   const [newSizeEntries, setNewSizeEntries] = useState([]);
   const [newItemImage, setNewItemImage] = useState(null);
 
@@ -92,17 +93,13 @@ const Cargo_Admin = ({ userData }) => {
         formData.append('image', newItemImage);
       }
 
-      const response = await axios.post(
-        'http://localhost:8080/api/cargo/items',
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-            'Admin-Username': userData.username,
-            'Authentication-Status': 'true',
-          },
-        }
-      );
+      const response = await axios.post('http://localhost:8080/api/cargo/items', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Admin-Username': userData.username,
+          'Authentication-Status': 'true',
+        },
+      });
 
       alert(response.data.message || 'Item added successfully');
       // Clear the input fields
@@ -116,7 +113,7 @@ const Cargo_Admin = ({ userData }) => {
     }
   };
 
-  // 1.3 Update items (if you need to update size, you can extend this as needed)
+  // 1.3 Update items
   const [updateItemId, setUpdateItemId] = useState('');
   const [updateItemData, setUpdateItemData] = useState({
     name: '',
@@ -185,16 +182,12 @@ const Cargo_Admin = ({ userData }) => {
         formData.append('cargoItemId', uploadCargoItemId);
       }
 
-      const response = await axios.post(
-        'http://localhost:8080/api/cargo/images/upload',
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-            'Authentication-Status': 'true',
-          },
-        }
-      );
+      const response = await axios.post('http://localhost:8080/api/cargo/images/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Authentication-Status': 'true',
+        },
+      });
       alert(response.data.message || 'Image uploaded successfully');
       setUploadImageFile(null);
       setUploadCargoItemId('');
@@ -266,40 +259,71 @@ const Cargo_Admin = ({ userData }) => {
           <div style={styles.block}>
             <h3>All Items</h3>
             {allItemsError && <p style={{ color: 'red' }}>{allItemsError}</p>}
+
             <table style={styles.table}>
               <thead>
                 <tr>
-                  <th>ID</th>
-                  <th>Name</th>
-                  <th>Description</th>
-                  <th>Category</th>
-                  <th>Quantity</th>
+                  <th style={styles.tableHeaderCell}>ID</th>
+                  <th style={styles.tableHeaderCell}>Name</th>
+                  <th style={styles.tableHeaderCell}>Description</th>
+                  <th style={styles.tableHeaderCell}>Category</th>
+                  <th style={styles.tableHeaderCell}>Total-Quantity</th>
+                  <th style={styles.tableHeaderCell}>Size</th>
+                  <th style={styles.tableHeaderCell}>Size-Quantity</th>
                 </tr>
               </thead>
               <tbody>
-                {allItems.map((item) => (
-                  <React.Fragment key={item.id}>
-                    <tr>
-                      <td>{item.id}</td>
-                      <td>{item.name}</td>
-                      <td>{item.description}</td>
-                      <td>{item.category}</td>
-                      <td>{item.quantity}</td>
-                    </tr>
-                    {/* If there is size information, display additional rows */}
-                    {item.sizeQuantities && Object.keys(item.sizeQuantities).length > 0 && (
-                      Object.entries(item.sizeQuantities).map(([size, qty]) => (
-                        <tr key={item.id + size}>
-                          <td></td>
-                          <td></td>
-                          <td></td>
-                          <td>{size}</td>
-                          <td>{qty}</td>
-                        </tr>
-                      ))
-                    )}
-                  </React.Fragment>
-                ))}
+                {allItems.map((item) => {
+                  const hasSizes =
+                    item.sizeQuantities && Object.keys(item.sizeQuantities).length > 0;
+
+                  return (
+                    <React.Fragment key={item.id}>
+                      {/* Main row (item info) */}
+                      <tr>
+                        <td style={styles.tableCell}>{item.id}</td>
+                        <td style={styles.tableCell}>{item.name}</td>
+                        <td style={styles.tableCell}>{item.description}</td>
+                        <td style={styles.tableCell}>{item.category}</td>
+                        {/* If item.quantity < 5, display (Low-Stock!) in red */}
+                        <td style={styles.tableCell}>
+                          {item.quantity}
+                          {item.quantity < 5 && (
+                            <span style={{ color: 'red', marginLeft: '5px' }}>
+                              (Low-Stock!)
+                            </span>
+                          )}
+                        </td>
+                        {/* If no multiple sizes, show empty cells for size columns */}
+                        <td style={styles.tableCell}></td>
+                        <td style={styles.tableCell}></td>
+                      </tr>
+
+                      {/* If there is size information, display additional rows for each size */}
+                      {hasSizes &&
+                        Object.entries(item.sizeQuantities).map(([size, qty]) => (
+                          <tr key={`${item.id}-${size}`}>
+                            {/* Blank cells for the first 5 columns */}
+                            <td style={styles.tableCell}></td>
+                            <td style={styles.tableCell}></td>
+                            <td style={styles.tableCell}></td>
+                            <td style={styles.tableCell}></td>
+                            <td style={styles.tableCell}></td>
+                            {/* Show the size and size quantity in the last two columns */}
+                            <td style={styles.tableCell}>{size}</td>
+                            <td style={styles.tableCell}>
+                              {qty}
+                              {qty < 5 && (
+                                <span style={{ color: 'red', marginLeft: '5px' }}>
+                                  (Low-Stock!)
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                    </React.Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -319,7 +343,9 @@ const Cargo_Admin = ({ userData }) => {
               type="text"
               placeholder="Description"
               value={newItemData.description}
-              onChange={(e) => setNewItemData({ ...newItemData, description: e.target.value })}
+              onChange={(e) =>
+                setNewItemData({ ...newItemData, description: e.target.value })
+              }
             />
             <input
               style={styles.input}
@@ -333,7 +359,9 @@ const Cargo_Admin = ({ userData }) => {
               type="number"
               placeholder="Quantity (if no sizes)"
               value={newItemData.quantity}
-              onChange={(e) => setNewItemData({ ...newItemData, quantity: Number(e.target.value) })}
+              onChange={(e) =>
+                setNewItemData({ ...newItemData, quantity: Number(e.target.value) })
+              }
             />
 
             {/* Size Options */}
@@ -395,21 +423,27 @@ const Cargo_Admin = ({ userData }) => {
               type="text"
               placeholder="Description"
               value={updateItemData.description}
-              onChange={(e) => setUpdateItemData({ ...updateItemData, description: e.target.value })}
+              onChange={(e) =>
+                setUpdateItemData({ ...updateItemData, description: e.target.value })
+              }
             />
             <input
               style={styles.input}
               type="text"
               placeholder="Category"
               value={updateItemData.category}
-              onChange={(e) => setUpdateItemData({ ...updateItemData, category: e.target.value })}
+              onChange={(e) =>
+                setUpdateItemData({ ...updateItemData, category: e.target.value })
+              }
             />
             <input
               style={styles.input}
               type="number"
               placeholder="Quantity"
               value={updateItemData.quantity}
-              onChange={(e) => setUpdateItemData({ ...updateItemData, quantity: Number(e.target.value) })}
+              onChange={(e) =>
+                setUpdateItemData({ ...updateItemData, quantity: Number(e.target.value) })
+              }
             />
 
             <div style={{ marginTop: '10px' }}>
@@ -503,7 +537,7 @@ const styles = {
     borderRadius: '8px',
     padding: '20px',
     margin: '0 auto',
-    maxWidth: '800px',
+    width: '90%',
     textAlign: 'left',
   },
   block: {
@@ -535,10 +569,24 @@ const styles = {
     cursor: 'pointer',
     marginLeft: '5px',
   },
+  // Updated table style to show horizontal and vertical lines
   table: {
     margin: '0 auto',
-    borderCollapse: 'collapse',
+    borderCollapse: 'collapse', // Ensures that border lines are drawn as a single line
     width: '100%',
+  },
+  // Below styles can be used if you decide to add <th style={styles.tableHeaderCell}> or <td style={styles.tableCell}>
+  tableHeaderCell: {
+    border: '1px solid #ccc',
+    padding: '8px',
+    backgroundColor: '#f7f7f7',
+    fontWeight: 'bold',
+    textAlign: 'left',
+  },
+  tableCell: {
+    border: '1px solid #ccc',
+    padding: '8px',
+    textAlign: 'left',
   },
 };
 
