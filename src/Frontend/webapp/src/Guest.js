@@ -32,13 +32,17 @@ const Guest = ({ onLogout }) => {
   };
 
   // ========== cargo items ==========
-  // New: We fetch cargo items from the backend and display them directly on the page
   const [showCargoItems, setShowCargoItems] = useState(false);
   const [cargoItems, setCargoItems] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
   const [showItemDetailModal, setShowItemDetailModal] = useState(false);
   const [selectedSize, setSelectedSize] = useState("");
   const [selectedQuantity, setSelectedQuantity] = useState(1);
+
+  // States for custom item functionality
+  const [showCustomItemModal, setShowCustomItemModal] = useState(false);
+  const [customItemName, setCustomItemName] = useState("");
+  const [customItemQuantity, setCustomItemQuantity] = useState(1);
 
   // When user clicks "Make a New Order", fetch cargo items and show them
   const handleOpenNewOrder = async () => {
@@ -90,6 +94,37 @@ const Guest = ({ onLogout }) => {
     closeItemDetailModal();
   };
 
+  // Open the custom item modal
+  const handleOpenCustomItemModal = () => {
+    setShowCustomItemModal(true);
+  };
+
+  // Add custom item to cart
+  const handleAddCustomItemToCart = () => {
+    if (!customItemName.trim()) {
+      alert("Please enter an item name.");
+      return;
+    }
+    const quantity = parseInt(customItemQuantity, 10);
+    if (isNaN(quantity) || quantity <= 0) {
+      alert("Please enter a valid quantity (positive integer).");
+      return;
+    }
+    const newCart = [...cart];
+    const existingIndex = newCart.findIndex(
+      (c) => c.name === customItemName.trim()
+    );
+    if (existingIndex >= 0) {
+      newCart[existingIndex].quantity += quantity;
+    } else {
+      newCart.push({ name: customItemName.trim(), quantity });
+    }
+    setCart(newCart);
+    setShowCustomItemModal(false);
+    setCustomItemName("");
+    setCustomItemQuantity(1);
+  };
+
   // open/close cart
   const toggleCart = () => {
     setShowCart(!showCart);
@@ -117,7 +152,10 @@ const Guest = ({ onLogout }) => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          placeOrderWithLocation(position.coords.latitude, position.coords.longitude);
+          placeOrderWithLocation(
+            position.coords.latitude,
+            position.coords.longitude
+          );
         },
         () => {
           placeOrderWithLocation(null, null);
@@ -145,7 +183,9 @@ const Guest = ({ onLogout }) => {
       !phone.trim() ||
       !guestNotes.trim()
     ) {
-      setCartError("Please fill in first name, last name, email, phone, and notes.");
+      setCartError(
+        "Please fill in first name, last name, email, phone, and notes."
+      );
       return;
     }
     setCartError("");
@@ -204,7 +244,7 @@ const Guest = ({ onLogout }) => {
     }
   };
 
-//=========================================== HTML part ==============================================
+  //=========================================== HTML part ==============================================
 
   return (
     <div className="container">
@@ -229,8 +269,24 @@ const Guest = ({ onLogout }) => {
         {/* If user has clicked "Make a New Order", show cargo items directly on page */}
         {showCargoItems && (
           <div style={{ marginTop: "20px", textAlign: "left" }}>
-            <h3>Available Items</h3>
-            <div className="itemGrid">
+            {/* "Available Items" title plus "Didn't find items your want?" link */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <h3>Available Items</h3>
+              <div
+                style={{ color: "#1890ff", cursor: "pointer", marginLeft: "10px" }}
+                onClick={handleOpenCustomItemModal}
+              >
+                Didn't find items your want? Click here.
+              </div>
+            </div>
+
+            <div className="itemGrid" style={{ marginTop: "10px" }}>
               {cargoItems.length === 0 ? (
                 <p>No items found in cargo.</p>
               ) : (
@@ -247,9 +303,7 @@ const Guest = ({ onLogout }) => {
                         className="itemImage"
                       />
                     ) : (
-                      <div className="itemImagePlaceholder">
-                        No Image
-                      </div>
+                      <div className="itemImagePlaceholder">No Image</div>
                     )}
                     <h4>{item.name}</h4>
                     <p style={{ fontSize: "14px", color: "#999" }}>
@@ -336,6 +390,43 @@ const Guest = ({ onLogout }) => {
               Add to Cart
             </button>
             <button className="cancelButton" onClick={closeItemDetailModal}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Custom item modal */}
+      {showCustomItemModal && (
+        <div className="modalOverlay">
+          <div className="modalContent">
+            <h3>Add a custom item</h3>
+            <div className="formGroup">
+              <label>Item Name:</label>
+              <input
+                type="text"
+                value={customItemName}
+                onChange={(e) => setCustomItemName(e.target.value)}
+                className="input"
+              />
+            </div>
+            <div className="formGroup">
+              <label>Quantity:</label>
+              <input
+                type="number"
+                min="1"
+                value={customItemQuantity}
+                onChange={(e) => setCustomItemQuantity(e.target.value)}
+                className="input"
+              />
+            </div>
+            <button className="button" onClick={handleAddCustomItemToCart}>
+              Add to Cart
+            </button>
+            <button
+              className="cancelButton"
+              onClick={() => setShowCustomItemModal(false)}
+            >
               Cancel
             </button>
           </div>
