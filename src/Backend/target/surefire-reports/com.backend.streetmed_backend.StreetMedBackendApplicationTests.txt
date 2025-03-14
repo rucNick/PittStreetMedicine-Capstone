@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.backend.streetmed_backend.StreetMedBackendApplicationTests
+-------------------------------------------------------------------------------
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 6.335 s -- in com.backend.streetmed_backend.StreetMedBackendApplicationTests

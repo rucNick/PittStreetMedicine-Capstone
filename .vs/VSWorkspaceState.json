@@ -1,0 +1,15 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\src",
+    "\\src\\Backend",
+    "\\src\\Backend\\src",
+    "\\src\\Backend\\src\\main",
+    "\\src\\Backend\\src\\main\\java",
+    "\\src\\Backend\\src\\main\\java\\com",
+    "\\src\\Backend\\src\\main\\java\\com\\backend",
+    "\\src\\Backend\\src\\main\\java\\com\\backend\\streetmed_backend",
+    "\\src\\Backend\\src\\main\\java\\com\\backend\\streetmed_backend\\config"
+  ],
+  "PreviewInSolutionExplorer": false
+}
