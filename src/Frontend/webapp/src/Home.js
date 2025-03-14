@@ -5,11 +5,14 @@ import axios from "axios";
 import "./Home.css";
 
 const Home = ({ username, email, password, phone, userId, onLogout }) => {
+  console.log("Home component initialized", { username, email, phone, userId });
+
   // ============== Order History & UI States ==============
   const [orders, setOrders] = useState([]);
   const [showOrders, setShowOrders] = useState(false);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState("");
+  console.log("Order History & UI States initialized");
 
   // ============== Cart States ==============
   const [showCart, setShowCart] = useState(false);
@@ -19,6 +22,7 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
   const [phoneNumber, setPhoneNumber] = useState(""); // If empty, will use registered phone
   const [cartError, setCartError] = useState("");
   const [cartMessage, setCartMessage] = useState("");
+  console.log("Cart States initialized");
 
   // ============== "Make a New Order" - Cargo Items ==============
   const [showNewOrder, setShowNewOrder] = useState(false);
@@ -27,6 +31,7 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
   const [showItemDetailModal, setShowItemDetailModal] = useState(false);
   const [selectedSize, setSelectedSize] = useState("");
   const [selectedQuantity, setSelectedQuantity] = useState(1);
+  console.log("New Order and Cargo Items States initialized");
 
   // ============== Feedback States ==============
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
@@ -34,6 +39,7 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
   const [feedbackPhoneNumber, setFeedbackPhoneNumber] = useState("");
   const [feedbackError, setFeedbackError] = useState("");
   const [feedbackMessage, setFeedbackMessage] = useState("");
+  console.log("Feedback States initialized");
 
   // ============== Profile Update States ==============
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -47,10 +53,13 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
   const [newPhone, setNewPhone] = useState("");
   const [profileError, setProfileError] = useState("");
   const [profileMessage, setProfileMessage] = useState("");
+  console.log("Profile Update States initialized");
 
   // ================= Order History, Cancel Order, Fetch Cargo Items, etc. =================
   const toggleOrders = async () => {
+    console.log("toggleOrders: called");
     if (!userId || typeof userId !== "number") {
+      console.log("toggleOrders: Invalid userId, guest user detected");
       setOrdersError("Order history is not available for guest users.");
       setShowOrders(false);
       return;
@@ -58,36 +67,46 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
 
     if (!showOrders) {
       try {
+        console.log("toggleOrders: Loading orders...");
         setOrdersLoading(true);
         setOrdersError("");
         const response = await axios.get(
           `http://localhost:8080/api/orders/user/${userId}`,
           { params: { authenticated: true, userRole: "CLIENT", userId } }
         );
+        console.log("toggleOrders: Received response", response);
         if (response.data.status === "success") {
           const filtered = response.data.orders.filter((o) => o.status !== "CANCELLED");
+          console.log("toggleOrders: Filtered orders", filtered);
           setOrders(filtered);
         } else {
+          console.log("toggleOrders: Response indicates failure", response.data);
           setOrdersError(response.data.message || "Failed to load orders.");
         }
       } catch (error) {
+        console.error("toggleOrders: Error occurred", error);
         setOrdersError(error.response?.data?.message || "Failed to load orders.");
       } finally {
         setOrdersLoading(false);
+        console.log("toggleOrders: Loading complete");
       }
     }
     setShowOrders(!showOrders);
+    console.log("toggleOrders: showOrders set to", !showOrders);
   };
 
   const handleCancelOrder = async (orderId) => {
+    console.log("handleCancelOrder: called for orderId", orderId);
     try {
       const payload = { authenticated: true, userId, userRole: "CLIENT" };
       const response = await axios.post(
         `http://localhost:8080/api/orders/${orderId}/cancel`,
         payload
       );
+      console.log("handleCancelOrder: Received response", response);
       if (response.data.status === "success") {
         if (showOrders) {
+          console.log("handleCancelOrder: Toggling orders to refresh list");
           await toggleOrders();
           await toggleOrders();
         }
@@ -95,13 +114,16 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
         alert(response.data.message || "Failed to cancel order.");
       }
     } catch (error) {
+      console.error("handleCancelOrder: Error occurred", error);
       alert(error.response?.data?.message || "Failed to cancel order.");
     }
   };
 
   const fetchCargoItems = async () => {
+    console.log("fetchCargoItems: Fetching cargo items");
     try {
       const response = await axios.get("http://localhost:8080/api/cargo/items");
+      console.log("fetchCargoItems: Received response", response);
       setCargoItems(response.data);
     } catch (error) {
       console.error("Failed to fetch cargo items:", error);
@@ -109,19 +131,23 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
   };
 
   const handleOpenNewOrder = () => {
+    console.log("handleOpenNewOrder: Opening new order");
     setShowNewOrder(true);
     fetchCargoItems();
   };
 
   const handleSelectItem = (item) => {
+    console.log("handleSelectItem: Selected item", item);
     setSelectedItem(item);
     setShowItemDetailModal(true);
     const sizes = item.sizeQuantities ? Object.keys(item.sizeQuantities) : [];
     setSelectedSize(sizes.length > 0 ? sizes[0] : "");
     setSelectedQuantity(1);
+    console.log("handleSelectItem: Set selectedSize and selectedQuantity");
   };
 
   const closeItemDetailModal = () => {
+    console.log("closeItemDetailModal: Closing item detail modal");
     setShowItemDetailModal(false);
     setSelectedItem(null);
     setSelectedSize("");
@@ -129,6 +155,7 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
   };
 
   const handleAddSelectedItemToCart = () => {
+    console.log("handleAddSelectedItemToCart: called");
     if (!selectedItem) return;
     if (selectedQuantity <= 0) {
       alert("Please enter a valid quantity.");
@@ -141,52 +168,65 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
     const existingIndex = newCart.findIndex((c) => c.name === itemName);
     if (existingIndex >= 0) {
       newCart[existingIndex].quantity += selectedQuantity;
+      console.log("handleAddSelectedItemToCart: Updated quantity for existing cart item");
     } else {
       newCart.push({ name: itemName, quantity: selectedQuantity });
+      console.log("handleAddSelectedItemToCart: Added new item to cart");
     }
     setCart(newCart);
     closeItemDetailModal();
   };
 
   const toggleCart = () => {
+    console.log("toggleCart: toggling cart visibility");
     setShowCart(!showCart);
     setCartError("");
     setCartMessage("");
   };
 
   const handleCartQuantityChange = (index, newQuantity) => {
+    console.log("handleCartQuantityChange: index", index, "newQuantity", newQuantity);
     const updated = [...cart];
     updated[index].quantity = parseInt(newQuantity, 10) || 0;
     setCart(updated);
   };
 
   const handleRemoveCartItem = (index) => {
+    console.log("handleRemoveCartItem: Removing cart item at index", index);
     const updated = [...cart];
     updated.splice(index, 1);
     setCart(updated);
   };
 
   const handlePlaceOrder = () => {
+    console.log("handlePlaceOrder: called");
     if (navigator.geolocation) {
+      console.log("handlePlaceOrder: Geolocation supported, fetching location");
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          console.log("handlePlaceOrder: Received geolocation", position.coords);
           placeOrderWithLocation(position.coords.latitude, position.coords.longitude);
         },
         () => {
+          console.log("handlePlaceOrder: Geolocation error, proceeding without location");
           placeOrderWithLocation(null, null);
         }
       );
     } else {
+      console.log("handlePlaceOrder: Geolocation not supported, proceeding without location");
       placeOrderWithLocation(null, null);
     }
   };
 
   const placeOrderWithLocation = async (latitude, longitude) => {
+    console.log("placeOrderWithLocation: called with", { latitude, longitude });
     if (cart.length === 0) {
+      console.log("placeOrderWithLocation: Cart is empty");
       setCartError("Your cart is empty.");
       return;
     }
     if (!deliveryAddress.trim() || !notes.trim() || !phoneNumber.trim()) {
+      console.log("placeOrderWithLocation: Missing delivery address, notes or phone number");
       setCartError("Please fill in delivery address, phone number, and notes.");
       return;
     }
@@ -205,7 +245,9 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
         payload.latitude = latitude;
         payload.longitude = longitude;
       }
+      console.log("placeOrderWithLocation: Sending order payload", payload);
       const response = await axios.post("http://localhost:8080/api/orders/create", payload);
+      console.log("placeOrderWithLocation: Received response", response);
       if (response.data.status !== "success") {
         setCartError(response.data.message || "Order creation failed");
         return;
@@ -216,15 +258,18 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
       setNotes("");
       setPhoneNumber("");
       if (showOrders) {
+        console.log("placeOrderWithLocation: Refreshing orders");
         await toggleOrders();
         await toggleOrders();
       }
     } catch (error) {
+      console.error("placeOrderWithLocation: Error occurred", error);
       setCartError(error.response?.data?.message || "Order creation failed.");
     }
   };
 
   const handleOpenFeedbackModal = () => {
+    console.log("handleOpenFeedbackModal: Opening feedback modal");
     setFeedbackContent("");
     setFeedbackPhoneNumber("");
     setFeedbackError("");
@@ -233,15 +278,19 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
   };
 
   const handleCloseFeedbackModal = () => {
+    console.log("handleCloseFeedbackModal: Closing feedback modal");
     setShowFeedbackModal(false);
   };
 
   const handleSubmitFeedback = async () => {
+    console.log("handleSubmitFeedback: called");
     if (!feedbackContent.trim()) {
+      console.log("handleSubmitFeedback: Feedback content empty");
       setFeedbackError("Feedback content cannot be empty.");
       return;
     }
     if (!feedbackPhoneNumber.trim()) {
+      console.log("handleSubmitFeedback: Feedback phone number empty");
       setFeedbackError("Phone number is required.");
       return;
     }
@@ -252,10 +301,13 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
         phoneNumber: feedbackPhoneNumber,
         content: feedbackContent,
       };
+      console.log("handleSubmitFeedback: Sending payload", payload);
       const response = await axios.post("http://localhost:8080/api/feedback/submit", payload);
+      console.log("handleSubmitFeedback: Received response", response);
       if (response.data.status === "success") {
         setFeedbackMessage("Feedback submitted successfully!");
         setTimeout(() => {
+          console.log("handleSubmitFeedback: Closing feedback modal after submission");
           setShowFeedbackModal(false);
           setFeedbackContent("");
           setFeedbackPhoneNumber("");
@@ -265,14 +317,16 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
         setFeedbackError(response.data.message || "Failed to submit feedback.");
       }
     } catch (error) {
+      console.error("handleSubmitFeedback: Error occurred", error);
       setFeedbackError(error.response?.data?.message || "Failed to submit feedback.");
     }
   };
 
   // ------------- Profile Modal Operations -------------
-
+  
   // Open profile modal and clear previous inputs
   const handleOpenProfileModal = () => {
+    console.log("handleOpenProfileModal: Opening profile modal and clearing inputs");
     setCurrentPassword("");
     setNewUsername("");
     setNewEmail("");
@@ -285,11 +339,13 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
   };
 
   const handleCloseProfileModal = () => {
+    console.log("handleCloseProfileModal: Closing profile modal");
     setShowProfileModal(false);
   };
 
   // Handle submit of profile update based on selected option
   const handleSubmitProfile = async () => {
+    console.log("handleSubmitProfile: called with profileOption", profileOption);
     // For username update
     if (profileOption === "username") {
       // Validate new username: only letters and must differ from current username
@@ -303,14 +359,19 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
         return;
       }
       try {
+        console.log("handleSubmitProfile: Updating username");
         await axios.put("http://localhost:8080/api/auth/update/username", {
           userId,
           newUsername: newUsername.trim(),
           authenticated: "true",
         });
         setProfileMessage("You have successfully updated your information. Please log out to update your information.");
-        setTimeout(() => onLogout(), 1500);
+        setTimeout(() => {
+          console.log("handleSubmitProfile: Logging out after username update");
+          onLogout();
+        }, 1500);
       } catch (error) {
+        console.error("handleSubmitProfile: Error updating username", error);
         setProfileError(error.response?.data?.message || "Failed to update username.");
       }
     }
@@ -330,6 +391,7 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
         return;
       }
       try {
+        console.log("handleSubmitProfile: Updating email");
         await axios.put("http://localhost:8080/api/auth/update/email", {
           userId,
           currentPassword: currentPassword.trim(),
@@ -337,8 +399,12 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
           authenticated: "true",
         });
         setProfileMessage("You have successfully updated your information. Please log out to update your information.");
-        setTimeout(() => onLogout(), 1500);
+        setTimeout(() => {
+          console.log("handleSubmitProfile: Logging out after email update");
+          onLogout();
+        }, 1500);
       } catch (error) {
+        console.error("handleSubmitProfile: Error updating email", error);
         setProfileError(error.response?.data?.message || "Failed to update email.");
       }
     }
@@ -358,6 +424,7 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
         return;
       }
       try {
+        console.log("handleSubmitProfile: Updating password");
         await axios.put("http://localhost:8080/api/auth/update/password", {
           userId,
           currentPassword: currentPassword.trim(),
@@ -365,8 +432,12 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
           authenticated: "true",
         });
         setProfileMessage("You have successfully updated your information. Please log out to update your information.");
-        setTimeout(() => onLogout(), 1500);
+        setTimeout(() => {
+          console.log("handleSubmitProfile: Logging out after password update");
+          onLogout();
+        }, 1500);
       } catch (error) {
+        console.error("handleSubmitProfile: Error updating password", error);
         setProfileError(error.response?.data?.message || "Failed to update password.");
       }
     }
@@ -386,6 +457,7 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
         return;
       }
       try {
+        console.log("handleSubmitProfile: Updating phone number");
         await axios.put("http://localhost:8080/api/auth/update/phone", {
           userId,
           currentPassword: currentPassword.trim(),
@@ -393,14 +465,19 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
           authenticated: "true",
         });
         setProfileMessage("You have successfully updated your information. Please log out to update your information.");
-        setTimeout(() => onLogout(), 1500);
+        setTimeout(() => {
+          console.log("handleSubmitProfile: Logging out after phone update");
+          onLogout();
+        }, 1500);
       } catch (error) {
+        console.error("handleSubmitProfile: Error updating phone number", error);
         setProfileError(error.response?.data?.message || "Failed to update phone number.");
       }
     }
   };
 
   // ================= Rendering Section =================
+  console.log("Home: Rendering component");
   return (
     <div className="container">
       {/* Navbar */}
@@ -550,7 +627,10 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
                   <label style={{ marginRight: "8px" }}>Size:</label>
                   <select
                     value={selectedSize}
-                    onChange={(e) => setSelectedSize(e.target.value)}
+                    onChange={(e) => {
+                      console.log("Item Detail Modal: selectedSize changed to", e.target.value);
+                      setSelectedSize(e.target.value);
+                    }}
                   >
                     {Object.entries(selectedItem.sizeQuantities).map(
                       ([size, qty]) => (
@@ -568,7 +648,10 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
                 type="number"
                 min="1"
                 value={selectedQuantity}
-                onChange={(e) => setSelectedQuantity(Number(e.target.value))}
+                onChange={(e) => {
+                  console.log("Item Detail Modal: selectedQuantity changed to", e.target.value);
+                  setSelectedQuantity(Number(e.target.value));
+                }}
                 style={{ width: "60px" }}
               />
             </div>
@@ -597,12 +680,18 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
                     type="number"
                     min="0"
                     value={c.quantity}
-                    onChange={(e) => handleCartQuantityChange(index, e.target.value)}
+                    onChange={(e) => {
+                      console.log("Cart Modal: Quantity changed for item at index", index, "to", e.target.value);
+                      handleCartQuantityChange(index, e.target.value);
+                    }}
                     style={{ width: "60px", marginLeft: "10px", marginRight: "10px" }}
                   />
                   <button
                     className="removeButton"
-                    onClick={() => handleRemoveCartItem(index)}
+                    onClick={() => {
+                      console.log("Cart Modal: Removing item at index", index);
+                      handleRemoveCartItem(index);
+                    }}
                   >
                     Remove
                   </button>
@@ -614,7 +703,10 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
               <input
                 type="text"
                 value={deliveryAddress}
-                onChange={(e) => setDeliveryAddress(e.target.value)}
+                onChange={(e) => {
+                  console.log("Cart Modal: Delivery Address changed to", e.target.value);
+                  setDeliveryAddress(e.target.value);
+                }}
                 className="input"
               />
             </div>
@@ -623,7 +715,10 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
               <input
                 type="text"
                 value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
+                onChange={(e) => {
+                  console.log("Cart Modal: Phone Number changed to", e.target.value);
+                  setPhoneNumber(e.target.value);
+                }}
                 className="input"
               />
             </div>
@@ -632,7 +727,10 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
               <input
                 type="text"
                 value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                onChange={(e) => {
+                  console.log("Cart Modal: Notes changed to", e.target.value);
+                  setNotes(e.target.value);
+                }}
                 className="input"
               />
             </div>
@@ -658,7 +756,10 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
               <input
                 type="text"
                 value={feedbackPhoneNumber}
-                onChange={(e) => setFeedbackPhoneNumber(e.target.value)}
+                onChange={(e) => {
+                  console.log("Feedback Modal: Phone Number changed to", e.target.value);
+                  setFeedbackPhoneNumber(e.target.value);
+                }}
                 className="input"
               />
             </div>
@@ -666,7 +767,10 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
               <label>Feedback:</label>
               <textarea
                 value={feedbackContent}
-                onChange={(e) => setFeedbackContent(e.target.value)}
+                onChange={(e) => {
+                  console.log("Feedback Modal: Feedback content changed");
+                  setFeedbackContent(e.target.value);
+                }}
                 className="input textareaInput"
               />
             </div>
@@ -698,7 +802,10 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
                     type="radio"
                     value="username"
                     checked={profileOption === "username"}
-                    onChange={(e) => setProfileOption(e.target.value)}
+                    onChange={(e) => {
+                      console.log("Profile Modal: profileOption changed to", e.target.value);
+                      setProfileOption(e.target.value);
+                    }}
                   />
                   Username
                 </label>
@@ -707,7 +814,10 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
                     type="radio"
                     value="email"
                     checked={profileOption === "email"}
-                    onChange={(e) => setProfileOption(e.target.value)}
+                    onChange={(e) => {
+                      console.log("Profile Modal: profileOption changed to", e.target.value);
+                      setProfileOption(e.target.value);
+                    }}
                   />
                   Email
                 </label>
@@ -716,7 +826,10 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
                     type="radio"
                     value="password"
                     checked={profileOption === "password"}
-                    onChange={(e) => setProfileOption(e.target.value)}
+                    onChange={(e) => {
+                      console.log("Profile Modal: profileOption changed to", e.target.value);
+                      setProfileOption(e.target.value);
+                    }}
                   />
                   Password
                 </label>
@@ -725,7 +838,10 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
                     type="radio"
                     value="phone"
                     checked={profileOption === "phone"}
-                    onChange={(e) => setProfileOption(e.target.value)}
+                    onChange={(e) => {
+                      console.log("Profile Modal: profileOption changed to", e.target.value);
+                      setProfileOption(e.target.value);
+                    }}
                   />
                   Phone Number
                 </label>
@@ -738,7 +854,10 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
                 <input
                   type="password"
                   value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  onChange={(e) => {
+                    console.log("Profile Modal: Current Password changed");
+                    setCurrentPassword(e.target.value);
+                  }}
                   className="input"
                 />
               </div>
@@ -750,7 +869,10 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
                 <input
                   type="text"
                   value={newUsername}
-                  onChange={(e) => setNewUsername(e.target.value)}
+                  onChange={(e) => {
+                    console.log("Profile Modal: New Username changed to", e.target.value);
+                    setNewUsername(e.target.value);
+                  }}
                   className="input"
                   placeholder="Only letters"
                 />
@@ -762,7 +884,10 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
                 <input
                   type="email"
                   value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
+                  onChange={(e) => {
+                    console.log("Profile Modal: New Email changed to", e.target.value);
+                    setNewEmail(e.target.value);
+                  }}
                   className="input"
                   placeholder="example@domain.com"
                 />
@@ -774,7 +899,10 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
                 <input
                   type="password"
                   value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
+                  onChange={(e) => {
+                    console.log("Profile Modal: New Password changed");
+                    setNewPassword(e.target.value);
+                  }}
                   className="input"
                   placeholder="Alphanumeric, min 8 chars"
                 />
@@ -786,7 +914,10 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
                 <input
                   type="text"
                   value={newPhone}
-                  onChange={(e) => setNewPhone(e.target.value)}
+                  onChange={(e) => {
+                    console.log("Profile Modal: New Phone Number changed to", e.target.value);
+                    setNewPhone(e.target.value);
+                  }}
                   className="input"
                   placeholder="10-digit number"
                 />

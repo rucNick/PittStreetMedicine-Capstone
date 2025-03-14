@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 const Admin = ({ onLogout, userData }) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("users"); // "users", "orders", or "applications"
+  console.log("Component Admin: Initialized with activeTab =", "users");
 
   // ----- Users state & functions -----
   const [users, setUsers] = useState([]);
@@ -17,9 +18,11 @@ const Admin = ({ onLogout, userData }) => {
     phone: "",
     role: "CLIENT"
   });
+  console.log("State: Initialized users, usersError, and newUser");
 
   // Fetch all users from the backend
   const loadUsers = useCallback(async () => {
+    console.log("loadUsers: Start loading users");
     try {
       const response = await axios.get('http://localhost:8080/api/auth/users', {
         headers: {
@@ -27,20 +30,24 @@ const Admin = ({ onLogout, userData }) => {
           "Authentication-Status": "true"
         }
       });
+      console.log("loadUsers: Received response", response);
       const data = response.data.data;
       const allUsers = [
         ...(data.clients || []),
         ...(data.volunteers || []),
         ...(data.admins || [])
       ];
+      console.log("loadUsers: Combined allUsers =", allUsers);
       setUsers(allUsers);
     } catch (error) {
+      console.log("loadUsers: Error occurred", error);
       setUsersError(error.response?.data?.message || error.message);
     }
   }, [userData.username]);
 
   // Delete user by username
   const deleteUser = async (usernameToDelete) => {
+    console.log("deleteUser: Deleting user", usernameToDelete);
     try {
       const response = await axios.delete('http://localhost:8080/api/auth/delete', {
         data: {
@@ -49,20 +56,25 @@ const Admin = ({ onLogout, userData }) => {
           username: usernameToDelete
         }
       });
+      console.log("deleteUser: Received response", response);
       alert(response.data.message);
       loadUsers();
     } catch (error) {
+      console.log("deleteUser: Error occurred", error);
       alert(error.response?.data?.message || error.message);
     }
   };
 
   // Add new user
   const addUser = async () => {
+    console.log("addUser: Adding new user", newUser);
     try {
       const response = await axios.post('http://localhost:8080/api/auth/register', newUser);
+      console.log("addUser: Received response", response);
       alert(response.data.message);
       loadUsers();
     } catch (error) {
+      console.log("addUser: Error occurred", error);
       alert(error.response?.data?.message || error.message);
     }
   };
@@ -71,9 +83,11 @@ const Admin = ({ onLogout, userData }) => {
   const [orders, setOrders] = useState([]);
   const [ordersError, setOrdersError] = useState('');
   const [orderFilter, setOrderFilter] = useState("PENDING"); // "PENDING", "CANCELLED", "PROCESSING"
+  console.log("State: Initialized orders, ordersError, and orderFilter =", orderFilter);
 
   // Fetch orders from the backend (we pass userRole="VOLUNTEER" to allow viewing all orders)
   const loadOrders = useCallback(async (status) => {
+    console.log("loadOrders: Loading orders with status", status);
     try {
       const response = await axios.get('http://localhost:8080/api/orders/all', {
         params: {
@@ -82,26 +96,33 @@ const Admin = ({ onLogout, userData }) => {
           userRole: "VOLUNTEER"
         }
       });
+      console.log("loadOrders: Received response", response);
       let fetchedOrders = response.data.orders || [];
       fetchedOrders = fetchedOrders.filter(order => order.status === status);
+      console.log("loadOrders: Filtered orders =", fetchedOrders);
       setOrders(fetchedOrders);
     } catch (error) {
+      console.log("loadOrders: Error occurred", error);
       setOrdersError(error.response?.data?.message || error.message);
     }
   }, [userData.userId]);
 
   // Cancel (delete) an order
   const cancelOrder = async (orderId) => {
+    console.log("cancelOrder: Cancelling order with orderId", orderId);
     try {
       const response = await axios.post(`http://localhost:8080/api/orders/${orderId}/cancel`, {
         authenticated: true,
         userId: userData.userId,
         userRole: "VOLUNTEER"
       });
+      console.log("cancelOrder: Received response", response);
       alert(response.data.message);
       // Reload orders to refresh table
+      console.log("cancelOrder: Reloading orders with current filter", orderFilter);
       loadOrders(orderFilter);
     } catch (error) {
+      console.log("cancelOrder: Error occurred", error);
       alert(error.response?.data?.message || error.message);
     }
   };
@@ -109,8 +130,10 @@ const Admin = ({ onLogout, userData }) => {
   // ----- Volunteer Applications state & functions -----
   const [applications, setApplications] = useState({ pending: [], approved: [], rejected: [] });
   const [applicationsError, setApplicationsError] = useState('');
+  console.log("State: Initialized applications and applicationsError");
 
   const loadApplications = useCallback(async () => {
+    console.log("loadApplications: Loading volunteer applications");
     try {
       const response = await axios.get('http://localhost:8080/api/volunteer/applications', {
         headers: {
@@ -118,53 +141,66 @@ const Admin = ({ onLogout, userData }) => {
           "Authentication-Status": "true"
         }
       });
+      console.log("loadApplications: Received response", response);
       setApplications(response.data.data);
     } catch (error) {
+      console.log("loadApplications: Error occurred", error);
       setApplicationsError(error.response?.data?.message || error.message);
     }
   }, [userData.username]);
 
   const approveApplication = async (applicationId) => {
+    console.log("approveApplication: Approving application with ID", applicationId);
     try {
       const response = await axios.post('http://localhost:8080/api/volunteer/approve', {
         adminUsername: userData.username,
         authenticated: "true",
         applicationId: applicationId.toString()
       });
+      console.log("approveApplication: Received response", response);
       alert(response.data.message);
       loadApplications();
     } catch (error) {
+      console.log("approveApplication: Error occurred", error);
       alert(error.response?.data?.message || error.message);
     }
   };
 
   const rejectApplication = async (applicationId) => {
+    console.log("rejectApplication: Rejecting application with ID", applicationId);
     try {
       const response = await axios.post('http://localhost:8080/api/volunteer/reject', {
         adminUsername: userData.username,
         authenticated: "true",
         applicationId: applicationId.toString()
       });
+      console.log("rejectApplication: Received response", response);
       alert(response.data.message);
       loadApplications();
     } catch (error) {
+      console.log("rejectApplication: Error occurred", error);
       alert(error.response?.data?.message || error.message);
     }
   };
 
   // Load data when switching tabs
   useEffect(() => {
+    console.log("useEffect: Active tab changed to", activeTab);
     if (activeTab === "users") {
+      console.log("useEffect: Loading users tab");
       loadUsers();
     } else if (activeTab === "orders") {
+      console.log("useEffect: Loading orders tab with filter", orderFilter);
       loadOrders(orderFilter);
     } else if (activeTab === "applications") {
+      console.log("useEffect: Loading applications tab");
       loadApplications();
     }
   }, [activeTab, orderFilter, loadUsers, loadOrders, loadApplications]);
 
   // Logout
   const handleLogout = () => {
+    console.log("handleLogout: Logging out");
     onLogout();
     navigate('/');
   };
@@ -186,16 +222,16 @@ const Admin = ({ onLogout, userData }) => {
 
         {/* Navigation Tabs */}
         <div style={styles.navbar}>
-          <button onClick={() => setActiveTab("users")} style={styles.navButton}>
+          <button onClick={() => { console.log("Navigation: Switching to users tab"); setActiveTab("users") }} style={styles.navButton}>
             Users
           </button>
-          <button onClick={() => setActiveTab("orders")} style={styles.navButton}>
+          <button onClick={() => { console.log("Navigation: Switching to orders tab"); setActiveTab("orders") }} style={styles.navButton}>
             Orders
           </button>
-          <button onClick={() => setActiveTab("applications")} style={styles.navButton}>
+          <button onClick={() => { console.log("Navigation: Switching to applications tab"); setActiveTab("applications") }} style={styles.navButton}>
             Volunteer Applications
           </button>
-          <button onClick={() => navigate('/cargo_admin')} style={styles.navButton}>
+          <button onClick={() => { console.log("Navigation: Navigating to Cargo Admin page"); navigate('/cargo_admin'); }} style={styles.navButton}>
             Cargo Admin
           </button>
         </div>
@@ -246,38 +282,52 @@ const Admin = ({ onLogout, userData }) => {
                 type="text"
                 placeholder="Username"
                 value={newUser.username}
-                onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
+                onChange={(e) => {
+                  console.log("New User Form: Username changed to", e.target.value);
+                  setNewUser({ ...newUser, username: e.target.value });
+                }}
                 style={styles.input}
               />
               <input
                 type="email"
                 placeholder="Email"
                 value={newUser.email}
-                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                onChange={(e) => {
+                  console.log("New User Form: Email changed to", e.target.value);
+                  setNewUser({ ...newUser, email: e.target.value });
+                }}
                 style={styles.input}
               />
               <input
                 type="password"
                 placeholder="Password"
                 value={newUser.password}
-                onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                onChange={(e) => {
+                  console.log("New User Form: Password changed");
+                  setNewUser({ ...newUser, password: e.target.value });
+                }}
                 style={styles.input}
               />
               <input
                 type="text"
                 placeholder="Phone"
                 value={newUser.phone}
-                onChange={(e) => setNewUser({ ...newUser, phone: e.target.value })}
+                onChange={(e) => {
+                  console.log("New User Form: Phone changed to", e.target.value);
+                  setNewUser({ ...newUser, phone: e.target.value });
+                }}
                 style={styles.input}
               />
               <select
                 value={newUser.role}
-                onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+                onChange={(e) => {
+                  console.log("New User Form: Role changed to", e.target.value);
+                  setNewUser({ ...newUser, role: e.target.value });
+                }}
                 style={styles.select}
               >
                 <option value="CLIENT">CLIENT</option>
-                <option value="VOLUNTEER">VOLUNTEER</option>
-                <option value="ADMIN">ADMIN</option>
+                
               </select>
               <button style={styles.addButton} onClick={addUser}>Add User</button>
             </div>
@@ -292,6 +342,7 @@ const Admin = ({ onLogout, userData }) => {
               <button
                 style={styles.filterButton}
                 onClick={() => {
+                  console.log("Filter: Pending Orders selected");
                   setOrderFilter("PENDING");
                   loadOrders("PENDING");
                 }}
@@ -301,6 +352,7 @@ const Admin = ({ onLogout, userData }) => {
               <button
                 style={styles.filterButton}
                 onClick={() => {
+                  console.log("Filter: Cancelled Orders selected");
                   setOrderFilter("CANCELLED");
                   loadOrders("CANCELLED");
                 }}
@@ -311,6 +363,7 @@ const Admin = ({ onLogout, userData }) => {
               <button
                 style={styles.filterButton}
                 onClick={() => {
+                  console.log("Filter: Processing Orders selected");
                   setOrderFilter("PROCESSING");
                   loadOrders("PROCESSING");
                 }}
