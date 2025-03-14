@@ -1,3 +1,4 @@
+// File: App.js
 import React, { useState } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Login from "./Login";
@@ -6,8 +7,10 @@ import Register from "./Register";
 import Guest from "./Guest";
 import VolunteerAppli from "./volunteer_appli";
 import Volunteer from "./Volunteer";
-import Admin from "./Admin";  // Import the Admin component
-import CargoAdmin from "./Cargo_Admin"; //add admin cargo system
+import Admin from "./Admin";
+import CargoAdmin from "./Cargo_Admin";
+// Import the new Cargo_Volunteer file
+import CargoVolunteer from "./Cargo_Volunteer";
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -53,6 +56,9 @@ function App() {
         <Route path="/volunteerAppli" element={<VolunteerAppli />} />
         {/* Cargo_Admin */}
         <Route path="/cargo_admin" element={<CargoAdmin userData={userData}/>} />
+
+        {/* New route for Cargo Volunteer */}
+        <Route path="/cargo_volunteer" element={<CargoVolunteer />} />
       </Routes>
     </Router>
   );

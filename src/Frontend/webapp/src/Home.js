@@ -2,46 +2,69 @@
 
 import React, { useState } from "react";
 import axios from "axios";
+import "./Home.css";
 
-// List of example items (unchanged)
-const availableItems = [
-  { name: "Water", quantity: 0 },
-  { name: "Ensure", quantity: 0 },
-  { name: "Snapple", quantity: 0 },
-  { name: "Wipes", quantity: 0 },
-  { name: "Slim Jims", quantity: 0 },
-];
+const Home = ({ username, email, password, phone, userId, onLogout }) => {
+  console.log("Home component initialized", { username, email, phone, userId });
 
-const Home = ({ username, userId, onLogout }) => {
-  // Order history state
+  // ============== Order History & UI States ==============
   const [orders, setOrders] = useState([]);
   const [showOrders, setShowOrders] = useState(false);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState("");
+  console.log("Order History & UI States initialized");
 
-  // Cart state
+  // ============== Cart States ==============
   const [showCart, setShowCart] = useState(false);
   const [cart, setCart] = useState([]);
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [notes, setNotes] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState(""); // <-- new phone number state
+  const [phoneNumber, setPhoneNumber] = useState(""); // If empty, will use registered phone
   const [cartError, setCartError] = useState("");
   const [cartMessage, setCartMessage] = useState("");
+  console.log("Cart States initialized");
 
-  // "Make a New Order" modal
-  const [showNewOrderModal, setShowNewOrderModal] = useState(false);
-  const [tempItems, setTempItems] = useState(
-    availableItems.map((i) => ({ ...i }))
-  );
+  // ============== "Make a New Order" - Cargo Items ==============
+  const [showNewOrder, setShowNewOrder] = useState(false);
+  const [cargoItems, setCargoItems] = useState([]);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [showItemDetailModal, setShowItemDetailModal] = useState(false);
+  const [selectedSize, setSelectedSize] = useState("");
+  const [selectedQuantity, setSelectedQuantity] = useState(1);
+  console.log("New Order and Cargo Items States initialized");
 
-  // Custom item state
-  const [customItems, setCustomItems] = useState([]);
-  const [customItemName, setCustomItemName] = useState("");
-  const [customItemQuantity, setCustomItemQuantity] = useState(0);
+  // ============== Feedback States ==============
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackContent, setFeedbackContent] = useState("");
+  const [feedbackPhoneNumber, setFeedbackPhoneNumber] = useState("");
+  const [feedbackError, setFeedbackError] = useState("");
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  console.log("Feedback States initialized");
 
-  // ============== Fetch order history ==============
+  // ============== Profile Update States ==============
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  // Field selection state: "username", "email", "password", or "phone"
+  const [profileOption, setProfileOption] = useState("username");
+  // Input states for profile update
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newUsername, setNewUsername] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [profileError, setProfileError] = useState("");
+  const [profileMessage, setProfileMessage] = useState("");
+  console.log("Profile Update States initialized");
+
+  // ============== Customize item related status ==============
+  const [showCustomItemModal, setShowCustomItemModal] = useState(false); 
+  const [customItemName, setCustomItemName] = useState("");         
+  const [customItemQuantity, setCustomItemQuantity] = useState(1);  
+
+  // ================= Order History, Cancel Order, Fetch Cargo Items, etc. =================
   const toggleOrders = async () => {
+    console.log("toggleOrders: called");
     if (!userId || typeof userId !== "number") {
+      console.log("toggleOrders: Invalid userId, guest user detected");
       setOrdersError("Order history is not available for guest users.");
       setShowOrders(false);
       return;
@@ -49,48 +72,46 @@ const Home = ({ username, userId, onLogout }) => {
 
     if (!showOrders) {
       try {
+        console.log("toggleOrders: Loading orders...");
         setOrdersLoading(true);
         setOrdersError("");
         const response = await axios.get(
           `http://localhost:8080/api/orders/user/${userId}`,
-          {
-            params: { authenticated: true, userRole: "CLIENT", userId },
-          }
+          { params: { authenticated: true, userRole: "CLIENT", userId } }
         );
-
+        console.log("toggleOrders: Received response", response);
         if (response.data.status === "success") {
-          // Filter out cancelled orders
-          const filtered = response.data.orders.filter(
-            (o) => o.status !== "CANCELLED"
-          );
+          const filtered = response.data.orders.filter((o) => o.status !== "CANCELLED");
+          console.log("toggleOrders: Filtered orders", filtered);
           setOrders(filtered);
         } else {
+          console.log("toggleOrders: Response indicates failure", response.data);
           setOrdersError(response.data.message || "Failed to load orders.");
         }
       } catch (error) {
+        console.error("toggleOrders: Error occurred", error);
         setOrdersError(error.response?.data?.message || "Failed to load orders.");
       } finally {
         setOrdersLoading(false);
+        console.log("toggleOrders: Loading complete");
       }
     }
     setShowOrders(!showOrders);
+    console.log("toggleOrders: showOrders set to", !showOrders);
   };
 
-  // ============== Cancel order (set status to CANCELLED) ==============
   const handleCancelOrder = async (orderId) => {
+    console.log("handleCancelOrder: called for orderId", orderId);
     try {
-      const payload = {
-        authenticated: true,
-        userId,
-        userRole: "CLIENT",
-      };
+      const payload = { authenticated: true, userId, userRole: "CLIENT" };
       const response = await axios.post(
         `http://localhost:8080/api/orders/${orderId}/cancel`,
         payload
       );
+      console.log("handleCancelOrder: Received response", response);
       if (response.data.status === "success") {
-        // Refresh orders if currently shown
         if (showOrders) {
+          console.log("handleCancelOrder: Toggling orders to refresh list");
           await toggleOrders();
           await toggleOrders();
         }
@@ -98,235 +119,453 @@ const Home = ({ username, userId, onLogout }) => {
         alert(response.data.message || "Failed to cancel order.");
       }
     } catch (error) {
+      console.error("handleCancelOrder: Error occurred", error);
       alert(error.response?.data?.message || "Failed to cancel order.");
     }
   };
 
-  // ============== Make a New Order ==============
+  const fetchCargoItems = async () => {
+    console.log("fetchCargoItems: Fetching cargo items");
+    try {
+      const response = await axios.get("http://localhost:8080/api/cargo/items");
+      console.log("fetchCargoItems: Received response", response);
+      setCargoItems(response.data);
+    } catch (error) {
+      console.error("Failed to fetch cargo items:", error);
+    }
+  };
+
   const handleOpenNewOrder = () => {
-    const resetItems = availableItems.map((i) => ({ ...i, quantity: 0 }));
-    setTempItems(resetItems);
-    // Reset custom items
-    setCustomItems([]);
-    setCustomItemName("");
-    setCustomItemQuantity(0);
-    setShowNewOrderModal(true);
+    console.log("handleOpenNewOrder: Opening new order");
+    setShowNewOrder(true);
+    fetchCargoItems();
   };
 
-  const handleItemQuantityChange = (index, newQuantity) => {
-    const updated = [...tempItems];
-    updated[index].quantity = parseInt(newQuantity, 10) || 0;
-    setTempItems(updated);
+  const handleSelectItem = (item) => {
+    console.log("handleSelectItem: Selected item", item);
+    setSelectedItem(item);
+    setShowItemDetailModal(true);
+    const sizes = item.sizeQuantities ? Object.keys(item.sizeQuantities) : [];
+    setSelectedSize(sizes.length > 0 ? sizes[0] : "");
+    setSelectedQuantity(1);
+    console.log("handleSelectItem: Set selectedSize and selectedQuantity");
   };
 
-  // Handle custom items
-  const handleAddCustomItem = () => {
+  const closeItemDetailModal = () => {
+    console.log("closeItemDetailModal: Closing item detail modal");
+    setShowItemDetailModal(false);
+    setSelectedItem(null);
+    setSelectedSize("");
+    setSelectedQuantity(1);
+  };
+
+  const handleAddSelectedItemToCart = () => {
+    console.log("handleAddSelectedItemToCart: called");
+    if (!selectedItem) return;
+    if (selectedQuantity <= 0) {
+      alert("Please enter a valid quantity.");
+      return;
+    }
+    const itemName = selectedSize
+      ? `${selectedItem.name} (${selectedSize})`
+      : selectedItem.name;
+    const newCart = [...cart];
+    const existingIndex = newCart.findIndex((c) => c.name === itemName);
+    if (existingIndex >= 0) {
+      newCart[existingIndex].quantity += selectedQuantity;
+      console.log("handleAddSelectedItemToCart: Updated quantity for existing cart item");
+    } else {
+      newCart.push({ name: itemName, quantity: selectedQuantity });
+      console.log("handleAddSelectedItemToCart: Added new item to cart");
+    }
+    setCart(newCart);
+    closeItemDetailModal();
+  };
+
+  // === Opens the custom item popup window ===
+  const handleOpenCustomItemModal = () => {
+    setShowCustomItemModal(true);
+  };
+
+  // === Add custom items to your cart ===
+  const handleAddCustomItemToCart = () => {
     if (!customItemName.trim()) {
-      alert("Please fill in the item name");
+      alert("Please enter an item name.");
       return;
     }
     const quantity = parseInt(customItemQuantity, 10);
-    if (!quantity || quantity <= 0) {
-      alert("Please fill in the correct quantity");
+    if (isNaN(quantity) || quantity <= 0) {
+      alert("Please enter a valid quantity (positive integer).");
       return;
     }
-    const newItem = { name: customItemName, quantity };
-    setCustomItems([...customItems, newItem]);
-    setCustomItemName("");
-    setCustomItemQuantity(0);
-  };
-
-  const handleRemoveCustomItem = (index) => {
-    const updated = [...customItems];
-    updated.splice(index, 1);
-    setCustomItems(updated);
-  };
-
-  // Add to cart
-  const handleAddToCart = () => {
-    const selected = tempItems.filter((i) => i.quantity > 0);
-    if (selected.length === 0 && customItems.length === 0) {
-      alert("Please select or enter at least one item");
-      return;
-    }
+    // Determine if there is an item with the same name in your cart
     const newCart = [...cart];
-
-    // Add preset items
-    selected.forEach((sel) => {
-      const existingIndex = newCart.findIndex((c) => c.name === sel.name);
-      if (existingIndex >= 0) {
-        newCart[existingIndex].quantity += sel.quantity;
-      } else {
-        newCart.push({ name: sel.name, quantity: sel.quantity });
-      }
-    });
-    // Add custom items
-    customItems.forEach((item) => {
-      const existingIndex = newCart.findIndex((c) => c.name === item.name);
-      if (existingIndex >= 0) {
-        newCart[existingIndex].quantity += item.quantity;
-      } else {
-        newCart.push({ name: item.name, quantity: item.quantity });
-      }
-    });
-
+    const existingIndex = newCart.findIndex(
+      (c) => c.name === customItemName.trim()
+    );
+    if (existingIndex >= 0) {
+      newCart[existingIndex].quantity += quantity;
+    } else {
+      newCart.push({ name: customItemName.trim(), quantity });
+    }
     setCart(newCart);
-    setShowNewOrderModal(false);
+
+    // Close the popup and reset the input
+    setShowCustomItemModal(false);
+    setCustomItemName("");
+    setCustomItemQuantity(1);
   };
 
-  // ============== Cart toggling ==============
   const toggleCart = () => {
+    console.log("toggleCart: toggling cart visibility");
     setShowCart(!showCart);
     setCartError("");
     setCartMessage("");
   };
 
   const handleCartQuantityChange = (index, newQuantity) => {
+    console.log("handleCartQuantityChange: index", index, "newQuantity", newQuantity);
     const updated = [...cart];
     updated[index].quantity = parseInt(newQuantity, 10) || 0;
     setCart(updated);
   };
 
   const handleRemoveCartItem = (index) => {
+    console.log("handleRemoveCartItem: Removing cart item at index", index);
     const updated = [...cart];
     updated.splice(index, 1);
     setCart(updated);
   };
 
-  // ============== Place new order (CLIENT) ==============
-  // New: This function tries to get the user's geolocation before placing the order.
   const handlePlaceOrder = () => {
+    console.log("handlePlaceOrder: called");
     if (navigator.geolocation) {
+      console.log("handlePlaceOrder: Geolocation supported, fetching location");
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          // New: If geolocation is successful, call the order function with lat/lon
+          console.log("handlePlaceOrder: Received geolocation", position.coords);
           placeOrderWithLocation(position.coords.latitude, position.coords.longitude);
         },
         () => {
-          // New: If user denies or fails to get location, place order without lat/lon
+          console.log("handlePlaceOrder: Geolocation error, proceeding without location");
           placeOrderWithLocation(null, null);
         }
       );
     } else {
-      // New: If geolocation is not supported, place order without lat/lon
+      console.log("handlePlaceOrder: Geolocation not supported, proceeding without location");
       placeOrderWithLocation(null, null);
     }
   };
 
-  // New: This function executes the actual order creation request.
   const placeOrderWithLocation = async (latitude, longitude) => {
+    console.log("placeOrderWithLocation: called with", { latitude, longitude });
     if (cart.length === 0) {
+      console.log("placeOrderWithLocation: Cart is empty");
       setCartError("Your cart is empty.");
       return;
     }
     if (!deliveryAddress.trim() || !notes.trim() || !phoneNumber.trim()) {
+      console.log("placeOrderWithLocation: Missing delivery address, notes or phone number");
       setCartError("Please fill in delivery address, phone number, and notes.");
       return;
     }
     setCartError("");
     setCartMessage("");
-
     try {
-      // We include phoneNumber and optionally lat/lon in the payload
       const payload = {
         authenticated: true,
         userId,
         deliveryAddress,
         notes,
-        phoneNumber, // <-- existing phone number field
-        items: cart.map((item) => ({
-          itemName: item.name,
-          quantity: item.quantity,
-        })),
+        phoneNumber,
+        items: cart.map((item) => ({ itemName: item.name, quantity: item.quantity })),
       };
-
-      // New: If lat/lon exist, add them to the payload
       if (latitude !== null && longitude !== null) {
         payload.latitude = latitude;
         payload.longitude = longitude;
       }
-
-      const response = await axios.post(
-        "http://localhost:8080/api/orders/create",
-        payload
-      );
-
+      console.log("placeOrderWithLocation: Sending order payload", payload);
+      const response = await axios.post("http://localhost:8080/api/orders/create", payload);
+      console.log("placeOrderWithLocation: Received response", response);
       if (response.data.status !== "success") {
         setCartError(response.data.message || "Order creation failed");
         return;
       }
-
       setCartMessage("Order placed successfully!");
-      // Clear cart and fields
       setCart([]);
       setDeliveryAddress("");
       setNotes("");
-      setPhoneNumber(""); // reset phone number as well
-
-      // If orders are open, refresh them
+      setPhoneNumber("");
       if (showOrders) {
+        console.log("placeOrderWithLocation: Refreshing orders");
         await toggleOrders();
         await toggleOrders();
       }
     } catch (error) {
+      console.error("placeOrderWithLocation: Error occurred", error);
       setCartError(error.response?.data?.message || "Order creation failed.");
     }
   };
 
-  //=========================================== HTML part ==============================================
+  const handleOpenFeedbackModal = () => {
+    console.log("handleOpenFeedbackModal: Opening feedback modal");
+    setFeedbackContent("");
+    setFeedbackPhoneNumber("");
+    setFeedbackError("");
+    setFeedbackMessage("");
+    setShowFeedbackModal(true);
+  };
+
+  const handleCloseFeedbackModal = () => {
+    console.log("handleCloseFeedbackModal: Closing feedback modal");
+    setShowFeedbackModal(false);
+  };
+
+  const handleSubmitFeedback = async () => {
+    console.log("handleSubmitFeedback: called");
+    if (!feedbackContent.trim()) {
+      console.log("handleSubmitFeedback: Feedback content empty");
+      setFeedbackError("Feedback content cannot be empty.");
+      return;
+    }
+    if (!feedbackPhoneNumber.trim()) {
+      console.log("handleSubmitFeedback: Feedback phone number empty");
+      setFeedbackError("Phone number is required.");
+      return;
+    }
+    setFeedbackError("");
+    try {
+      const payload = {
+        name: username,
+        phoneNumber: feedbackPhoneNumber,
+        content: feedbackContent,
+      };
+      console.log("handleSubmitFeedback: Sending payload", payload);
+      const response = await axios.post("http://localhost:8080/api/feedback/submit", payload);
+      console.log("handleSubmitFeedback: Received response", response);
+      if (response.data.status === "success") {
+        setFeedbackMessage("Feedback submitted successfully!");
+        setTimeout(() => {
+          console.log("handleSubmitFeedback: Closing feedback modal after submission");
+          setShowFeedbackModal(false);
+          setFeedbackContent("");
+          setFeedbackPhoneNumber("");
+          setFeedbackMessage("");
+        }, 1500);
+      } else {
+        setFeedbackError(response.data.message || "Failed to submit feedback.");
+      }
+    } catch (error) {
+      console.error("handleSubmitFeedback: Error occurred", error);
+      setFeedbackError(error.response?.data?.message || "Failed to submit feedback.");
+    }
+  };
+
+  // ------------- Profile Modal Operations -------------
+  
+  // Open profile modal and clear previous inputs
+  const handleOpenProfileModal = () => {
+    console.log("handleOpenProfileModal: Opening profile modal and clearing inputs");
+    setCurrentPassword("");
+    setNewUsername("");
+    setNewEmail("");
+    setNewPassword("");
+    setNewPhone("");
+    setProfileError("");
+    setProfileMessage("");
+    setProfileOption("username"); // Default option
+    setShowProfileModal(true);
+  };
+
+  const handleCloseProfileModal = () => {
+    console.log("handleCloseProfileModal: Closing profile modal");
+    setShowProfileModal(false);
+  };
+
+  // Handle submit of profile update based on selected option
+  const handleSubmitProfile = async () => {
+    console.log("handleSubmitProfile: called with profileOption", profileOption);
+    // For username update
+    if (profileOption === "username") {
+      // Validate new username: only letters and must differ from current username
+      const usernameRegex = /^[A-Za-z]+$/;
+      if (!newUsername.trim() || !usernameRegex.test(newUsername.trim())) {
+        setProfileError("Username must contain only letters.");
+        return;
+      }
+      if (newUsername.trim() === username) {
+        setProfileError("New username must be different from the old one.");
+        return;
+      }
+      try {
+        console.log("handleSubmitProfile: Updating username");
+        await axios.put("http://localhost:8080/api/auth/update/username", {
+          userId,
+          newUsername: newUsername.trim(),
+          authenticated: "true",
+        });
+        setProfileMessage("You have successfully updated your information. Please log out to update your information.");
+        setTimeout(() => {
+          console.log("handleSubmitProfile: Logging out after username update");
+          onLogout();
+        }, 1500);
+      } catch (error) {
+        console.error("handleSubmitProfile: Error updating username", error);
+        setProfileError(error.response?.data?.message || "Failed to update username.");
+      }
+    }
+    // For email update
+    else if (profileOption === "email") {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!newEmail.trim() || !emailRegex.test(newEmail.trim())) {
+        setProfileError("Please enter a valid email address.");
+        return;
+      }
+      if (newEmail.trim() === email) {
+        setProfileError("New email must be different from the old one.");
+        return;
+      }
+      if (!currentPassword.trim()) {
+        setProfileError("Current password is required.");
+        return;
+      }
+      try {
+        console.log("handleSubmitProfile: Updating email");
+        await axios.put("http://localhost:8080/api/auth/update/email", {
+          userId,
+          currentPassword: currentPassword.trim(),
+          newEmail: newEmail.trim(),
+          authenticated: "true",
+        });
+        setProfileMessage("You have successfully updated your information. Please log out to update your information.");
+        setTimeout(() => {
+          console.log("handleSubmitProfile: Logging out after email update");
+          onLogout();
+        }, 1500);
+      } catch (error) {
+        console.error("handleSubmitProfile: Error updating email", error);
+        setProfileError(error.response?.data?.message || "Failed to update email.");
+      }
+    }
+    // For password update
+    else if (profileOption === "password") {
+      const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
+      if (!newPassword.trim() || !passwordRegex.test(newPassword.trim())) {
+        setProfileError("Password must be alphanumeric and at least 8 characters long.");
+        return;
+      }
+      if (newPassword.trim() === password) {
+        setProfileError("New password must be different from the old one.");
+        return;
+      }
+      if (!currentPassword.trim()) {
+        setProfileError("Current password is required.");
+        return;
+      }
+      try {
+        console.log("handleSubmitProfile: Updating password");
+        await axios.put("http://localhost:8080/api/auth/update/password", {
+          userId,
+          currentPassword: currentPassword.trim(),
+          newPassword: newPassword.trim(),
+          authenticated: "true",
+        });
+        setProfileMessage("You have successfully updated your information. Please log out to update your information.");
+        setTimeout(() => {
+          console.log("handleSubmitProfile: Logging out after password update");
+          onLogout();
+        }, 1500);
+      } catch (error) {
+        console.error("handleSubmitProfile: Error updating password", error);
+        setProfileError(error.response?.data?.message || "Failed to update password.");
+      }
+    }
+    // For phone update
+    else if (profileOption === "phone") {
+      const phoneRegex = /^\d{10}$/;
+      if (!newPhone.trim() || !phoneRegex.test(newPhone.trim())) {
+        setProfileError("Phone number must be a 10-digit US number.");
+        return;
+      }
+      if (newPhone.trim() === phone) {
+        setProfileError("New phone number must be different from the old one.");
+        return;
+      }
+      if (!currentPassword.trim()) {
+        setProfileError("Current password is required.");
+        return;
+      }
+      try {
+        console.log("handleSubmitProfile: Updating phone number");
+        await axios.put("http://localhost:8080/api/auth/update/phone", {
+          userId,
+          currentPassword: currentPassword.trim(),
+          newPhone: newPhone.trim(),
+          authenticated: "true",
+        });
+        setProfileMessage("You have successfully updated your information. Please log out to update your information.");
+        setTimeout(() => {
+          console.log("handleSubmitProfile: Logging out after phone update");
+          onLogout();
+        }, 1500);
+      } catch (error) {
+        console.error("handleSubmitProfile: Error updating phone number", error);
+        setProfileError(error.response?.data?.message || "Failed to update phone number.");
+      }
+    }
+  };
+
+  // ================= Rendering Section =================
+  console.log("Home: Rendering component");
   return (
-    <div style={styles.container}>
+    <div className="container">
       {/* Navbar */}
-      <div style={styles.navbar}>
-        <div style={styles.navGreeting}>Hello, {username}!</div>
-        <button style={styles.cartButton} onClick={toggleCart}>
+      <div className="navbar">
+        <div className="navGreeting">
+          {/* Display current username and Profile button */}
+          Hello, {username}!
+          <button className="profileButton" onClick={handleOpenProfileModal}>
+            Profile
+          </button>
+        </div>
+        <button className="feedbackButton" onClick={handleOpenFeedbackModal}>
+          Feedback
+        </button>
+        <button className="cartButton" onClick={toggleCart}>
           Cart
         </button>
-        <button style={styles.logoutButton} onClick={onLogout}>
+        <button className="logoutButton" onClick={onLogout}>
           Log Out
         </button>
       </div>
 
-      {/* Main content */}
-      <div style={styles.content}>
+      {/* Main Content */}
+      <div className="content">
         <h2>Welcome Back, {username}!</h2>
-        <div style={styles.buttonRow}>
-          <button style={styles.toggleOrdersButton} onClick={toggleOrders}>
+        <div className="buttonRow">
+          <button className="toggleOrdersButton" onClick={toggleOrders}>
             View Orders History
           </button>
-          <button style={styles.newOrderButton} onClick={handleOpenNewOrder}>
+          <button className="newOrderButton" onClick={handleOpenNewOrder}>
             Make a New Order
           </button>
         </div>
-
         {ordersLoading && <p>Loading orders...</p>}
-        {ordersError && <p style={styles.errorText}>{ordersError}</p>}
-
+        {ordersError && <p className="errorText">{ordersError}</p>}
         {showOrders && !ordersLoading && (
-          <div style={styles.ordersList}>
+          <div className="ordersList">
             {orders.length === 0 ? (
               <p>No orders found.</p>
             ) : (
               orders.map((order, idx) => (
-                <div key={idx} style={styles.orderItem}>
-                  <p>
-                    <strong>Order ID:</strong> {order.orderId}
-                  </p>
-                  <p>
-                    <strong>Address:</strong> {order.deliveryAddress}
-                  </p>
-                  <p>
-                    <strong>Notes:</strong> {order.notes}
-                  </p>
-                  <p>
-                    <strong>Request Time:</strong> {order.requestTime}
-                  </p>
+                <div key={idx} className="orderItem">
+                  <p><strong>Order ID:</strong> {order.orderId}</p>
+                  <p><strong>Address:</strong> {order.deliveryAddress}</p>
+                  <p><strong>Notes:</strong> {order.notes}</p>
+                  <p><strong>Request Time:</strong> {order.requestTime}</p>
                   {order.orderItems && order.orderItems.length > 0 ? (
                     <>
-                      <p>
-                        <strong>Total Items:</strong>{" "}
-                        {order.orderItems.length}
-                      </p>
+                      <p><strong>Total Items:</strong> {order.orderItems.length}</p>
                       <ul style={{ marginLeft: "20px" }}>
                         {order.orderItems.map((item, iidx) => (
                           <li key={iidx}>
@@ -336,12 +575,10 @@ const Home = ({ username, userId, onLogout }) => {
                       </ul>
                     </>
                   ) : (
-                    <p>
-                      <em>No items found for this order.</em>
-                    </p>
+                    <p><em>No items found for this order.</em></p>
                   )}
                   <button
-                    style={styles.deleteButton}
+                    className="deleteButton"
                     onClick={() => handleCancelOrder(order.orderId)}
                   >
                     Delete
@@ -352,337 +589,441 @@ const Home = ({ username, userId, onLogout }) => {
             )}
           </div>
         )}
-      </div>
 
-      {/* “Make a New Order” modal */}
-      {showNewOrderModal && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalContent}>
-            <h3>Select Items</h3>
-            {tempItems.map((item, index) => (
-              <div key={item.name} style={styles.itemRow}>
-                <label style={{ marginRight: "10px" }}>{item.name}</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={item.quantity}
-                  onChange={(e) =>
-                    handleItemQuantityChange(index, e.target.value)
-                  }
-                  style={{ width: "60px" }}
-                />
+        {/* when click "Make a New Order" ，show Available Items */}
+        {showNewOrder && (
+          <div style={{ marginTop: "20px", textAlign: "left" }}>
+            {/*  “Didn't find items your want?” */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <h3>Available Items</h3>
+              <div
+                style={{ color: "#1890ff", cursor: "pointer", marginLeft: "10px" }}
+                onClick={handleOpenCustomItemModal}
+              >
+                Didn't find items your want? Click here.
               </div>
-            ))}
-            {/* Manually enter items that are not in the list */}
-            <div style={{ marginTop: "20px" }}>
-              <p>Don't see what you're looking for? Enter below</p>
-              <div style={styles.itemRow}>
-                <input
-                  type="text"
-                  placeholder="Item name"
-                  value={customItemName}
-                  onChange={(e) => setCustomItemName(e.target.value)}
-                  style={styles.input}
-                />
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="Quantity"
-                  value={customItemQuantity}
-                  onChange={(e) => setCustomItemQuantity(e.target.value)}
-                  style={{ width: "60px", marginLeft: "10px" }}
-                />
-                <button
-                  onClick={handleAddCustomItem}
-                  style={styles.addCustomButton}
-                >
-                  Add
-                </button>
-              </div>
-              {customItems.length > 0 && (
-                <ul style={{ marginTop: "10px", paddingLeft: "20px" }}>
-                  {customItems.map((item, index) => (
-                    <li key={index} style={{ marginBottom: "5px" }}>
-                      {item.name} x {item.quantity}{" "}
-                      <button
-                        onClick={() => handleRemoveCustomItem(index)}
-                        style={styles.removeButton}
-                      >
-                        Remove
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+            </div>
+
+            <div className="itemGrid" style={{ marginTop: "10px" }}>
+              {cargoItems.length === 0 ? (
+                <p>No items found in cargo.</p>
+              ) : (
+                cargoItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="itemCard"
+                    onClick={() => handleSelectItem(item)}
+                  >
+                    {item.imageId ? (
+                      <img
+                        src={`http://localhost:8080/api/cargo/images/${item.imageId}`}
+                        alt={item.name}
+                        className="itemImage"
+                      />
+                    ) : (
+                      <div className="itemImagePlaceholder">
+                        No Image
+                      </div>
+                    )}
+                    <h4>{item.name}</h4>
+                    <p style={{ fontSize: "14px", color: "#999" }}>
+                      {item.category}
+                    </p>
+                    <p style={{ fontSize: "14px" }}>
+                      Total Stock: {item.quantity}
+                    </p>
+                  </div>
+                ))
               )}
             </div>
-            <div style={{ marginTop: "20px", textAlign: "center" }}>
-              <button style={styles.button} onClick={handleAddToCart}>
-                Add to Cart
-              </button>
-              <button
-                type="button"
-                style={styles.cancelButton}
-                onClick={() => setShowNewOrderModal(false)}
-              >
-                Cancel
-              </button>
+          </div>
+        )}
+      </div>
+
+      {/* Item Detail Modal */}
+      {showItemDetailModal && selectedItem && (
+        <div className="modalOverlay">
+          <div className="modalContent">
+            <div style={{ textAlign: "center" }}>
+              {selectedItem.imageId ? (
+                <img
+                  src={`http://localhost:8080/api/cargo/images/${selectedItem.imageId}`}
+                  alt={selectedItem.name}
+                  style={{ width: "200px", marginBottom: "10px" }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: "200px",
+                    height: "200px",
+                    backgroundColor: "#eee",
+                    margin: "0 auto 10px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  No Image
+                </div>
+              )}
+              <h3>{selectedItem.name}</h3>
+              <p>{selectedItem.description}</p>
+              <p style={{ fontSize: "14px", color: "#999" }}>
+                Category: {selectedItem.category || "N/A"}
+              </p>
             </div>
+            {selectedItem.sizeQuantities &&
+              Object.keys(selectedItem.sizeQuantities).length > 0 && (
+                <div style={{ margin: "10px 0" }}>
+                  <label style={{ marginRight: "8px" }}>Size:</label>
+                  <select
+                    value={selectedSize}
+                    onChange={(e) => {
+                      console.log("Item Detail Modal: selectedSize changed to", e.target.value);
+                      setSelectedSize(e.target.value);
+                    }}
+                  >
+                    {Object.entries(selectedItem.sizeQuantities).map(
+                      ([size, qty]) => (
+                        <option key={size} value={size}>
+                          {size} (stock: {qty})
+                        </option>
+                      )
+                    )}
+                  </select>
+                </div>
+              )}
+            <div style={{ margin: "10px 0" }}>
+              <label style={{ marginRight: "8px" }}>Quantity:</label>
+              <input
+                type="number"
+                min="1"
+                value={selectedQuantity}
+                onChange={(e) => {
+                  console.log("Item Detail Modal: selectedQuantity changed to", e.target.value);
+                  setSelectedQuantity(Number(e.target.value));
+                }}
+                style={{ width: "60px" }}
+              />
+            </div>
+            <button className="button" onClick={handleAddSelectedItemToCart}>
+              Add to Cart
+            </button>
+            <button className="cancelButton" onClick={closeItemDetailModal}>
+              Cancel
+            </button>
           </div>
         </div>
       )}
 
-      {/* Cart modal */}
+      {/* === Custom item pop-ups === */}
+      {showCustomItemModal && (
+        <div className="modalOverlay">
+          <div className="modalContent">
+            <h3>Add a custom item</h3>
+            <div className="formGroup">
+              <label>Item Name:</label>
+              <input
+                type="text"
+                value={customItemName}
+                onChange={(e) => setCustomItemName(e.target.value)}
+                className="input"
+              />
+            </div>
+            <div className="formGroup">
+              <label>Quantity:</label>
+              <input
+                type="number"
+                min="1"
+                value={customItemQuantity}
+                onChange={(e) => setCustomItemQuantity(e.target.value)}
+                className="input"
+              />
+            </div>
+            <button className="button" onClick={handleAddCustomItemToCart}>
+              Add to Cart
+            </button>
+            <button
+              className="cancelButton"
+              onClick={() => setShowCustomItemModal(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Cart Modal */}
       {showCart && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalContent}>
+        <div className="modalOverlay">
+          <div className="modalContent">
             <h3>Your Cart</h3>
             {cart.length === 0 ? (
               <p>No items in cart.</p>
             ) : (
               cart.map((c, index) => (
-                <div key={c.name} style={styles.itemRow}>
+                <div key={index} className="itemRow">
                   <span>{c.name}</span>
                   <input
                     type="number"
                     min="0"
                     value={c.quantity}
-                    onChange={(e) =>
-                      handleCartQuantityChange(index, e.target.value)
-                    }
-                    style={{
-                      width: "60px",
-                      marginLeft: "10px",
-                      marginRight: "10px",
+                    onChange={(e) => {
+                      console.log("Cart Modal: Quantity changed for item at index", index, "to", e.target.value);
+                      handleCartQuantityChange(index, e.target.value);
                     }}
+                    style={{ width: "60px", marginLeft: "10px", marginRight: "10px" }}
                   />
                   <button
-                    style={styles.removeButton}
-                    onClick={() => handleRemoveCartItem(index)}
+                    className="removeButton"
+                    onClick={() => {
+                      console.log("Cart Modal: Removing item at index", index);
+                      handleRemoveCartItem(index);
+                    }}
                   >
                     Remove
                   </button>
                 </div>
               ))
             )}
-
-            {/* Delivery address, phone number, and notes */}
-            <div style={styles.formGroup}>
+            <div className="formGroup">
               <label>Delivery Address:</label>
               <input
                 type="text"
                 value={deliveryAddress}
-                onChange={(e) => setDeliveryAddress(e.target.value)}
-                style={styles.input}
+                onChange={(e) => {
+                  console.log("Cart Modal: Delivery Address changed to", e.target.value);
+                  setDeliveryAddress(e.target.value);
+                }}
+                className="input"
               />
             </div>
-            <div style={styles.formGroup}>
+            <div className="formGroup">
               <label>Phone Number:</label>
               <input
                 type="text"
                 value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                style={styles.input}
+                onChange={(e) => {
+                  console.log("Cart Modal: Phone Number changed to", e.target.value);
+                  setPhoneNumber(e.target.value);
+                }}
+                className="input"
               />
             </div>
-            <div style={styles.formGroup}>
+            <div className="formGroup">
               <label>Notes:</label>
               <input
                 type="text"
                 value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                style={styles.input}
+                onChange={(e) => {
+                  console.log("Cart Modal: Notes changed to", e.target.value);
+                  setNotes(e.target.value);
+                }}
+                className="input"
               />
             </div>
-
-            {cartError && <p style={styles.errorText}>{cartError}</p>}
-            {cartMessage && <p style={styles.successText}>{cartMessage}</p>}
-
-            <button style={styles.button} onClick={handlePlaceOrder}>
+            {cartError && <p className="errorText">{cartError}</p>}
+            {cartMessage && <p className="successText">{cartMessage}</p>}
+            <button className="button" onClick={handlePlaceOrder}>
               Place Order
             </button>
-            <button style={styles.cancelButton} onClick={toggleCart}>
+            <button className="cancelButton" onClick={toggleCart}>
               Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Feedback Modal */}
+      {showFeedbackModal && (
+        <div className="modalOverlay">
+          <div className="modalContent">
+            <h3>Submit Feedback</h3>
+            <div className="formGroup">
+              <label>Phone Number:</label>
+              <input
+                type="text"
+                value={feedbackPhoneNumber}
+                onChange={(e) => {
+                  console.log("Feedback Modal: Phone Number changed to", e.target.value);
+                  setFeedbackPhoneNumber(e.target.value);
+                }}
+                className="input"
+              />
+            </div>
+            <div className="formGroup">
+              <label>Feedback:</label>
+              <textarea
+                value={feedbackContent}
+                onChange={(e) => {
+                  console.log("Feedback Modal: Feedback content changed");
+                  setFeedbackContent(e.target.value);
+                }}
+                className="input textareaInput"
+              />
+            </div>
+            {feedbackError && <p className="errorText">{feedbackError}</p>}
+            {feedbackMessage && <p className="successText">{feedbackMessage}</p>}
+            <button className="button" onClick={handleSubmitFeedback}>
+              Submit Feedback
+            </button>
+            <button className="cancelButton" onClick={handleCloseFeedbackModal}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Profile Modal */}
+      {showProfileModal && (
+        <div className="modalOverlay">
+          <div className="modalContent">
+            <h3>Update Profile</h3>
+            {/* Display current username */}
+            <p>Current Username: {username}</p>
+            {/* Radio buttons to choose which field to update */}
+            <div className="formGroup">
+              <label>Select field to update:</label>
+              <div>
+                <label>
+                  <input
+                    type="radio"
+                    value="username"
+                    checked={profileOption === "username"}
+                    onChange={(e) => {
+                      console.log("Profile Modal: profileOption changed to", e.target.value);
+                      setProfileOption(e.target.value);
+                    }}
+                  />
+                  Username
+                </label>
+                <label style={{ marginLeft: "10px" }}>
+                  <input
+                    type="radio"
+                    value="email"
+                    checked={profileOption === "email"}
+                    onChange={(e) => {
+                      console.log("Profile Modal: profileOption changed to", e.target.value);
+                      setProfileOption(e.target.value);
+                    }}
+                  />
+                  Email
+                </label>
+                <label style={{ marginLeft: "10px" }}>
+                  <input
+                    type="radio"
+                    value="password"
+                    checked={profileOption === "password"}
+                    onChange={(e) => {
+                      console.log("Profile Modal: profileOption changed to", e.target.value);
+                      setProfileOption(e.target.value);
+                    }}
+                  />
+                  Password
+                </label>
+                <label style={{ marginLeft: "10px" }}>
+                  <input
+                    type="radio"
+                    value="phone"
+                    checked={profileOption === "phone"}
+                    onChange={(e) => {
+                      console.log("Profile Modal: profileOption changed to", e.target.value);
+                      setProfileOption(e.target.value);
+                    }}
+                  />
+                  Phone Number
+                </label>
+              </div>
+            </div>
+            {/* Current password field is required for all updates except username */}
+            {(profileOption === "email" || profileOption === "password" || profileOption === "phone") && (
+              <div className="formGroup">
+                <label>Current Password:</label>
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => {
+                    console.log("Profile Modal: Current Password changed");
+                    setCurrentPassword(e.target.value);
+                  }}
+                  className="input"
+                />
+              </div>
+            )}
+            {/* Conditionally render input based on selected option */}
+            {profileOption === "username" && (
+              <div className="formGroup">
+                <label>New Username:</label>
+                <input
+                  type="text"
+                  value={newUsername}
+                  onChange={(e) => {
+                    console.log("Profile Modal: New Username changed to", e.target.value);
+                    setNewUsername(e.target.value);
+                  }}
+                  className="input"
+                  placeholder="Only letters"
+                />
+              </div>
+            )}
+            {profileOption === "email" && (
+              <div className="formGroup">
+                <label>New Email:</label>
+                <input
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => {
+                    console.log("Profile Modal: New Email changed to", e.target.value);
+                    setNewEmail(e.target.value);
+                  }}
+                  className="input"
+                  placeholder="example@domain.com"
+                />
+              </div>
+            )}
+            {profileOption === "password" && (
+              <div className="formGroup">
+                <label>New Password:</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => {
+                    console.log("Profile Modal: New Password changed");
+                    setNewPassword(e.target.value);
+                  }}
+                  className="input"
+                  placeholder="Alphanumeric, min 8 chars"
+                />
+              </div>
+            )}
+            {profileOption === "phone" && (
+              <div className="formGroup">
+                <label>New Phone Number:</label>
+                <input
+                  type="text"
+                  value={newPhone}
+                  onChange={(e) => {
+                    console.log("Profile Modal: New Phone Number changed to", e.target.value);
+                    setNewPhone(e.target.value);
+                  }}
+                  className="input"
+                  placeholder="10-digit number"
+                />
+              </div>
+            )}
+            {profileError && <p className="errorText">{profileError}</p>}
+            {profileMessage && <p className="successText">{profileMessage}</p>}
+            <button className="button" onClick={handleSubmitProfile}>
+              Submit Profile Update
+            </button>
+            <button className="cancelButton" onClick={handleCloseProfileModal}>
+              Cancel
             </button>
           </div>
         </div>
       )}
     </div>
   );
-};
-
-//=========================================== CSS part ==============================================
-const styles = {
-  container: {
-    minHeight: "100vh",
-    backgroundColor: "#f0f2f5",
-    fontFamily: "Arial, sans-serif",
-  },
-  navbar: {
-    display: "flex",
-    justifyContent: "flex-end",
-    alignItems: "center",
-    backgroundColor: "#1890ff",
-    color: "white",
-    padding: "10px 20px",
-    gap: "10px",
-  },
-  navGreeting: {
-    marginRight: "auto",
-    fontSize: "20px",
-  },
-  cartButton: {
-    padding: "8px 16px",
-    backgroundColor: "#faad14",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    color: "white",
-  },
-  logoutButton: {
-    padding: "8px 16px",
-    backgroundColor: "#ff4d4f",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    color: "white",
-  },
-  content: {
-    padding: "20px",
-    maxWidth: "800px",
-    margin: "20px auto",
-    backgroundColor: "white",
-    borderRadius: "8px",
-    boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-    textAlign: "center",
-  },
-
-  buttonRow: {
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: "20px",
-    marginTop: "20px",
-    marginBottom: "20px",
-  },
-  toggleOrdersButton: {
-    padding: "10px 20px",
-    backgroundColor: "#1890ff",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    color: "white",
-  },
-  newOrderButton: {
-    padding: "10px 20px",
-    backgroundColor: "#52c41a",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    color: "white",
-  },
-  ordersList: {
-    marginTop: "10px",
-    border: "1px solid #ddd",
-    borderRadius: "4px",
-    padding: "10px",
-    textAlign: "left",
-  },
-  orderItem: {
-    borderBottom: "1px solid #ddd",
-    padding: "10px 0",
-  },
-  deleteButton: {
-    marginTop: "10px",
-    backgroundColor: "#ff4d4f",
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
-    padding: "6px 12px",
-    cursor: "pointer",
-  },
-  modalOverlay: {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 2000,
-  },
-  modalContent: {
-    backgroundColor: "white",
-    padding: "20px",
-    borderRadius: "8px",
-    width: "400px",
-    maxHeight: "80vh",
-    overflowY: "auto",
-    boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
-  },
-  itemRow: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: "8px",
-  },
-  removeButton: {
-    backgroundColor: "#ff4d4f",
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
-    padding: "4px 8px",
-    cursor: "pointer",
-  },
-  formGroup: {
-    marginBottom: "1rem",
-    textAlign: "left",
-  },
-  input: {
-    width: "100%",
-    padding: "8px",
-    marginTop: "4px",
-    border: "1px solid #ddd",
-    borderRadius: "4px",
-  },
-  addCustomButton: {
-    padding: "6px 12px",
-    backgroundColor: "#52c41a",
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    marginLeft: "10px",
-  },
-  button: {
-    width: "100%",
-    padding: "10px",
-    backgroundColor: "#1890ff",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    color: "white",
-    marginTop: "1rem",
-  },
-  cancelButton: {
-    width: "100%",
-    padding: "10px",
-    backgroundColor: "#ff4d4f",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    color: "white",
-    marginTop: "1rem",
-  },
-  errorText: {
-    color: "red",
-    fontSize: "14px",
-  },
-  successText: {
-    color: "green",
-    fontSize: "14px",
-  },
 };
 
 export default Home;
