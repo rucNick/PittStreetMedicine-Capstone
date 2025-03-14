@@ -118,6 +118,11 @@ const Volunteer = ({ onLogout, userData }) => {
                   <th style={styles.tableHeaderCell}>User ID</th>
                   <th style={styles.tableHeaderCell}>Delivery Address</th>
                   <th style={styles.tableHeaderCell}>Phone Number</th>
+
+                  {/* Added two new columns for latitude/longitude */}
+                  <th style={styles.tableHeaderCell}>Latitude</th>
+                  <th style={styles.tableHeaderCell}>Longitude</th>
+
                   <th style={styles.tableHeaderCell}>Note</th>
                   <th style={styles.tableHeaderCell}>Order Type</th>
                 </tr>
@@ -146,6 +151,11 @@ const Volunteer = ({ onLogout, userData }) => {
                       <td style={styles.tableCell}>{order.userId}</td>
                       <td style={styles.tableCell}>{order.deliveryAddress}</td>
                       <td style={styles.tableCell}>{order.phoneNumber}</td>
+
+                      {/* Display the lat/long values from the backend */}
+                      <td style={styles.tableCell}>{order.latitude}</td>
+                      <td style={styles.tableCell}>{order.longitude}</td>
+
                       <td style={styles.tableCell}>{order.notes}</td>
                       <td style={styles.tableCell}>{order.orderType}</td>
                     </tr>
@@ -193,7 +203,6 @@ const styles = {
     borderRadius: '8px',
     boxShadow: '0 0 10px rgba(0,0,0,0.1)',
   },
-  // Updated to center the buttons
   buttonGroup: {
     display: 'flex',
     gap: '10px',

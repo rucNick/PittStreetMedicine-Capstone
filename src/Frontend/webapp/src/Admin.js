@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 
 const Admin = ({ onLogout, userData }) => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("users"); // "users", "orders", or "applications"
+  const [activeTab, setActiveTab] = useState("users"); // "users", "orders", "applications", or "feedback"
   console.log("Component Admin: Initialized with activeTab =", "users");
 
   // ----- Users state & functions -----
@@ -183,6 +183,28 @@ const Admin = ({ onLogout, userData }) => {
     }
   };
 
+  // ----- Feedback state & functions -----
+  const [feedbacks, setFeedbacks] = useState([]); // Store all feedback data
+  const [feedbackError, setFeedbackError] = useState(''); // Store any error related to feedback
+
+  // Load all feedback from the backend
+  const loadFeedback = useCallback(async () => {
+    console.log("loadFeedback: Loading all feedback");
+    try {
+      const response = await axios.get('http://localhost:8080/api/feedback/all', {
+        headers: {
+          "Admin-Username": userData.username,
+          "Authentication-Status": "true"
+        }
+      });
+      console.log("loadFeedback: Received response", response);
+      setFeedbacks(response.data.data);
+    } catch (error) {
+      console.log("loadFeedback: Error occurred", error);
+      setFeedbackError(error.response?.data?.message || error.message);
+    }
+  }, [userData.username]);
+
   // Load data when switching tabs
   useEffect(() => {
     console.log("useEffect: Active tab changed to", activeTab);
@@ -196,7 +218,12 @@ const Admin = ({ onLogout, userData }) => {
       console.log("useEffect: Loading applications tab");
       loadApplications();
     }
-  }, [activeTab, orderFilter, loadUsers, loadOrders, loadApplications]);
+    // When activeTab is "feedback", call loadFeedback()
+    else if (activeTab === "feedback") {
+      console.log("useEffect: Loading feedback tab");
+      loadFeedback();
+    }
+  }, [activeTab, orderFilter, loadUsers, loadOrders, loadApplications, loadFeedback]);
 
   // Logout
   const handleLogout = () => {
@@ -230,6 +257,10 @@ const Admin = ({ onLogout, userData }) => {
           </button>
           <button onClick={() => { console.log("Navigation: Switching to applications tab"); setActiveTab("applications") }} style={styles.navButton}>
             Volunteer Applications
+          </button>
+          {/* New "Feedback" button to show feedback data */}
+          <button onClick={() => { console.log("Navigation: Switching to feedback tab"); setActiveTab("feedback") }} style={styles.navButton}>
+            Feedback
           </button>
           <button onClick={() => { console.log("Navigation: Navigating to Cargo Admin page"); navigate('/cargo_admin'); }} style={styles.navButton}>
             Cargo Admin
@@ -535,6 +566,40 @@ const Admin = ({ onLogout, userData }) => {
                       <td style={styles.tableCell}>
                         {new Date(app.submissionDate).toLocaleString()}
                       </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ========================= FEEDBACK SECTION (New) ========================= */}
+        {activeTab === "feedback" && (
+          <div style={styles.sectionContainer}>
+            <h2>Feedback</h2>
+            {feedbackError && <p style={{ color: 'red' }}>Error: {feedbackError}</p>}
+
+            {/* Table to display all feedback records */}
+            <div style={styles.tableContainer}>
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={styles.tableHeaderCell}>ID</th>
+                    <th style={styles.tableHeaderCell}>Name</th>
+                    <th style={styles.tableHeaderCell}>Phone</th>
+                    <th style={styles.tableHeaderCell}>Content</th>
+                    <th style={styles.tableHeaderCell}>Created At</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {feedbacks.map((f) => (
+                    <tr key={f.id}>
+                      <td style={styles.tableCell}>{f.id}</td>
+                      <td style={styles.tableCell}>{f.name}</td>
+                      <td style={styles.tableCell}>{f.phoneNumber}</td>
+                      <td style={styles.tableCell}>{f.content}</td>
+                      <td style={styles.tableCell}>{f.createdAt}</td>
                     </tr>
                   ))}
                 </tbody>

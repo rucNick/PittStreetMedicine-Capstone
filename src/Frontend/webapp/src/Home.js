@@ -55,6 +55,11 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
   const [profileMessage, setProfileMessage] = useState("");
   console.log("Profile Update States initialized");
 
+  // ============== Customize item related status ==============
+  const [showCustomItemModal, setShowCustomItemModal] = useState(false); 
+  const [customItemName, setCustomItemName] = useState("");         
+  const [customItemQuantity, setCustomItemQuantity] = useState(1);  
+
   // ================= Order History, Cancel Order, Fetch Cargo Items, etc. =================
   const toggleOrders = async () => {
     console.log("toggleOrders: called");
@@ -175,6 +180,40 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
     }
     setCart(newCart);
     closeItemDetailModal();
+  };
+
+  // === Opens the custom item popup window ===
+  const handleOpenCustomItemModal = () => {
+    setShowCustomItemModal(true);
+  };
+
+  // === Add custom items to your cart ===
+  const handleAddCustomItemToCart = () => {
+    if (!customItemName.trim()) {
+      alert("Please enter an item name.");
+      return;
+    }
+    const quantity = parseInt(customItemQuantity, 10);
+    if (isNaN(quantity) || quantity <= 0) {
+      alert("Please enter a valid quantity (positive integer).");
+      return;
+    }
+    // Determine if there is an item with the same name in your cart
+    const newCart = [...cart];
+    const existingIndex = newCart.findIndex(
+      (c) => c.name === customItemName.trim()
+    );
+    if (existingIndex >= 0) {
+      newCart[existingIndex].quantity += quantity;
+    } else {
+      newCart.push({ name: customItemName.trim(), quantity });
+    }
+    setCart(newCart);
+
+    // Close the popup and reset the input
+    setShowCustomItemModal(false);
+    setCustomItemName("");
+    setCustomItemQuantity(1);
   };
 
   const toggleCart = () => {
@@ -550,10 +589,22 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
             )}
           </div>
         )}
+
+        {/* when click "Make a New Order" ，show Available Items */}
         {showNewOrder && (
           <div style={{ marginTop: "20px", textAlign: "left" }}>
-            <h3>Available Items</h3>
-            <div className="itemGrid">
+            {/*  “Didn't find items your want?” */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <h3>Available Items</h3>
+              <div
+                style={{ color: "#1890ff", cursor: "pointer", marginLeft: "10px" }}
+                onClick={handleOpenCustomItemModal}
+              >
+                Didn't find items your want? Click here.
+              </div>
+            </div>
+
+            <div className="itemGrid" style={{ marginTop: "10px" }}>
               {cargoItems.length === 0 ? (
                 <p>No items found in cargo.</p>
               ) : (
@@ -659,6 +710,43 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
               Add to Cart
             </button>
             <button className="cancelButton" onClick={closeItemDetailModal}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* === Custom item pop-ups === */}
+      {showCustomItemModal && (
+        <div className="modalOverlay">
+          <div className="modalContent">
+            <h3>Add a custom item</h3>
+            <div className="formGroup">
+              <label>Item Name:</label>
+              <input
+                type="text"
+                value={customItemName}
+                onChange={(e) => setCustomItemName(e.target.value)}
+                className="input"
+              />
+            </div>
+            <div className="formGroup">
+              <label>Quantity:</label>
+              <input
+                type="number"
+                min="1"
+                value={customItemQuantity}
+                onChange={(e) => setCustomItemQuantity(e.target.value)}
+                className="input"
+              />
+            </div>
+            <button className="button" onClick={handleAddCustomItemToCart}>
+              Add to Cart
+            </button>
+            <button
+              className="cancelButton"
+              onClick={() => setShowCustomItemModal(false)}
+            >
               Cancel
             </button>
           </div>
