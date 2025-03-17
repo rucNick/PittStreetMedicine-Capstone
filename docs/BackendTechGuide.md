@@ -7,7 +7,9 @@
   - [Register](#register)
   - [Login](#login)
   - [Profile Management](#profile-management)
-  - [Admin Access](#admin-access)
+- [Admin API](#admin-api)
+  - [User Management](#user-management)
+  - [Password Operations](#password-operations)
 - [Order API](#order-api)
   - [Create Order](#create-order)
   - [Create Guest Order](#create-guest-order)
@@ -23,6 +25,11 @@
   - [Upload Image](#upload-image)
   - [Get Image](#get-image)
   - [Delete Image](#delete-image)
+- [Feedback API](#feedback-api)
+  - [Submit Feedback](#submit-feedback)
+  - [Get All Feedback](#get-all-feedback)
+  - [Delete Feedback](#delete-feedback)
+  - [Search Feedback](#search-feedback)
 - [Volunteer API](#volunteer-api)
   - [Submit Application](#submit-volunteer-application)
   - [Get All Applications](#get-all-applications-admin-only)
@@ -34,6 +41,7 @@
   - [Authentication Flow](#authentication-flow)
   - [Order Flow](#order-flow)
   - [Cargo Management Flow](#cargo-management-flow)
+  - [Feedback Management](#feedback-management)
   - [Volunteer Application Flow](#volunteer-application-flow)
   - [Access Control](#access-control)
 
@@ -50,11 +58,17 @@
 ```
 com.backend.streetmed_backend/
 ├── controller/
-│   ├── AuthController.java
-│   ├── OrderController.java
-│   ├── CargoController.java
-│   ├── CargoImageController.java
-│   └── VolunteerController.java
+│   ├── Auth/
+│   │   ├── AuthController.java
+│   │   └── AdminController.java
+│   ├── Inventory/
+│   │   ├── CargoController.java
+│   │   └── CargoImageController.java
+│   ├── Order/
+│   │   └── OrderController.java
+│   └── Services/
+│       └── FeedbackController.java
+│       └── VolunteerController.java
 ├── entity/
 │   ├── user_entity/
 │   │   ├── User.java
@@ -63,23 +77,31 @@ com.backend.streetmed_backend/
 │   ├── order_entity/
 │   │   ├── Order.java
 │   │   └── OrderItem.java
+│   ├── Service_entity/
+│   │   └── Feedback.java
 │   └── CargoItem.java
 ├── document/
 │   └── CargoImage.java
 ├── repository/
-│   ├── UserRepository.java
-│   ├── UserMetadataRepository.java
-│   ├── OrderRepository.java
-│   ├── OrderItemRepository.java
-│   ├── CargoItemRepository.java
-│   ├── CargoImageRepository.java
+│   ├── Cargo/
+│   │   ├── CargoItemRepository.java
+│   │   └── CargoImageRepository.java
+│   ├── Order/
+│   │   ├── OrderRepository.java
+│   │   └── OrderItemRepository.java
+│   ├── User/
+│   │   ├── UserMetadataRepository.java
+│   │   └── UserRepository.java
+│   ├── FeedbackRepository.java
 │   └── VolunteerApplicationRepository.java
-└── service/
-    ├── UserService.java
-    ├── OrderService.java
-    ├── CargoItemService.java
-    ├── CargoImageService.java
-    └── VolunteerApplicationService.java
+├── service/
+|    ├── UserService.java
+|    ├── OrderService.java
+|    ├── CargoItemService.java
+|    ├── CargoImageService.java
+|    ├── FeedbackService.java
+|    └── VolunteerApplicationService.java
+|── Security/
 ```
 
 ## Authentication API
@@ -191,11 +213,34 @@ Response:
 }
 ```
 
-### Admin Access
+#### Update Phone Number
+```http
+PUT /api/auth/update/phone
+Content-Type: application/json
+
+Request Body:
+{
+    "userId": "string",
+    "currentPassword": "string",
+    "newPhone": "string",
+    "authenticated": "true"
+}
+
+Response:
+{
+    "status": "success",
+    "message": "Phone number updated successfully",
+    "phone": "string"
+}
+```
+
+## Admin API
+
+### User Management
 
 #### Get All Users
 ```http
-GET /api/auth/users
+GET /api/admin/users
 Headers:
   Admin-Username: string
   Authentication-Status: "true"
@@ -212,10 +257,101 @@ Response:
 }
 ```
 
+#### Get User Details
+```http
+GET /api/admin/user/{userId}
+Headers:
+  Admin-Username: string
+  Authentication-Status: "true"
+
+Response:
+{
+    "status": "success",
+    "data": {
+        "userId": number,
+        "username": "string",
+        "email": "string",
+        "phone": "string",
+        "role": "string",
+        "firstName": "string",
+        "lastName": "string",
+        "createdAt": "string (date-time)",
+        "lastLogin": "string (date-time)"
+    }
+}
+```
+
+#### Create User
+```http
+POST /api/admin/user/create
+Content-Type: application/json
+Headers:
+  Admin-Username: string
+  Authentication-Status: "true"
+
+Request Body:
+{
+    "adminUsername": "string",
+    "authenticated": "true",
+    "username": "string",
+    "email": "string" (required for VOLUNTEER role),
+    "phone": "string" (optional),
+    "firstName": "string" (optional),
+    "lastName": "string" (optional),
+    "role": "CLIENT" or "VOLUNTEER"
+}
+
+Response:
+{
+    "status": "success",
+    "message": "User created successfully",
+    "userId": number,
+    "username": "string",
+    "role": "string",
+    "generatedPassword": "string"
+}
+```
+
+#### Update User Information
+```http
+PUT /api/admin/user/update/{userId}
+Content-Type: application/json
+Headers:
+  Admin-Username: string
+  Authentication-Status: "true"
+
+Request Body:
+{
+    "adminUsername": "string",
+    "authenticated": "true",
+    "username": "string" (optional),
+    "email": "string" (optional),
+    "phone": "string" (optional),
+    "role": "string" (optional),
+    "firstName": "string" (optional),
+    "lastName": "string" (optional)
+}
+
+Response:
+{
+    "status": "success",
+    "message": "User updated successfully",
+    "userId": number,
+    "currentUsername": "string",
+    "updatedFields": {
+        "field1": "value1",
+        "field2": "value2"
+    }
+}
+```
+
 #### Delete User
 ```http
-DELETE /api/auth/delete
+DELETE /api/admin/user/delete
 Content-Type: application/json
+Headers:
+  Admin-Username: string
+  Authentication-Status: "true"
 
 Request Body:
 {
@@ -229,6 +365,46 @@ Response:
     "status": "success",
     "message": "User deleted successfully",
     "authenticated": true
+}
+```
+
+### Password Operations
+
+#### Reset User Password
+```http
+POST /api/admin/user/reset-password/{userId}
+Content-Type: application/json
+Headers:
+  Admin-Username: string
+  Authentication-Status: "true"
+
+Request Body:
+{
+    "adminUsername": "string",
+    "authenticated": "true",
+    "newPassword": "string"
+}
+
+Response:
+{
+    "status": "success",
+    "message": "Password reset successfully",
+    "userId": number,
+    "username": "string"
+}
+```
+
+#### Migrate All Passwords to Hashed Format
+```http
+POST /api/admin/migrate-passwords
+Headers:
+  Admin-Username: string
+  Authentication-Status: "true"
+
+Response:
+{
+    "status": "success",
+    "message": "All passwords have been migrated to hashed format"
 }
 ```
 
@@ -540,6 +716,86 @@ Response:
 }
 ```
 
+## Feedback API
+
+### Submit Feedback
+```http
+POST /api/feedback/submit
+Content-Type: application/json
+
+Request Body:
+{
+    "name": "string",
+    "phoneNumber": "string" (optional),
+    "content": "string"
+}
+
+Response:
+{
+    "status": "success",
+    "message": "Feedback submitted successfully",
+    "feedbackId": number
+}
+```
+
+### Get All Feedback
+```http
+GET /api/feedback/all
+Headers:
+  Admin-Username: string
+  Authentication-Status: "true"
+
+Response:
+{
+    "status": "success",
+    "data": [
+        {
+            "id": number,
+            "name": "string",
+            "phoneNumber": "string",
+            "content": "string",
+            "createdAt": "string (date-time)"
+        }
+    ]
+}
+```
+
+### Delete Feedback
+```http
+DELETE /api/feedback/{id}
+Headers:
+  Admin-Username: string
+  Authentication-Status: "true"
+
+Response:
+{
+    "status": "success",
+    "message": "Feedback deleted successfully"
+}
+```
+
+### Search Feedback
+```http
+GET /api/feedback/search?name={name}
+Headers:
+  Admin-Username: string
+  Authentication-Status: "true"
+
+Response:
+{
+    "status": "success",
+    "data": [
+        {
+            "id": number,
+            "name": "string",
+            "phoneNumber": "string",
+            "content": "string",
+            "createdAt": "string (date-time)"
+        }
+    ]
+}
+```
+
 ## Volunteer API
 
 ### Submit Volunteer Application
@@ -692,14 +948,16 @@ Response:
    - Returns user role and authentication status
 
 3. **Profile Management**
-   - Users can update their username
+   - Users can update their username, email, phone, and password
    - Password changes require current password verification
    - Email changes require current password verification
    - All updates check for conflicts with existing users
 
 4. **Admin Access**
+   - Separated into dedicated AdminController
    - Protected admin endpoints with role verification
-   - User management capabilities
+   - User management capabilities (create, update, delete)
+   - Password reset functionality with specified password
    - System-wide operations (e.g., password migration)
 
 ### Order Flow
@@ -750,6 +1008,23 @@ Response:
    - Retrieve images by ID
    - Delete images when no longer needed
 
+### Feedback Management
+1. **Feedback Submission**
+   - Open to all users without login requirement
+   - Required fields: name and content
+   - Optional phone number for contact
+
+2. **Feedback Administration**
+   - Admin-only access to feedback management
+   - View all feedback submissions
+   - Search feedback by name
+   - Delete feedback entries
+
+3. **Data Collection**
+   - Timestamp tracking for all feedback
+   - Organization by submission time
+   - Search functionality for analysis
+
 ### Volunteer Application Flow
 1. **Application Submission**
    - Open to all users
@@ -771,7 +1046,7 @@ Response:
 1. **Authentication Requirements**
    - Most endpoints require authentication
    - Guest services for limited operations
-   - Token-based session management
+   - Admin operations require additional header verification
 
 2. **Role-Based Access**
    - CLIENT: Self-service operations
