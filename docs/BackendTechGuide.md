@@ -7,6 +7,9 @@
   - [Register](#register)
   - [Login](#login)
   - [Profile Management](#profile-management)
+  - [Password Recovery](#password-recovery)
+- [Email Service](#email-service)
+  - [Email Configuration](#email-configuration)
 - [Admin API](#admin-api)
   - [User Management](#user-management)
   - [Password Operations](#password-operations)
@@ -39,6 +42,8 @@
   - [Reject Application](#reject-volunteer-application)
 - [Business Logic](#business-logic)
   - [Authentication Flow](#authentication-flow)
+  - [Password Recovery Flow](#password-recovery-flow)
+  - [Email Notification System](#email-notification-system)
   - [Order Flow](#order-flow)
   - [Cargo Management Flow](#cargo-management-flow)
   - [Order-Inventory Integration](#order-inventory-integration)
@@ -52,6 +57,7 @@
 - SQLite Database
 - MongoDB (for image storage)
 - JPA/Hibernate
+- Spring Mail (for email notifications)
 - Maven
 - Cross-Origin Resource Sharing (CORS) enabled for localhost:3000
 
@@ -61,15 +67,21 @@ com.backend.streetmed_backend/
 ├── controller/
 │   ├── Auth/
 │   │   ├── AuthController.java
-│   │   └── AdminController.java
+│   │   ├── AdminController.java
+│   │   └── PasswordRecoveryController.java
 │   ├── Inventory/
 │   │   ├── CargoController.java
 │   │   └── CargoImageController.java
 │   ├── Order/
 │   │   └── OrderController.java
 │   └── Services/
-│       └── FeedbackController.java
+│       ├── FeedbackController.java
 │       └── VolunteerController.java
+├── config/
+│   ├── AsyncConfig.java
+│   ├── DatabaseConfig.java
+│   ├── MailConfig.java
+│   └── MongoConfig.java
 ├── entity/
 │   ├── user_entity/
 │   │   ├── User.java
@@ -100,6 +112,7 @@ com.backend.streetmed_backend/
 |    ├── OrderService.java
 |    ├── CargoItemService.java
 |    ├── CargoImageService.java
+|    ├── EmailService.java
 |    ├── FeedbackService.java
 |    └── VolunteerApplicationService.java
 |── Security/
@@ -235,6 +248,65 @@ Response:
 }
 ```
 
+### Password Recovery
+
+#### Request Password Reset
+```http
+POST /api/auth/password/request-reset
+Content-Type: application/json
+
+Request Body:
+{
+    "email": "string"
+}
+
+Response:
+{
+    "status": "success",
+    "message": "Recovery code sent to your email"
+}
+```
+
+#### Verify OTP and Reset Password
+```http
+POST /api/auth/password/verify-reset
+Content-Type: application/json
+
+Request Body:
+{
+    "email": "string",
+    "otp": "string",
+    "newPassword": "string"
+}
+
+Response:
+{
+    "status": "success",
+    "message": "Password reset successfully"
+}
+```
+
+## Email Service
+
+The email service handles automatic email notifications for user operations.
+
+### Email Configuration
+
+Configuration in application.properties:
+```properties
+# Email Configuration
+spring.mail.host=smtp.gmail.com
+spring.mail.port=587
+spring.mail.username=email@gmail.com
+spring.mail.password=app-password
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
+
+# Email Service Toggle
+email.service.enabled=true
+```
+
+
 ## Admin API
 
 ### User Management
@@ -312,6 +384,8 @@ Response:
     "generatedPassword": "string"
 }
 ```
+
+*Note: When a user is created with an email address, an email with login credentials is automatically sent to the user.*
 
 #### Update User Information
 ```http
@@ -954,6 +1028,8 @@ Response:
 }
 ```
 
+*Note: When a volunteer application is approved, an email is automatically sent to the volunteer with their login credentials.*
+
 ### Reject Volunteer Application
 ```http
 POST /api/volunteer/reject
@@ -1000,6 +1076,37 @@ Response:
    - User management capabilities (create, update, delete)
    - Password reset functionality with specified password
    - System-wide operations (e.g., password migration)
+
+### Password Recovery Flow
+1. **Password Reset Request**
+   - User requests password reset by providing email
+   - System generates a 6-digit OTP code
+   - OTP is stored in memory with 15-minute expiration
+   - System sends OTP to user's email address
+
+2. **OTP Verification and Password Reset**
+   - User submits OTP code and new password
+   - System verifies OTP code validity and expiration
+   - If valid, password is updated and OTP is removed
+   - If invalid or expired, error is returned
+
+### Email Notification System
+1. **System Components**
+   - Configuration in `application.properties`
+   - Email service enabled/disabled toggle
+   - Asynchronous email sending via dedicated thread pool
+   - Admin control endpoints
+
+2. **Email Types**
+   - Password recovery emails with OTP
+   - New user account creation notification with credentials
+   - Volunteer application approval notification with login info
+
+3. **Performance Considerations**
+   - Non-blocking asynchronous processing
+   - Dedicated thread pool for email operations
+   - Connection timeouts to prevent hanging operations
+   - Reduced debug logging in production
 
 ### Order Flow
 1. **Order Creation**
@@ -1121,7 +1228,7 @@ Response:
 
 3. **Account Creation**
    - Automatic volunteer account creation upon approval
-   - Initial password provision
+   - Initial password provision with email notification
    - Role assignment
 
 ### Access Control
@@ -1139,5 +1246,6 @@ Response:
 3. **Security Measures**
    - Password hashing
    - Current password verification for sensitive changes
+   - One-time password (OTP) for password recovery
    - Input validation
    - CORS protection
