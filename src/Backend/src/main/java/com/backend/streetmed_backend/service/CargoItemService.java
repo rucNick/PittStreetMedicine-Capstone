@@ -74,12 +74,31 @@ public class CargoItemService {
         return cargoItemRepository.save(existingItem);
     }
 
-    public void updateQuantity(Integer id, Integer quantity) {
+    /**
+     * Update the quantity of a cargo item
+     *
+     * @param id The ID of the cargo item
+     * @param quantity The new quantity
+     * @return The updated cargo item
+     */
+    @Transactional
+    public CargoItem updateQuantity(Integer id, Integer quantity) {
+        if (quantity < 0) {
+            throw new IllegalArgumentException("Quantity cannot be negative");
+        }
+
         CargoItem item = cargoItemRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Item not found"));
 
         item.setQuantity(quantity);
-        cargoItemRepository.save(item);
+        item.setUpdatedAt(LocalDateTime.now());
+
+        // Check if the item is now below the minimum quantity threshold
+        if (item.getMinQuantity() != null && quantity <= item.getMinQuantity()) {
+            logger.warn("Item {} has reached low stock threshold: {}", item.getName(), quantity);
+        }
+
+        return cargoItemRepository.save(item);
     }
 
     public void updateSizeQuantity(Integer id, String size, Integer quantity) {
@@ -90,6 +109,14 @@ public class CargoItemService {
         cargoItemRepository.save(item);
     }
 
+    /**
+     * Checks if an item is available in the requested quantity
+     *
+     * @param id The ID of the cargo item
+     * @param requestedQuantity The quantity needed
+     * @return true if the item is available in the requested quantity
+     */
+    @Transactional(readOnly = true)
     public boolean checkAvailability(Integer id, Integer requestedQuantity) {
         CargoItem item = cargoItemRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Item not found"));
@@ -163,16 +190,31 @@ public class CargoItemService {
     }
 
     // Inventory management methods
+    /**
+     * Temporarily reserve items from inventory for an order
+     * Called when an order is created.
+     *
+     * @param id The ID of the cargo item
+     * @param quantity The quantity to reserve
+     */
     @Transactional
     public void reserveItems(Integer id, Integer quantity) {
         CargoItem item = cargoItemRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Item not found"));
 
         if (!checkAvailability(id, quantity)) {
-            throw new RuntimeException("Insufficient quantity available");
+            throw new RuntimeException("Insufficient quantity available for item ID: " + id);
         }
 
+        // Reduce the available quantity
         item.setQuantity(item.getQuantity() - quantity);
+        item.setUpdatedAt(LocalDateTime.now());
+
+        // If quantity reaches minimum threshold, may need to trigger alert
+        if (item.getMinQuantity() != null && item.getQuantity() <= item.getMinQuantity()) {
+            logger.warn("Item {} has reached low stock threshold: {}", item.getName(), item.getQuantity());
+        }
+
         cargoItemRepository.save(item);
     }
 

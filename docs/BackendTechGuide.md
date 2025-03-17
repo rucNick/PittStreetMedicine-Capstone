@@ -41,6 +41,7 @@
   - [Authentication Flow](#authentication-flow)
   - [Order Flow](#order-flow)
   - [Cargo Management Flow](#cargo-management-flow)
+  - [Order-Inventory Integration](#order-inventory-integration)
   - [Feedback Management](#feedback-management)
   - [Volunteer Application Flow](#volunteer-application-flow)
   - [Access Control](#access-control)
@@ -439,7 +440,16 @@ Response:
     "orderId": number,
     "authenticated": true
 }
+
+Error Response (if items are out of stock):
+{
+    "status": "error",
+    "message": "Insufficient quantity available for: ItemName",
+    "authenticated": false
+}
 ```
+
+*Note: Creating an order now verifies available inventory and temporarily reserves the requested quantities.*
 
 ### Create Guest Order
 ```http
@@ -471,24 +481,37 @@ Response:
 }
 ```
 
+*Note: Guest orders have the same inventory reservation behavior as authenticated orders.*
+
 ### View Orders
 
 #### Get All Orders (Volunteer Only)
 ```http
 GET /api/orders/all
-Content-Type: application/json
-
-Request Body:
-{
-    "authenticated": true,
-    "userId": number,
-    "userRole": "VOLUNTEER"
-}
+Query Parameters:
+  authenticated: boolean
+  userId: number
+  userRole: string
 
 Response:
 {
     "status": "success",
-    "orders": [...],
+    "orders": [
+        {
+            "orderId": number,
+            "userId": number,
+            "status": "string",
+            "deliveryAddress": "string",
+            "notes": "string",
+            "requestTime": "string (date-time)",
+            "orderItems": [
+                {
+                    "itemName": "string",
+                    "quantity": number
+                }
+            ]
+        }
+    ],
     "authenticated": true
 }
 ```
@@ -504,7 +527,21 @@ Query Parameters:
 Response:
 {
     "status": "success",
-    "orders": [...],
+    "orders": [
+        {
+            "orderId": number,
+            "status": "string",
+            "deliveryAddress": "string",
+            "notes": "string",
+            "requestTime": "string (date-time)",
+            "orderItems": [
+                {
+                    "itemName": "string",
+                    "quantity": number
+                }
+            ]
+        }
+    ],
     "authenticated": true
 }
 ```
@@ -531,6 +568,8 @@ Response:
 }
 ```
 
+*Note: When an order status is changed to COMPLETED, the reserved inventory becomes permanently deducted. When changed to CANCELLED, reserved inventory is released back into stock.*
+
 ### Cancel Order
 ```http
 POST /api/orders/{orderId}/cancel
@@ -550,6 +589,8 @@ Response:
     "authenticated": true
 }
 ```
+
+*Note: Cancelling an order releases any reserved inventory items back into stock, unless the order was already in COMPLETED status.*
 
 ## Cargo Management API
 
@@ -964,29 +1005,37 @@ Response:
 1. **Order Creation**
    - Supports both authenticated and guest orders
    - Requires delivery address and at least one item
-   - Optional coordinates and notes
+   - Validates inventory availability for all requested items
+   - Reserves inventory items by reducing their quantities temporarily
    - Initial status: PENDING
 
 2. **Order Management**
    - Client Permissions:
      - Create orders
      - View own orders
-     - Cancel own orders
+     - Cancel own orders (releases reserved inventory)
    - Volunteer Permissions:
      - View all orders
-     - Update order status
+     - Update order status (affects inventory)
      - Process orders
    - Guest Orders:
-     - Basic order creation
+     - Basic order creation with inventory validation
      - No authentication required
      - Limited tracking capabilities
 
 3. **Order Status Lifecycle**
 ```
-[Created] -> PENDING -> PROCESSING -> COMPLETED
-                |          |
-                |          v
-                +-------> CANCELLED
+                   [inventory reserved]
+                           |
+[Created] --------> PENDING --------> PROCESSING --------> COMPLETED
+                      |                   |                 [inventory
+                      |                   |              reduction permanent]
+                      |                   |
+                      +------------------+
+                              |
+                              v
+                         CANCELLED
+                    [inventory released]
 ```
 
 ### Cargo Management Flow
@@ -1001,12 +1050,45 @@ Response:
    - Mark items as available/unavailable
    - Delete items from inventory
    - Track low stock items
+   - **Inventory Reservation**: Temporary reduction for pending orders
+   - **Inventory Release**: Restoring quantities when orders are cancelled
 
 3. **Image Management**
    - Upload images for items
    - Store images in MongoDB
    - Retrieve images by ID
    - Delete images when no longer needed
+
+### Order-Inventory Integration
+
+1. **Inventory Reservation System**
+   - When an order is created, inventory is immediately reserved
+   - Items are checked for availability before reservation
+   - Prevents overselling of inventory items
+   - Aggregates quantities for duplicate items in the same order
+
+2. **Status-Based Inventory Management**
+   - **PENDING**: Inventory is reserved but can be released
+   - **PROCESSING**: Inventory remains reserved
+   - **COMPLETED**: Inventory deduction becomes permanent
+   - **CANCELLED**: Reserved inventory is returned to stock
+
+3. **Inventory Validation**
+   - Checks if sufficient quantities are available before order creation
+   - Validates that inventory items exist by name
+   - Prevents orders for out-of-stock items
+
+4. **Inventory Update Workflow**
+   - `reserveItems()`: Temporarily reduces inventory for new orders
+   - `updateQuantity()`: Updates inventory quantities with validation
+   - `releaseReservedInventory()`: Restores quantities for cancelled orders
+   - Low stock threshold monitoring during quantity changes
+
+5. **Transaction Management**
+   - All inventory operations are transactional
+   - Prevents partial order processing
+   - Ensures inventory consistency
+   - Rollbacks on errors during order processing
 
 ### Feedback Management
 1. **Feedback Submission**
