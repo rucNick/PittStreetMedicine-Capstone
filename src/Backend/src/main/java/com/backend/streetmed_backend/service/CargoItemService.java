@@ -64,7 +64,7 @@ public class CargoItemService {
             // Delete old image if exists
             String oldImageId = existingItem.getImageId();
             if (oldImageId != null) {
-                cargoImageService.deleteImage(existingItem.getId());
+                cargoImageService.deleteImage(oldImageId);
             }
             CargoImage newImage = cargoImageService.storeImage(image, id);
             existingItem.setImageId(newImage.getId());
@@ -131,6 +131,7 @@ public class CargoItemService {
         return item.getIsAvailable() && item.isAvailableInSize(size, requestedQuantity);
     }
 
+    // Fix this method in your CargoItemService class
     public void deleteItem(Integer id) {
         CargoItem item = cargoItemRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Item not found"));
@@ -138,7 +139,7 @@ public class CargoItemService {
         // Delete associated image if exists
         String imageId = item.getImageId();
         if (imageId != null) {
-            cargoImageService.deleteImage(item.getId());
+            cargoImageService.deleteImage(imageId);
         }
 
         cargoItemRepository.delete(item);

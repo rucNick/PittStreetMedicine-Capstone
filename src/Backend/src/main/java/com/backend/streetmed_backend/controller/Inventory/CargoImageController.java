@@ -52,7 +52,7 @@ public class CargoImageController {
     }
 
     @GetMapping("/{imageId}")
-    public ResponseEntity<?> getImage(@PathVariable Integer imageId) {
+    public ResponseEntity<?> getImage(@PathVariable String imageId) {
         try {
             CargoImage image = cargoImageService.getImage(imageId);
             return ResponseEntity.ok()
@@ -65,7 +65,7 @@ public class CargoImageController {
 
     @DeleteMapping("/{imageId}")
     public ResponseEntity<?> deleteImage(
-            @PathVariable Integer imageId,
+            @PathVariable String imageId,
             @RequestHeader("Authentication-Status") String authStatus) {
 
         try {

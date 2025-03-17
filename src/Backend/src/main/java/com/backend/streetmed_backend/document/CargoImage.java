@@ -14,7 +14,7 @@ public class CargoImage {
     private byte[] data;
     private Long size;
     private LocalDateTime uploadDate;
-    private Integer cargoItemId;  // Reference to SQLite CargoItem
+    private String cargoItemId;
 
     // Getters and setters
     public String getId() { return id; }
@@ -35,6 +35,6 @@ public class CargoImage {
     public LocalDateTime getUploadDate() { return uploadDate; }
     public void setUploadDate(LocalDateTime uploadDate) { this.uploadDate = uploadDate; }
 
-    public Integer getCargoItemId() { return cargoItemId; }
-    public void setCargoItemId(Integer cargoItemId) { this.cargoItemId = cargoItemId; }
+    public String getCargoItemId() { return cargoItemId; }
+    public void setCargoItemId(String cargoItemId) { this.cargoItemId = cargoItemId; }
 }

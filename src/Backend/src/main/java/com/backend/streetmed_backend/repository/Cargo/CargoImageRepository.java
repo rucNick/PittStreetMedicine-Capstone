@@ -5,6 +5,6 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import java.util.Optional;
 
 public interface CargoImageRepository extends MongoRepository<CargoImage, String> {
-    Optional<CargoImage> findByCargoItemId(Integer cargoItemId);
-    void deleteByCargoItemId(Integer cargoItemId);
+    Optional<CargoImage> findByCargoItemId(String cargoItemId);
+    void deleteByCargoItemId(String cargoItemId);
 }

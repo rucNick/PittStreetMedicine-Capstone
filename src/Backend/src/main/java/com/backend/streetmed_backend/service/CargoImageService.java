@@ -24,17 +24,19 @@ public class CargoImageService {
         image.setData(file.getBytes());
         image.setSize(file.getSize());
         image.setUploadDate(LocalDateTime.now());
-        image.setCargoItemId(cargoItemId);
 
+        if (cargoItemId != null) {
+            image.setCargoItemId(cargoItemId.toString());
+        }
         return imageRepository.save(image);
     }
 
-    public CargoImage getImage(Integer cargoItemId) {
-        return imageRepository.findByCargoItemId(cargoItemId)
-                .orElseThrow(() -> new RuntimeException("Image not found for cargo item: " + cargoItemId));
+    public CargoImage getImage(String imageId) {
+        return imageRepository.findById(imageId)
+                .orElseThrow(() -> new RuntimeException("Image not found with ID: " + imageId));
     }
 
-    public void deleteImage(Integer cargoItemId) {
-        imageRepository.deleteByCargoItemId(cargoItemId);
+    public void deleteImage(String imageId) {
+        imageRepository.deleteById(imageId);
     }
 }
