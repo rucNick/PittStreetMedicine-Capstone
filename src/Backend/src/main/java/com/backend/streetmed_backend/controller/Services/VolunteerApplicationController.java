@@ -1,4 +1,4 @@
-package com.backend.streetmed_backend.controller;
+package com.backend.streetmed_backend.controller.Services;
 
 import com.backend.streetmed_backend.entity.user_entity.User;
 import com.backend.streetmed_backend.entity.user_entity.UserMetadata;
@@ -23,11 +23,11 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
-@Tag(name = "Volunteer Management", description = "APIs for managing volunteer applications")
+@Tag(name = "Volunteer Application Management", description = "APIs for managing volunteer applications")
 @CrossOrigin(origins = "http://localhost:3000")
 @RestController
 @RequestMapping("/api/volunteer")
-public class VolunteerController {
+public class VolunteerApplicationController {
     private final VolunteerApplicationService volunteerApplicationService;
     private final UserService userService;
     private final Executor authExecutor;
@@ -35,7 +35,7 @@ public class VolunteerController {
     private static final String INITIAL_PASSWORD = "streetmed@pitt";
 
     @Autowired
-    public VolunteerController(
+    public VolunteerApplicationController(
             VolunteerApplicationService volunteerApplicationService,
             UserService userService,
             @Qualifier("authExecutor") Executor authExecutor,

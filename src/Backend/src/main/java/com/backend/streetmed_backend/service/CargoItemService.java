@@ -2,7 +2,7 @@ package com.backend.streetmed_backend.service;
 
 import com.backend.streetmed_backend.document.CargoImage;
 import com.backend.streetmed_backend.entity.CargoItem;
-import com.backend.streetmed_backend.repository.CargoItemRepository;
+import com.backend.streetmed_backend.repository.Cargo.CargoItemRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

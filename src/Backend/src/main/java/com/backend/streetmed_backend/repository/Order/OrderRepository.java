@@ -1,4 +1,4 @@
-package com.backend.streetmed_backend.repository;
+package com.backend.streetmed_backend.repository.Order;
 
 import com.backend.streetmed_backend.entity.order_entity.Order;
 import org.apache.ibatis.annotations.Param;

@@ -1,4 +1,4 @@
-package com.backend.streetmed_backend.repository;
+package com.backend.streetmed_backend.repository.User;
 
 
 import com.backend.streetmed_backend.entity.user_entity.User;

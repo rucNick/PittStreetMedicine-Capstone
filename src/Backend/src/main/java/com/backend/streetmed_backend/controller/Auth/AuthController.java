@@ -1,22 +1,22 @@
-package com.backend.streetmed_backend.controller;
+package com.backend.streetmed_backend.controller.Auth;
 
 import com.backend.streetmed_backend.entity.user_entity.User;
 import com.backend.streetmed_backend.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
+@Tag(name = "Authentication", description = "APIs for user authentication and profile management")
 @CrossOrigin(origins = "http://localhost:3000")
 @RestController
 @RequestMapping("/api/auth")
@@ -33,38 +33,6 @@ public class AuthController {
         this.userService = userService;
         this.authExecutor = authExecutor;
         this.readOnlyExecutor = readOnlyExecutor;
-    }
-
-    @Operation(summary = "Migrate all passwords to hashed format")
-    @PostMapping("/migrate-passwords")
-    public CompletableFuture<ResponseEntity<Map<String, Object>>> migratePasswords(
-            @Schema(example = "admin") @RequestHeader("Admin-Username") String adminUsername,
-            @Schema(example = "true") @RequestHeader("Authentication-Status") String authStatus) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                if (!"true".equals(authStatus)) {
-                    throw new RuntimeException("Not authenticated");
-                }
-
-                User admin = userService.findByUsername(adminUsername);
-                if (admin == null || !"ADMIN".equals(admin.getRole())) {
-                    throw new RuntimeException("Unauthorized access");
-                }
-
-                userService.migrateAllPasswordsToHashed();
-
-                Map<String, Object> response = new HashMap<>();
-                response.put("status", "success");
-                response.put("message", "All passwords have been migrated to hashed format");
-                return ResponseEntity.ok(response);
-
-            } catch (Exception e) {
-                Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put("status", "error");
-                errorResponse.put("message", e.getMessage());
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
-            }
-        }, authExecutor);
     }
 
     @Operation(summary = "Register a new user")
@@ -224,18 +192,18 @@ public class AuthController {
             }
         }, authExecutor);
     }
-    
+
     @Operation(summary = "Update phone number")
     @PutMapping("/update/phone")
     public CompletableFuture<ResponseEntity<Map<String, Object>>> updatePhone(
             @Schema(example = """
-                {
-                    "userId": "123",
-                    "currentPassword": "securepass123",
-                    "newPhone": "412-555-0124",
-                    "authenticated": "true"
-                }
-                """)
+                    {
+                        "userId": "123",
+                        "currentPassword": "securepass123",
+                        "newPhone": "412-555-0124",
+                        "authenticated": "true"
+                    }
+                    """)
             @RequestBody Map<String, String> updateData) {
         return CompletableFuture.supplyAsync(() -> {
             try {
@@ -406,132 +374,4 @@ public class AuthController {
         }, authExecutor);
     }
 
-    @Operation(summary = "Get all users (Admin only)")
-    @GetMapping("/users")
-    public CompletableFuture<ResponseEntity<Map<String, Object>>> getAllUsers(
-            @Schema(example = "admin") @RequestHeader("Admin-Username") String adminUsername,
-            @Schema(example = "true") @RequestHeader("Authentication-Status") String authStatus) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                if (!"true".equals(authStatus)) {
-                    Map<String, Object> errorResponse = new HashMap<>();
-                    errorResponse.put("status", "error");
-                    errorResponse.put("message", "Not authenticated");
-                    errorResponse.put("authenticated", false);
-                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
-                }
-
-                ResponseEntity<Map<String, Object>> errorResponse = getMapResponseEntity(adminUsername);
-                if (errorResponse != null) return errorResponse;
-
-                List<User> allUsers = userService.getAllUsers();
-                List<Map<String, String>> clientUsers = new ArrayList<>();
-                List<Map<String, String>> volunteerUsers = new ArrayList<>();
-                List<Map<String, String>> adminUsers = new ArrayList<>();
-
-                for (User user : allUsers) {
-                    Map<String, String> userInfo = new HashMap<>();
-                    userInfo.put("username", user.getUsername());
-                    userInfo.put("email", user.getEmail());
-                    // Handle possible null phone values
-                    userInfo.put("phone", user.getPhone() != null ? user.getPhone() : "");
-                    userInfo.put("role", user.getRole());
-
-                    switch (user.getRole()) {
-                        case "CLIENT" -> clientUsers.add(userInfo);
-                        case "VOLUNTEER" -> volunteerUsers.add(userInfo);
-                        case "ADMIN" -> adminUsers.add(userInfo);
-                        default -> {} // Optionally handle unexpected roles
-                    }
-                }
-
-                Map<String, Object> response = new HashMap<>();
-                response.put("status", "success");
-                response.put("authenticated", true);
-                response.put("data", Map.of(
-                        "clients", clientUsers,
-                        "volunteers", volunteerUsers,
-                        "admins", adminUsers
-                ));
-
-                return ResponseEntity.ok(response);
-
-            } catch (Exception e) {
-                Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put("status", "error");
-                errorResponse.put("message", e.getMessage());
-                errorResponse.put("authenticated", true);
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
-            }
-        }, readOnlyExecutor);
-    }
-
-
-    @Operation(summary = "Delete user (Admin only)")
-    @DeleteMapping("/delete")
-    public CompletableFuture<ResponseEntity<Map<String, Object>>> deleteUser(
-            @Schema(example = """
-                    {
-                        "authenticated": "true",
-                        "adminUsername": "admin",
-                        "username": "usertodelete"
-                    }
-                    """)
-            @RequestBody Map<String, String> deleteRequest) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                String isAuthenticatedStr = deleteRequest.get("authenticated");
-                if (!"true".equals(isAuthenticatedStr)) {
-                    Map<String, Object> errorResponse = new HashMap<>();
-                    errorResponse.put("status", "error");
-                    errorResponse.put("message", "Not authenticated");
-                    errorResponse.put("authenticated", false);
-                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
-                }
-
-                String adminUsername = deleteRequest.get("adminUsername");
-                String userToDelete = deleteRequest.get("username");
-
-                ResponseEntity<Map<String, Object>> errorResponse1 = getMapResponseEntity(adminUsername);
-                if (errorResponse1 != null) return errorResponse1;
-
-                User userToBeDeleted = userService.findByUsername(userToDelete);
-                if (userToBeDeleted == null) {
-                    Map<String, Object> errorResponse = new HashMap<>();
-                    errorResponse.put("status", "error");
-                    errorResponse.put("message", "User not found");
-                    errorResponse.put("authenticated", true);
-                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
-                }
-
-                userService.deleteUser(userToBeDeleted.getUserId());
-
-                Map<String, Object> response = new HashMap<>();
-                response.put("status", "success");
-                response.put("message", "User deleted successfully");
-                response.put("authenticated", true);
-
-                return ResponseEntity.ok(response);
-
-            } catch (Exception e) {
-                Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put("status", "error");
-                errorResponse.put("message", e.getMessage());
-                errorResponse.put("authenticated", true);
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
-            }
-        }, authExecutor);
-    }
-
-    private ResponseEntity<Map<String, Object>> getMapResponseEntity(String adminUsername) {
-        User admin = userService.findByUsername(adminUsername);
-        if (admin == null || !"ADMIN".equals(admin.getRole())) {
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("status", "error");
-            errorResponse.put("message", "Unauthorized access");
-            errorResponse.put("authenticated", true);
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
-        }
-        return null;
-    }
 }

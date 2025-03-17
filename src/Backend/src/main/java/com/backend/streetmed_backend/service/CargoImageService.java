@@ -1,7 +1,7 @@
 package com.backend.streetmed_backend.service;
 
 import com.backend.streetmed_backend.document.CargoImage;
-import com.backend.streetmed_backend.repository.CargoImageRepository;
+import com.backend.streetmed_backend.repository.Cargo.CargoImageRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;

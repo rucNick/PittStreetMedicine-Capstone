@@ -1,4 +1,4 @@
-package com.backend.streetmed_backend.repository;
+package com.backend.streetmed_backend.repository.Cargo;
 
 import com.backend.streetmed_backend.document.CargoImage;
 import org.springframework.data.mongodb.repository.MongoRepository;

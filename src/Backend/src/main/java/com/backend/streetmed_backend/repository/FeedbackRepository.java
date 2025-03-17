@@ -1,6 +1,6 @@
 package com.backend.streetmed_backend.repository;
 
-import com.backend.streetmed_backend.entity.Feedback;
+import com.backend.streetmed_backend.entity.Service_entity.Feedback;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

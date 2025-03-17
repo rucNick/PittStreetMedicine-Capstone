@@ -1,6 +1,6 @@
 package com.backend.streetmed_backend.service;
 
-import com.backend.streetmed_backend.entity.Feedback;
+import com.backend.streetmed_backend.entity.Service_entity.Feedback;
 import com.backend.streetmed_backend.repository.FeedbackRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

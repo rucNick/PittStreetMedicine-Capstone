@@ -1,4 +1,4 @@
-package com.backend.streetmed_backend.controller;
+package com.backend.streetmed_backend.controller.Order;
 
 import com.backend.streetmed_backend.entity.order_entity.Order;
 import com.backend.streetmed_backend.entity.order_entity.OrderItem;

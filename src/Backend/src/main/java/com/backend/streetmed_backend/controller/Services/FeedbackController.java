@@ -1,6 +1,6 @@
-package com.backend.streetmed_backend.controller;
+package com.backend.streetmed_backend.controller.Services;
 
-import com.backend.streetmed_backend.entity.Feedback;
+import com.backend.streetmed_backend.entity.Service_entity.Feedback;
 import com.backend.streetmed_backend.entity.user_entity.User;
 import com.backend.streetmed_backend.service.FeedbackService;
 import com.backend.streetmed_backend.service.UserService;

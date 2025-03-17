@@ -1,4 +1,4 @@
-package com.backend.streetmed_backend.repository;
+package com.backend.streetmed_backend.repository.Cargo;
 
 import com.backend.streetmed_backend.entity.CargoItem;
 import org.springframework.data.jpa.repository.JpaRepository;
