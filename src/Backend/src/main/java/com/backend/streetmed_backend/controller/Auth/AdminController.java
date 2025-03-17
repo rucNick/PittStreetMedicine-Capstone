@@ -2,6 +2,7 @@ package com.backend.streetmed_backend.controller.Auth;
 
 import com.backend.streetmed_backend.entity.user_entity.User;
 import com.backend.streetmed_backend.entity.user_entity.UserMetadata;
+import com.backend.streetmed_backend.service.EmailService;
 import com.backend.streetmed_backend.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -28,8 +29,10 @@ import java.util.concurrent.Executor;
 @RequestMapping("/api/admin")
 public class AdminController {
 
+
     private final UserService userService;
     private final Executor authExecutor;
+    private final EmailService emailService;
     private final Executor readOnlyExecutor;
     private static final String ALLOWED_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-_=+";
     private final SecureRandom random = new SecureRandom();
@@ -37,9 +40,11 @@ public class AdminController {
     @Autowired
     public AdminController(
             UserService userService,
+            EmailService emailService,
             @Qualifier("authExecutor") Executor authExecutor,
             @Qualifier("readOnlyExecutor") Executor readOnlyExecutor) {
         this.userService = userService;
+        this.emailService = emailService;
         this.authExecutor = authExecutor;
         this.readOnlyExecutor = readOnlyExecutor;
     }
@@ -203,22 +208,24 @@ public class AdminController {
         }, authExecutor);
     }
 
+    // Update the createUser method in AdminController.java
+
     @Operation(summary = "Create a new user (Admin only)",
             description = "Creates a new user with CLIENT or VOLUNTEER role. Password is randomly generated.")
     @PostMapping("/user/create")
     public CompletableFuture<ResponseEntity<Map<String, Object>>> createUser(
             @RequestBody @Schema(example = """
-            {
-                "adminUsername": "admin",
-                "authenticated": "true",
-                "username": "newuser",
-                "email": "newuser@example.com",
-                "phone": "412-555-0126",
-                "firstName": "New",
-                "lastName": "User",
-                "role": "CLIENT"
-            }
-            """) Map<String, String> userData) {
+        {
+            "adminUsername": "admin",
+            "authenticated": "true",
+            "username": "newuser",
+            "email": "newuser@example.com",
+            "phone": "412-555-0126",
+            "firstName": "New",
+            "lastName": "User",
+            "role": "CLIENT"
+        }
+        """) Map<String, String> userData) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 String adminUsername = userData.get("adminUsername");
@@ -297,6 +304,11 @@ public class AdminController {
 
                 // Save user
                 User savedUser = userService.createUser(newUser);
+
+                // Send email with credentials if email is provided
+                if (email != null && !email.trim().isEmpty()) {
+                    emailService.sendNewUserCredentials(email, username, generatedPassword);
+                }
 
                 // Create response
                 Map<String, Object> response = new HashMap<>();

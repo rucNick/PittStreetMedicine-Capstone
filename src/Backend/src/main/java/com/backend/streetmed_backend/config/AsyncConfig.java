@@ -51,4 +51,28 @@ public class AsyncConfig {
         executor.initialize();
         return executor;
     }
+
+    @Bean(name = "emailExecutor")
+    public Executor emailExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        // Dedicated thread pool for email operations
+        executor.setCorePoolSize(2);       // Start with 2 threads
+        executor.setMaxPoolSize(4);        // Max 4 threads
+        executor.setQueueCapacity(50);     // Queue up to 50 email tasks
+        executor.setThreadNamePrefix("Email-");
+
+        // Use a more lenient rejection policy for emails
+        executor.setRejectedExecutionHandler((r, e) -> {
+            // Log the rejection but don't throw an exception
+            // This prevents email failures from affecting the main application
+            System.err.println("Email task rejected: queue full");
+        });
+
+        // Shutdown configuration
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(60); // Give emails more time to complete on shutdown
+
+        executor.initialize();
+        return executor;
+    }
 }

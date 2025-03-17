@@ -3,6 +3,7 @@ package com.backend.streetmed_backend.controller.Services;
 import com.backend.streetmed_backend.entity.user_entity.User;
 import com.backend.streetmed_backend.entity.user_entity.UserMetadata;
 import com.backend.streetmed_backend.entity.user_entity.VolunteerApplication;
+import com.backend.streetmed_backend.service.EmailService;
 import com.backend.streetmed_backend.service.VolunteerApplicationService;
 import com.backend.streetmed_backend.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,14 +34,17 @@ public class VolunteerApplicationController {
     private final Executor authExecutor;
     private final Executor readOnlyExecutor;
     private static final String INITIAL_PASSWORD = "streetmed@pitt";
+    private final EmailService emailService;
 
     @Autowired
     public VolunteerApplicationController(
             VolunteerApplicationService volunteerApplicationService,
+            EmailService emailService,
             UserService userService,
             @Qualifier("authExecutor") Executor authExecutor,
             @Qualifier("readOnlyExecutor") Executor readOnlyExecutor) {
         this.volunteerApplicationService = volunteerApplicationService;
+        this.emailService = emailService;
         this.userService = userService;
         this.authExecutor = authExecutor;
         this.readOnlyExecutor = readOnlyExecutor;
@@ -347,14 +351,14 @@ public class VolunteerApplicationController {
             @ApiResponse(responseCode = "200", description = "Application approved successfully",
                     content = @Content(mediaType = "application/json",
                             schema = @Schema(example = """
-                {
-                    "status": "success",
-                    "message": "Application approved and volunteer account created",
-                    "applicationId": 1,
-                    "userId": 1,
-                    "initialPassword": "streetmed@pitt"
-                }
-                """))),
+            {
+                "status": "success",
+                "message": "Application approved and volunteer account created",
+                "applicationId": 1,
+                "userId": 1,
+                "initialPassword": "streetmed@pitt"
+            }
+            """))),
             @ApiResponse(responseCode = "400", description = "Missing required fields"),
             @ApiResponse(responseCode = "401", description = "Not authenticated"),
             @ApiResponse(responseCode = "403", description = "Unauthorized access - Admin only"),
@@ -363,12 +367,12 @@ public class VolunteerApplicationController {
     @PostMapping("/approve")
     public CompletableFuture<ResponseEntity<Map<String, Object>>> approveApplication(
             @RequestBody @Schema(example = """
-                {
-                    "adminUsername": "admin",
-                    "authenticated": "true",
-                    "applicationId": "1"
-                }
-                """) Map<String, String> approvalData) {
+            {
+                "adminUsername": "admin",
+                "authenticated": "true",
+                "applicationId": "1"
+            }
+            """) Map<String, String> approvalData) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 String adminUsername = approvalData.get("adminUsername");
@@ -419,6 +423,13 @@ public class VolunteerApplicationController {
                 // Approve the application and link it to the new user
                 VolunteerApplication approvedApplication = volunteerApplicationService
                         .approveApplication(Integer.parseInt(applicationId), savedVolunteer);
+
+                // Send approval email with login credentials
+                emailService.sendVolunteerApprovalEmail(
+                        application.getEmail(),
+                        application.getFirstName(),
+                        application.getLastName()
+                );
 
                 Map<String, Object> response = new HashMap<>();
                 response.put("status", "success");
