@@ -145,6 +145,12 @@ const Admin = ({ onLogout, userData }) => {
 
   // Reset user password using new admin API
   const resetUserPassword = async (user) => {
+
+    if (!user.userId) {
+      alert("Cannot reset password: User ID is missing");
+      return;
+    }
+    
     const newPassword = window.prompt("Enter new password for user " + user.username);
     if (!newPassword) return;
     console.log("resetUserPassword: Resetting password for userId", user.userId);

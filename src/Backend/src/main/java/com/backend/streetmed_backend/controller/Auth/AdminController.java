@@ -106,12 +106,13 @@ public class AdminController {
                 }
 
                 List<User> allUsers = userService.getAllUsers();
-                List<Map<String, String>> clientUsers = new ArrayList<>();
-                List<Map<String, String>> volunteerUsers = new ArrayList<>();
-                List<Map<String, String>> adminUsers = new ArrayList<>();
+                List<Map<String, Object>> clientUsers = new ArrayList<>();
+                List<Map<String, Object>> volunteerUsers = new ArrayList<>();
+                List<Map<String, Object>> adminUsers = new ArrayList<>();
 
                 for (User user : allUsers) {
-                    Map<String, String> userInfo = new HashMap<>();
+                    Map<String, Object> userInfo = new HashMap<>();
+                    userInfo.put("userId", user.getUserId());
                     userInfo.put("username", user.getUsername());
                     userInfo.put("email", user.getEmail());
                     userInfo.put("phone", user.getPhone() != null ? user.getPhone() : "");
