@@ -32,6 +32,11 @@ const Login = ({ onLoginSuccess }) => {
     navigate('/volunteerAppli');
   };
 
+  // handle reset password
+  const handleResetPasswordClick = () => {
+    navigate('/reset_password');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -150,6 +155,13 @@ const Login = ({ onLoginSuccess }) => {
           </div>
         </>
       )}
+      {/* Bottom right container: "forgot your password?" & "reset your password" button */}
+      <div style={styles.bottomRightContainer}>
+        <p style={styles.forgotText}>Forgot your password?</p>
+        <button style={styles.resetButton} onClick={handleResetPasswordClick}>
+          Reset your password
+        </button>
+      </div>
     </div>
   );
 };
@@ -302,6 +314,35 @@ const styles = {
     border: 'none',
     borderRadius: '4px',
     cursor: 'pointer',
+  },
+
+  bottomRightContainer: {
+    position: 'fixed',
+    bottom: '10px',
+    right: '10px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    padding: '10px',
+    borderRadius: '8px',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+  },
+  forgotText: {
+    margin: 0,
+    padding: 0,
+    fontSize: '12px',
+    color: '#000',
+    marginBottom: '5px',
+  },
+  resetButton: {
+    padding: '6px 12px',
+    backgroundColor: '#1890ff',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '12px',
   },
 };
 

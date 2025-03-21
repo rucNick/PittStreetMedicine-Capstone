@@ -11,6 +11,7 @@ import Admin from "./Admin";
 import CargoAdmin from "./Cargo_Admin";
 // Import the new Cargo_Volunteer file
 import CargoVolunteer from "./Cargo_Volunteer";
+import Reset_Password from "./Reset_Password";
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -59,6 +60,7 @@ function App() {
 
         {/* New route for Cargo Volunteer */}
         <Route path="/cargo_volunteer" element={<CargoVolunteer />} />
+        <Route path="/reset_password" element={<Reset_Password />} />
       </Routes>
     </Router>
   );

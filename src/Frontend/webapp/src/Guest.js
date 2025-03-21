@@ -298,7 +298,7 @@ const Guest = ({ onLogout }) => {
                   >
                     {item.imageId ? (
                       <img
-                        src={`http://localhost:8080/api/cargo/images/${item.id}`}
+                        src={`http://localhost:8080/api/cargo/images/${item.imageId}`}
                         alt={item.name}
                         className="itemImage"
                       />
