@@ -17,8 +17,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 import java.util.HashMap;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Tag(name = "Password Recovery", description = "APIs for password recovery and reset")
 @RestController
@@ -29,6 +31,9 @@ public class PasswordRecoveryController {
     private final UserService userService;
     private final EmailService emailService;
     private final Executor authExecutor;
+
+    // Store reset tokens with user IDs
+    private final ConcurrentHashMap<String, Integer> resetTokens = new ConcurrentHashMap<>();
 
     @Autowired
     public PasswordRecoveryController(
@@ -46,21 +51,38 @@ public class PasswordRecoveryController {
             @ApiResponse(responseCode = "200", description = "Recovery code sent successfully",
                     content = @Content(mediaType = "application/json",
                             schema = @Schema(example = """
-                    {
-                        "status": "success",
-                        "message": "Recovery code sent to your email"
-                    }
-                    """))),
-            @ApiResponse(responseCode = "400", description = "Missing email"),
-            @ApiResponse(responseCode = "500", description = "Internal server error")
+                {
+                    "status": "success",
+                    "message": "Recovery code sent to your email"
+                }
+                """))),
+            @ApiResponse(responseCode = "400", description = "Missing email",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(example = """
+                {
+                    "status": "error",
+                    "message": "Email is required"
+                }
+                """))),
+            @ApiResponse(responseCode = "500", description = "Internal server error",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(example = """
+                {
+                    "status": "error",
+                    "message": "Error details"
+                }
+                """)))
     })
     @PostMapping("/request-reset")
     public CompletableFuture<ResponseEntity<Map<String, Object>>> requestPasswordReset(
-            @RequestBody @Schema(example = """
-                    {
-                        "email": "user@example.com"
-                    }
-                    """) Map<String, String> request) {
+            @RequestBody @Schema(description = "Email request object",
+                    required = true,
+                    example = """
+                {
+                    "email": "user@example.com"
+                }
+                """)
+            Map<String, String> request) {
 
         return CompletableFuture.supplyAsync(() -> {
             try {
@@ -98,41 +120,65 @@ public class PasswordRecoveryController {
         }, authExecutor);
     }
 
-    @Operation(summary = "Verify OTP and reset password",
-            description = "Verifies the one-time password (OTP) and resets the user's password")
+    @Operation(summary = "Verify OTP",
+            description = "Verifies the one-time password (OTP) and returns a reset token if valid")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Password reset successfully",
+            @ApiResponse(responseCode = "200", description = "OTP verified successfully",
                     content = @Content(mediaType = "application/json",
                             schema = @Schema(example = """
-                    {
-                        "status": "success",
-                        "message": "Password reset successfully"
-                    }
-                    """))),
-            @ApiResponse(responseCode = "400", description = "Missing required fields or invalid OTP"),
-            @ApiResponse(responseCode = "404", description = "User not found"),
-            @ApiResponse(responseCode = "500", description = "Internal server error")
+                {
+                    "status": "success",
+                    "message": "OTP verified successfully",
+                    "resetToken": "a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6",
+                    "userId": 123
+                }
+                """))),
+            @ApiResponse(responseCode = "400", description = "Missing required fields or invalid OTP",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(example = """
+                {
+                    "status": "error",
+                    "message": "Email and OTP are required"
+                }
+                """))),
+            @ApiResponse(responseCode = "404", description = "User not found",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(example = """
+                {
+                    "status": "error",
+                    "message": "User not found"
+                }
+                """))),
+            @ApiResponse(responseCode = "500", description = "Internal server error",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(example = """
+                {
+                    "status": "error",
+                    "message": "Error details"
+                }
+                """)))
     })
-    @PostMapping("/verify-reset")
-    public CompletableFuture<ResponseEntity<Map<String, Object>>> verifyAndResetPassword(
-            @RequestBody @Schema(example = """
-                    {
-                        "email": "user@example.com",
-                        "otp": "123456",
-                        "newPassword": "newSecurePassword123"
-                    }
-                    """) Map<String, String> request) {
+    @PostMapping("/verify-otp")
+    public CompletableFuture<ResponseEntity<Map<String, Object>>> verifyOtp(
+            @RequestBody @Schema(description = "OTP verification request",
+                    required = true,
+                    example = """
+                {
+                    "email": "user@example.com",
+                    "otp": "123456"
+                }
+                """)
+            Map<String, String> request) {
 
         return CompletableFuture.supplyAsync(() -> {
             try {
                 String email = request.get("email");
                 String otp = request.get("otp");
-                String newPassword = request.get("newPassword");
 
-                if (email == null || otp == null || newPassword == null) {
+                if (email == null || otp == null) {
                     Map<String, Object> errorResponse = new HashMap<>();
                     errorResponse.put("status", "error");
-                    errorResponse.put("message", "Email, OTP, and new password are required");
+                    errorResponse.put("message", "Email and OTP are required");
                     return ResponseEntity.badRequest().body(errorResponse);
                 }
 
@@ -152,7 +198,101 @@ public class PasswordRecoveryController {
                     return ResponseEntity.badRequest().body(errorResponse);
                 }
 
-                userService.updatePassword(user.getUserId(), newPassword);
+                // Generate a reset token and store it with user ID
+                String resetToken = UUID.randomUUID().toString();
+                resetTokens.put(resetToken, user.getUserId());
+
+                Map<String, Object> response = new HashMap<>();
+                response.put("status", "success");
+                response.put("message", "OTP verified successfully");
+                response.put("resetToken", resetToken);
+                response.put("userId", user.getUserId());
+
+                return ResponseEntity.ok(response);
+
+            } catch (Exception e) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("status", "error");
+                errorResponse.put("message", e.getMessage());
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+            }
+        }, authExecutor);
+    }
+
+    @Operation(summary = "Reset password",
+            description = "Resets the user's password using a valid reset token")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Password reset successfully",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(example = """
+                {
+                    "status": "success",
+                    "message": "Password reset successfully"
+                }
+                """))),
+            @ApiResponse(responseCode = "400", description = "Missing required fields",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(example = """
+                {
+                    "status": "error",
+                    "message": "Reset token and new password are required"
+                }
+                """))),
+            @ApiResponse(responseCode = "401", description = "Invalid or expired reset token",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(example = """
+                {
+                    "status": "error",
+                    "message": "Invalid or expired reset token"
+                }
+                """))),
+            @ApiResponse(responseCode = "500", description = "Internal server error",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(example = """
+                {
+                    "status": "error",
+                    "message": "Error details"
+                }
+                """)))
+    })
+    @PostMapping("/reset")
+    public CompletableFuture<ResponseEntity<Map<String, Object>>> resetPassword(
+            @RequestBody @Schema(description = "Password reset request",
+                    required = true,
+                    example = """
+                {
+                    "resetToken": "a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6",
+                    "newPassword": "NewSecurePassword123"
+                }
+                """)
+            Map<String, String> request) {
+
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                String resetToken = request.get("resetToken");
+                String newPassword = request.get("newPassword");
+
+                if (resetToken == null || newPassword == null) {
+                    Map<String, Object> errorResponse = new HashMap<>();
+                    errorResponse.put("status", "error");
+                    errorResponse.put("message", "Reset token and new password are required");
+                    return ResponseEntity.badRequest().body(errorResponse);
+                }
+
+                // Validate the reset token
+                Integer userId = resetTokens.get(resetToken);
+                if (userId == null) {
+                    Map<String, Object> errorResponse = new HashMap<>();
+                    errorResponse.put("status", "error");
+                    errorResponse.put("message", "Invalid or expired reset token");
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+                }
+
+                // Update password
+                userService.updatePassword(userId, newPassword);
+
+                // Remove the used token
+                resetTokens.remove(resetToken);
 
                 Map<String, Object> response = new HashMap<>();
                 response.put("status", "success");
