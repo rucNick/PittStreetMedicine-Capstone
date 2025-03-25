@@ -2,6 +2,7 @@ package com.backend.streetmed_backend.security;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Cipher;
@@ -20,6 +21,9 @@ public class EncryptionUtil {
     private static final String ALGORITHM = "AES/GCM/NoPadding";
     private static final int GCM_IV_LENGTH = 12;
     private static final int GCM_TAG_LENGTH = 128; // in bits
+
+    @Value("${app.security.encryption.log-enabled:false}")
+    private boolean logEnabled;
 
     /**
      * Derives an AES key from the ECDH shared secret using SHA-256
@@ -48,6 +52,10 @@ public class EncryptionUtil {
      */
     public String encrypt(String data, SecretKey key) {
         try {
+            if (logEnabled) {
+                logger.info("Encrypting data (plaintext): {}", data);
+            }
+
             byte[] dataBytes = data.getBytes("UTF-8");
 
             // Generate random IV
@@ -68,7 +76,13 @@ public class EncryptionUtil {
             byteBuffer.put(iv);
             byteBuffer.put(encryptedData);
 
-            return Base64.getEncoder().encodeToString(byteBuffer.array());
+            String result = Base64.getEncoder().encodeToString(byteBuffer.array());
+
+            if (logEnabled) {
+                logger.info("Encrypted data (ciphertext): {}", result);
+            }
+
+            return result;
         } catch (Exception e) {
             logger.error("Error encrypting data: {}", e.getMessage());
             throw new RuntimeException("Error encrypting data", e);
@@ -84,6 +98,10 @@ public class EncryptionUtil {
      */
     public String decrypt(String encryptedData, SecretKey key) {
         try {
+            if (logEnabled) {
+                logger.info("Decrypting data (ciphertext): {}", encryptedData);
+            }
+
             byte[] encryptedBytes = Base64.getDecoder().decode(encryptedData);
 
             // Extract IV
@@ -102,11 +120,31 @@ public class EncryptionUtil {
 
             // Decrypt
             byte[] decryptedData = cipher.doFinal(cipherText);
+            String result = new String(decryptedData, "UTF-8");
 
-            return new String(decryptedData, "UTF-8");
+            if (logEnabled) {
+                logger.info("Decrypted data (plaintext): {}", result);
+            }
+
+            return result;
         } catch (Exception e) {
             logger.error("Error decrypting data: {}", e.getMessage());
             throw new RuntimeException("Error decrypting data", e);
         }
+    }
+
+    /**
+     * Check if encryption logging is enabled
+     */
+    public boolean isLogEnabled() {
+        return logEnabled;
+    }
+
+    /**
+     * Set encryption logging enabled/disabled
+     */
+    public void setLogEnabled(boolean enabled) {
+        this.logEnabled = enabled;
+        logger.info("Encryption logging {}", enabled ? "enabled" : "disabled");
     }
 }
