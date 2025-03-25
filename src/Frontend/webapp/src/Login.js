@@ -40,18 +40,13 @@ const Login = ({ onLoginSuccess }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+  
     try {
-      // Check if secure login is available
       if (isInitialized()) {
-        // This is a secure login with encryption
         console.log("Using secure login with encryption");
         
         // Prepare login data
-        const loginData = {
-          username: username,
-          password: password
-        };
+        const loginData = { username, password };
         
         // Encrypt the login data
         const encryptedData = await encrypt(JSON.stringify(loginData));
@@ -70,10 +65,8 @@ const Login = ({ onLoginSuccess }) => {
           throw new Error(`Login failed: ${response.status}`);
         }
         
-        // Get the encrypted response
+        // Get and decrypt the response
         const encryptedResponse = await response.text();
-        
-        // Decrypt the response
         const decryptedResponse = await decrypt(encryptedResponse);
         
         // Parse the JSON response
@@ -83,6 +76,13 @@ const Login = ({ onLoginSuccess }) => {
         if (data.authenticated) {
           setMessage("Login success!");
           console.log("User info:", data);
+          
+          // Persist the authentication state in localStorage
+          localStorage.setItem("auth_user", JSON.stringify({
+            username: data.username,
+            userId: data.userId,
+            role: data.role
+          }));
           
           // Pass user data to the parent component
           onLoginSuccess({
@@ -94,19 +94,23 @@ const Login = ({ onLoginSuccess }) => {
           setMessage("Login failure: " + (data.message || "Unknown error"));
         }
       } else {
-        // Fallback to regular login if encryption is not available
         console.log("Using regular login (no encryption)");
-        
         const response = await axios.post('http://localhost:8080/api/auth/login', {
-          username: username,
-          password: password
+          username,
+          password
         });
-        
         const data = response.data;
         
         if (data.authenticated) {
           setMessage("Login success!");
           console.log("User info:", data);
+          
+          // Persist the authentication state in localStorage
+          localStorage.setItem("auth_user", JSON.stringify({
+            username: data.username,
+            userId: data.userId,
+            role: data.role
+          }));
           
           // Pass user data to the parent component
           onLoginSuccess({
@@ -123,6 +127,7 @@ const Login = ({ onLoginSuccess }) => {
       setMessage("Login error: " + (error.response?.data?.message || error.message));
     }
   };
+  
 
 //=========================================== HTML part ==============================================
 

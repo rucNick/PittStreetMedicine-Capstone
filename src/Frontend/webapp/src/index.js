@@ -1,3 +1,4 @@
+// index.js
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
@@ -5,7 +6,41 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { performKeyExchange, initializeAESKey } from './security/ecdhClient';
 
-// Create a loading overlay instead of replacing the entire body
+// Retrieve any stored authentication state and session ID
+const storedUser = localStorage.getItem('auth_user');
+const storedSessionId = localStorage.getItem('ecdh_session_id');
+
+const initializeSecurity = async () => {
+  let result;
+  if (storedUser && storedSessionId) {
+    console.log('Authenticated user found. Reinitializing encryption session...');
+    // Re-perform the key exchange to generate new keys (cannot restore non-extractable keys)
+    result = await performKeyExchange();
+    if (result.success) {
+      localStorage.setItem('ecdh_session_id', result.sessionId);
+      try {
+        await initializeAESKey(result.sharedSecret);
+        console.log('AES encryption key reinitialized successfully');
+      } catch (error) {
+        console.warn('Failed to reinitialize AES key:', error);
+      }
+    }
+  } else {
+    console.log('No authenticated user. Performing fresh key exchange...');
+    result = await performKeyExchange();
+    if (result.success) {
+      localStorage.setItem('ecdh_session_id', result.sessionId);
+      try {
+        await initializeAESKey(result.sharedSecret);
+        console.log('AES encryption key initialized successfully');
+      } catch (error) {
+        console.warn('Failed to initialize AES key:', error);
+      }
+    }
+  }
+  return result;
+};
+
 const loadingOverlay = document.createElement('div');
 loadingOverlay.id = 'security-loading-overlay';
 loadingOverlay.style.position = 'fixed';
@@ -19,75 +54,25 @@ loadingOverlay.style.justifyContent = 'center';
 loadingOverlay.style.alignItems = 'center';
 loadingOverlay.style.zIndex = '9999';
 loadingOverlay.style.fontFamily = 'Arial, sans-serif';
-
-loadingOverlay.innerHTML = `
-  <div style="text-align: center; padding: 20px; background-color: white; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
-    <h2>Establishing secure connection...</h2>
-    <div style="
-      width: 40px;
-      height: 40px;
-      margin: 20px auto;
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid #3498db;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    "></div>
-    <p>Please wait while we set up encryption.</p>
-    <style>
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-    </style>
-  </div>
-`;
-
-// Add the overlay to the body without replacing existing content
+loadingOverlay.innerHTML = `<div style="text-align: center;">Establishing secure connection...</div>`;
 document.body.appendChild(loadingOverlay);
 
-// Initialize ECDH before rendering the app
-console.log('Initializing secure connection before starting the app...');
-performKeyExchange()
-  .then(async result => {
-    console.log('Security initialization complete. Rendering app...');
-    
-    // Store the session ID in localStorage for future use
-    if (result.success) {
-      localStorage.setItem('ecdh_session_id', result.sessionId);
-      
-      // If needed, explicitly initialize the AES key from the shared secret
-      // This step might be redundant if you already do this in performKeyExchange
-      try {
-        await initializeAESKey(result.sharedSecret);
-        console.log('AES encryption key initialized successfully');
-      } catch (error) {
-        console.warn('Failed to initialize AES key:', error);
-        // Continue anyway, as this might be handled in performKeyExchange
-      }
-    }
-    
-    // Remove the loading overlay
+initializeSecurity()
+  .then(result => {
     document.body.removeChild(loadingOverlay);
-    
-    // Render the app
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(
       <React.StrictMode>
         <App securityInitialized={result.success} />
       </React.StrictMode>
     );
-    
     reportWebVitals();
   })
   .catch(error => {
     console.error('Fatal error during security initialization:', error);
-    
-    // Remove the loading overlay
-    if (document.body.contains(loadingOverlay)) {
+    if(document.body.contains(loadingOverlay)) {
       document.body.removeChild(loadingOverlay);
     }
-    
-    // Create error message overlay
     const errorOverlay = document.createElement('div');
     errorOverlay.style.position = 'fixed';
     errorOverlay.style.top = '0';
@@ -100,30 +85,8 @@ performKeyExchange()
     errorOverlay.style.alignItems = 'center';
     errorOverlay.style.zIndex = '9999';
     errorOverlay.style.fontFamily = 'Arial, sans-serif';
-    
-    errorOverlay.innerHTML = `
-      <div style="text-align: center; padding: 30px; background-color: white; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); max-width: 500px;">
-        <h2 style="color: #e74c3c; margin-top: 0;">Security Error</h2>
-        <p>Failed to establish a secure connection.</p>
-        <p style="background-color: #f8d7da; padding: 10px; border-radius: 4px; margin: 20px 0; color: #721c24;">
-          ${error.message || 'Unknown error'}
-        </p>
-        <button onclick="window.location.reload()" style="
-          padding: 10px 20px;
-          background-color: #3498db;
-          color: white;
-          border: none;
-          border-radius: 4px;
-          cursor: pointer;
-          font-size: 16px;
-        ">Retry</button>
-      </div>
-    `;
-    
-    // Add the error overlay to the body
+    errorOverlay.innerHTML = `<div style="text-align: center;">Security Error: ${error.message}. <button onclick="window.location.reload()">Retry</button></div>`;
     document.body.appendChild(errorOverlay);
-    
-    // Still try to render the app with securityInitialized=false
     try {
       const root = ReactDOM.createRoot(document.getElementById('root'));
       root.render(
@@ -131,7 +94,7 @@ performKeyExchange()
           <App securityInitialized={false} />
         </React.StrictMode>
       );
-    } catch (renderError) {
+    } catch(renderError) {
       console.error('Failed to render app after security error:', renderError);
     }
   });

@@ -2,12 +2,12 @@ package com.backend.streetmed_backend;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
-public class StreetMedBackendApplication {
-
+@EnableScheduling
+public class StreetmedBackendApplication {
     public static void main(String[] args) {
-        SpringApplication.run(StreetMedBackendApplication.class, args);
+        SpringApplication.run(StreetmedBackendApplication.class, args);
     }
-
 }
