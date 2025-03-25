@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { encrypt, decrypt, getSessionId, isInitialized } from './security/ecdhClient';
 
 const Login = ({ onLoginSuccess }) => {
   const navigate = useNavigate();
@@ -39,26 +40,87 @@ const Login = ({ onLoginSuccess }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
     try {
-      const response = await axios.post('http://localhost:8080/api/auth/login', {
-        username,
-        password,
-      });
-  
-      if (response.data.authenticated) {
-        setMessage("Login success!");
-        console.log("User info:", response.data);
-        // Pass username, userId, and role
-        onLoginSuccess({ 
-          username: response.data.username, 
-          userId: response.data.userId,
-          role: response.data.role
+      // Check if secure login is available
+      if (isInitialized()) {
+        // This is a secure login with encryption
+        console.log("Using secure login with encryption");
+        
+        // Prepare login data
+        const loginData = {
+          username: username,
+          password: password
+        };
+        
+        // Encrypt the login data
+        const encryptedData = await encrypt(JSON.stringify(loginData));
+        
+        // Send the encrypted login request
+        const response = await fetch('http://localhost:8080/api/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'text/plain',
+            'X-Session-ID': getSessionId()
+          },
+          body: encryptedData
         });
+        
+        if (!response.ok) {
+          throw new Error(`Login failed: ${response.status}`);
+        }
+        
+        // Get the encrypted response
+        const encryptedResponse = await response.text();
+        
+        // Decrypt the response
+        const decryptedResponse = await decrypt(encryptedResponse);
+        
+        // Parse the JSON response
+        const data = JSON.parse(decryptedResponse);
+        
+        // Process the login result
+        if (data.authenticated) {
+          setMessage("Login success!");
+          console.log("User info:", data);
+          
+          // Pass user data to the parent component
+          onLoginSuccess({
+            username: data.username,
+            userId: data.userId,
+            role: data.role
+          });
+        } else {
+          setMessage("Login failure: " + (data.message || "Unknown error"));
+        }
       } else {
-        setMessage("Login failure: " + response.data.message);
+        // Fallback to regular login if encryption is not available
+        console.log("Using regular login (no encryption)");
+        
+        const response = await axios.post('http://localhost:8080/api/auth/login', {
+          username: username,
+          password: password
+        });
+        
+        const data = response.data;
+        
+        if (data.authenticated) {
+          setMessage("Login success!");
+          console.log("User info:", data);
+          
+          // Pass user data to the parent component
+          onLoginSuccess({
+            username: data.username,
+            userId: data.userId,
+            role: data.role
+          });
+        } else {
+          setMessage("Login failure: " + (data.message || "Unknown error"));
+        }
       }
     } catch (error) {
-      setMessage('Login error: ' + (error.response?.data?.message || error.message));
+      console.error("Login error:", error);
+      setMessage("Login error: " + (error.response?.data?.message || error.message));
     }
   };
 

@@ -2,7 +2,6 @@ package com.backend.streetmed_backend.security;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Cipher;
@@ -22,14 +21,11 @@ public class EncryptionUtil {
     private static final int GCM_IV_LENGTH = 12;
     private static final int GCM_TAG_LENGTH = 128; // in bits
 
-    @Value("${app.security.encryption.log-enabled:false}")
-    private boolean logEnabled;
+    // Simple boolean to control logging
+    private static boolean logEnabled = true;
 
     /**
      * Derives an AES key from the ECDH shared secret using SHA-256
-     *
-     * @param sharedSecret Base64 encoded shared secret from ECDH exchange
-     * @return AES SecretKey
      */
     public SecretKey deriveKey(String sharedSecret) {
         try {
@@ -45,10 +41,6 @@ public class EncryptionUtil {
 
     /**
      * Encrypts data using AES-GCM with the derived key
-     *
-     * @param data Plain text data to encrypt
-     * @param key SecretKey derived from shared secret
-     * @return Base64 encoded encrypted data (IV + ciphertext)
      */
     public String encrypt(String data, SecretKey key) {
         try {
@@ -91,10 +83,6 @@ public class EncryptionUtil {
 
     /**
      * Decrypts data using AES-GCM with the derived key
-     *
-     * @param encryptedData Base64 encoded encrypted data (IV + ciphertext)
-     * @param key SecretKey derived from shared secret
-     * @return Decrypted plain text
      */
     public String decrypt(String encryptedData, SecretKey key) {
         try {
@@ -134,17 +122,17 @@ public class EncryptionUtil {
     }
 
     /**
-     * Check if encryption logging is enabled
+     * Enable or disable encryption logging
      */
-    public boolean isLogEnabled() {
-        return logEnabled;
+    public static void setLogEnabled(boolean enabled) {
+        logEnabled = enabled;
+        logger.info("Encryption logging is now {}", enabled ? "enabled" : "disabled");
     }
 
     /**
-     * Set encryption logging enabled/disabled
+     * Check if encryption logging is enabled
      */
-    public void setLogEnabled(boolean enabled) {
-        this.logEnabled = enabled;
-        logger.info("Encryption logging {}", enabled ? "enabled" : "disabled");
+    public static boolean isLogEnabled() {
+        return logEnabled;
     }
 }

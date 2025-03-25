@@ -11,6 +11,7 @@
         <set>
           <option value="Authentication-Status" />
           <option value="Admin-Username" />
+          <option value="X-Session-ID" />
         </set>
       </option>
     </inspection_tool>

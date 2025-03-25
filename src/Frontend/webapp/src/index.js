@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
-import { performKeyExchange } from './security/ecdhClient';
+import { performKeyExchange, initializeAESKey } from './security/ecdhClient';
 
 // Create a loading overlay instead of replacing the entire body
 const loadingOverlay = document.createElement('div');
@@ -48,12 +48,22 @@ document.body.appendChild(loadingOverlay);
 // Initialize ECDH before rendering the app
 console.log('Initializing secure connection before starting the app...');
 performKeyExchange()
-  .then(result => {
+  .then(async result => {
     console.log('Security initialization complete. Rendering app...');
     
     // Store the session ID in localStorage for future use
     if (result.success) {
       localStorage.setItem('ecdh_session_id', result.sessionId);
+      
+      // If needed, explicitly initialize the AES key from the shared secret
+      // This step might be redundant if you already do this in performKeyExchange
+      try {
+        await initializeAESKey(result.sharedSecret);
+        console.log('AES encryption key initialized successfully');
+      } catch (error) {
+        console.warn('Failed to initialize AES key:', error);
+        // Continue anyway, as this might be handled in performKeyExchange
+      }
     }
     
     // Remove the loading overlay

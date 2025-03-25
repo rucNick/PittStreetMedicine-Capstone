@@ -1,6 +1,7 @@
 package com.backend.streetmed_backend.controller.Security;
 
 import com.backend.streetmed_backend.security.ECDHService;
+import com.backend.streetmed_backend.security.SecurityManager;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
@@ -19,14 +20,15 @@ import java.util.UUID;
 @CrossOrigin(origins = "http://localhost:3000")
 public class ECDHController {
 
-    // Add a logger
     private static final Logger logger = LoggerFactory.getLogger(ECDHController.class);
 
     private final ECDHService ecdhService;
+    private final SecurityManager securityManager;
 
     @Autowired
-    public ECDHController(ECDHService ecdhService) {
+    public ECDHController(ECDHService ecdhService, SecurityManager securityManager) {
         this.ecdhService = ecdhService;
+        this.securityManager = securityManager;
         logger.info("ECDHController initialized");
     }
 
@@ -49,9 +51,6 @@ public class ECDHController {
         response.put("serverPublicKey", serverPublicKey);
 
         logger.info("ECDH handshake initiated successfully for session: {}", sessionId);
-        logger.debug("Response: sessionId={}, publicKeyLength={}",
-                sessionId, serverPublicKey.length());
-
         return ResponseEntity.ok(response);
     }
 
@@ -81,30 +80,14 @@ public class ECDHController {
         }
 
         try {
-            logger.info("Computing shared secret for session: {}", sessionId);
-            String sharedSecret = ecdhService.computeSharedSecret(sessionId, clientPublicKey);
-            logger.info("Shared secret computed successfully for session: {}", sessionId);
-
-            if (logger.isDebugEnabled()) {
-                // Print first few characters of the shared secret for debugging
-                String secretPreview = sharedSecret.length() > 10
-                        ? sharedSecret.substring(0, 10) + "..."
-                        : sharedSecret;
-                logger.debug("Shared secret preview for session {}: {}", sessionId, secretPreview);
-            }
+            logger.info("Computing shared secret and deriving session key for session: {}", sessionId);
+            securityManager.completeHandshake(sessionId, clientPublicKey);
+            logger.info("Handshake completed successfully for session: {}", sessionId);
 
             Map<String, String> response = new HashMap<>();
             response.put("status", "success");
             response.put("message", "Handshake completed successfully");
 
-            // For development purposes, you might want to return the shared secret
-            // In production, you would NOT return the shared secret to the client
-            if (System.getProperty("dev.mode") != null) {
-                logger.debug("DEV MODE: Including shared secret in response");
-                response.put("sharedSecret", sharedSecret);
-            }
-
-            logger.info("ECDH handshake completed successfully for session: {}", sessionId);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error completing handshake for session {}: {}", sessionId, e.getMessage(), e);

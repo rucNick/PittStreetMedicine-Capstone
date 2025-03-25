@@ -1,10 +1,14 @@
 package com.backend.streetmed_backend.controller.Auth;
 
 import com.backend.streetmed_backend.entity.user_entity.User;
+import com.backend.streetmed_backend.security.SecurityManager;
 import com.backend.streetmed_backend.service.UserService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
@@ -25,15 +29,28 @@ public class AuthController {
     private final Executor authExecutor;
     private final Executor readOnlyExecutor;
 
+    // Add the ObjectMapper for JSON processing
+    private final ObjectMapper objectMapper;
+
+    private final SecurityManager securityManager;
+
     @Autowired
     public AuthController(
             UserService userService,
             @Qualifier("authExecutor") Executor authExecutor,
-            @Qualifier("readOnlyExecutor") Executor readOnlyExecutor) {
+            @Qualifier("readOnlyExecutor") Executor readOnlyExecutor,
+            SecurityManager securityManager,  // Add this parameter
+            ObjectMapper objectMapper) {  // Add this parameter
         this.userService = userService;
         this.authExecutor = authExecutor;
         this.readOnlyExecutor = readOnlyExecutor;
+        this.securityManager = securityManager;
+        this.objectMapper = objectMapper;
+
+        logger.info("AuthController initialized with SecurityManager");
     }
+
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
 
     @Operation(summary = "Register a new user")
     @PostMapping("/register")
@@ -84,16 +101,24 @@ public class AuthController {
 
     @Operation(summary = "User login")
     @PostMapping("/login")
-    public CompletableFuture<ResponseEntity<Map<String, Object>>> login(
-            @Schema(example = """
-                    {
-                        "username": "johndoe",
-                        "password": "securepass123"
-                    }
-                    """)
-            @RequestBody Map<String, String> credentials) {
+    public CompletableFuture<ResponseEntity<?>> login(
+            @RequestHeader(value = "X-Session-ID", required = false) String sessionId,
+            @RequestBody String body) {
+
         return CompletableFuture.supplyAsync(() -> {
             try {
+                Map<String, String> credentials;
+                // If a session ID is provided, assume the request body is encrypted text
+                if (sessionId != null) {
+                    logger.info("Received encrypted login request for session: {}", sessionId);
+                    String decryptedBody = securityManager.decrypt(sessionId, body);
+                    credentials = objectMapper.readValue(decryptedBody, Map.class);
+                    logger.info("Decrypted login request for user: {}", credentials.get("username"));
+                } else {
+                    // For non-encrypted requests, parse the JSON string directly
+                    credentials = objectMapper.readValue(body, Map.class);
+                }
+
                 String usernameOrEmail = credentials.get("username");
                 String password = credentials.get("password");
 
@@ -109,10 +134,7 @@ public class AuthController {
                 }
 
                 if (user != null && userService.verifyUserPassword(password, user.getPassword())) {
-                    CompletableFuture.runAsync(() ->
-                                    userService.updateLastLogin(user.getUserId()),
-                            authExecutor
-                    );
+                    CompletableFuture.runAsync(() -> userService.updateLastLogin(user.getUserId()), authExecutor);
 
                     Map<String, Object> response = new HashMap<>();
                     response.put("status", "success");
@@ -125,23 +147,46 @@ public class AuthController {
                         response.put("email", user.getEmail());
                     }
 
-                    return ResponseEntity.ok(response);
+                    if (sessionId != null) {
+                        // Encrypt the response if the request was encrypted
+                        String encryptedResponse = securityManager.encrypt(sessionId, objectMapper.writeValueAsString(response));
+                        return ResponseEntity.ok(encryptedResponse);
+                    } else {
+                        return ResponseEntity.ok(response);
+                    }
                 } else {
                     Map<String, Object> errorResponse = new HashMap<>();
                     errorResponse.put("status", "error");
                     errorResponse.put("message", "Invalid credentials");
                     errorResponse.put("authenticated", false);
-                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+
+                    if (sessionId != null) {
+                        String encryptedError = securityManager.encrypt(sessionId, objectMapper.writeValueAsString(errorResponse));
+                        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(encryptedError);
+                    } else {
+                        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+                    }
                 }
             } catch (Exception e) {
+                logger.error("Error processing login: {}", e.getMessage(), e);
                 Map<String, Object> errorResponse = new HashMap<>();
                 errorResponse.put("status", "error");
                 errorResponse.put("message", e.getMessage());
                 errorResponse.put("authenticated", false);
+
+                try {
+                    if (sessionId != null) {
+                        String encryptedError = securityManager.encrypt(sessionId, objectMapper.writeValueAsString(errorResponse));
+                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(encryptedError);
+                    }
+                } catch (Exception ex) {
+                    logger.error("Error encrypting error response: {}", ex.getMessage(), ex);
+                }
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
             }
         }, readOnlyExecutor);
     }
+
 
     @Operation(summary = "Update username")
     @PutMapping("/update/username")
