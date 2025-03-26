@@ -1,7 +1,6 @@
 //=========================================== JS part ==============================================
 
 import React, { useState } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { encrypt, decrypt, getSessionId, isInitialized } from './security/ecdhClient';
 
