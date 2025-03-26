@@ -12,6 +12,8 @@ const Login = ({ onLoginSuccess }) => {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
 
+  const baseURL = process.env.REACT_APP_BASE_URL || 'http://localhost:8080';
+
   // show login form
   const handleLoginClick = () => {
     setShowLoginForm(true);
@@ -52,7 +54,7 @@ const Login = ({ onLoginSuccess }) => {
         const encryptedData = await encrypt(JSON.stringify(loginData));
         
         // Send the encrypted login request
-        const response = await fetch('http://localhost:8080/api/auth/login', {
+        const response = await fetch(`${baseURL}/api/auth/login`, {
           method: 'POST',
           headers: {
             'Content-Type': 'text/plain',
@@ -95,7 +97,7 @@ const Login = ({ onLoginSuccess }) => {
         }
       } else {
         console.log("Using regular login (no encryption)");
-        const response = await axios.post('http://localhost:8080/api/auth/login', {
+        const response = await axios.post(`${baseURL}/api/auth/login`, {
           username,
           password
         });
