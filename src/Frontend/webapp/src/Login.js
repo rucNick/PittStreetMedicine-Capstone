@@ -95,35 +95,7 @@ const Login = ({ onLoginSuccess }) => {
         } else {
           setMessage("Login failure: " + (data.message || "Unknown error"));
         }
-      } else {
-        console.log("Using regular login (no encryption)");
-        const response = await axios.post(`${baseURL}/api/auth/login`, {
-          username,
-          password
-        });
-        const data = response.data;
-        
-        if (data.authenticated) {
-          setMessage("Login success!");
-          console.log("User info:", data);
-          
-          // Persist the authentication state in localStorage
-          localStorage.setItem("auth_user", JSON.stringify({
-            username: data.username,
-            userId: data.userId,
-            role: data.role
-          }));
-          
-          // Pass user data to the parent component
-          onLoginSuccess({
-            username: data.username,
-            userId: data.userId,
-            role: data.role
-          });
-        } else {
-          setMessage("Login failure: " + (data.message || "Unknown error"));
-        }
-      }
+      } 
     } catch (error) {
       console.error("Login error:", error);
       setMessage("Login error: " + (error.response?.data?.message || error.message));
