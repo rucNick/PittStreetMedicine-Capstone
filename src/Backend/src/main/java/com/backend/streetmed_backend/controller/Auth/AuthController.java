@@ -208,20 +208,35 @@ public class AuthController {
         }, readOnlyExecutor);
     }
 
-
     @Operation(summary = "Update username")
     @PutMapping("/update/username")
-    public CompletableFuture<ResponseEntity<Map<String, Object>>> updateUsername(
-            @Schema(example = """
-                    {
-                        "userId": "123",
-                        "newUsername": "newusername",
-                        "authenticated": "true"
-                    }
-                    """)
-            @RequestBody Map<String, String> updateData) {
+    public CompletableFuture<ResponseEntity<?>> updateUsername(
+            @RequestHeader(value = "X-Session-ID", required = false) String sessionId,
+            @RequestBody String body) {
         return CompletableFuture.supplyAsync(() -> {
             try {
+                Map<String, String> updateData;
+                // If a session ID is provided, assume the request body is encrypted text
+                if (sessionId != null && !sessionId.isEmpty()) {
+                    try {
+                        logger.info("Received encrypted username update request for session: {}", sessionId);
+                        String decryptedBody = securityManager.decrypt(sessionId, body);
+                        updateData = objectMapper.readValue(decryptedBody, Map.class);
+                        logger.info("Decrypted username update request");
+                    } catch (IllegalStateException e) {
+                        // If decryption fails due to missing session key, try to parse as JSON
+                        logger.warn("Session key not found, trying to parse as regular JSON: {}", e.getMessage());
+                        try {
+                            updateData = objectMapper.readValue(body, Map.class);
+                        } catch (Exception jsonEx) {
+                            throw new RuntimeException("Failed to parse request as JSON after decryption failed", jsonEx);
+                        }
+                    }
+                } else {
+                    // For non-encrypted requests, parse the JSON string directly
+                    updateData = objectMapper.readValue(body, Map.class);
+                }
+
                 String userId = updateData.get("userId");
                 String newUsername = updateData.get("newUsername");
                 String authStatus = updateData.get("authenticated");
@@ -238,6 +253,18 @@ public class AuthController {
                     Map<String, Object> errorResponse = new HashMap<>();
                     errorResponse.put("status", "error");
                     errorResponse.put("message", "Username already taken");
+
+                    // Return encrypted response if original request was encrypted
+                    if (sessionId != null && !sessionId.isEmpty() && securityManager.getSessionKey(sessionId) != null) {
+                        try {
+                            String encryptedError = securityManager.encrypt(sessionId,
+                                    objectMapper.writeValueAsString(errorResponse));
+                            return ResponseEntity.status(HttpStatus.CONFLICT).body(encryptedError);
+                        } catch (Exception e) {
+                            logger.error("Error encrypting error response: {}", e.getMessage());
+                            return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
+                        }
+                    }
                     return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
                 }
 
@@ -248,12 +275,34 @@ public class AuthController {
                 response.put("message", "Username updated successfully");
                 response.put("username", updatedUser.getUsername());
 
+                // Return encrypted response if original request was encrypted
+                if (sessionId != null && !sessionId.isEmpty() && securityManager.getSessionKey(sessionId) != null) {
+                    try {
+                        String encryptedResponse = securityManager.encrypt(sessionId,
+                                objectMapper.writeValueAsString(response));
+                        return ResponseEntity.ok(encryptedResponse);
+                    } catch (Exception e) {
+                        logger.error("Error encrypting response: {}", e.getMessage());
+                        return ResponseEntity.ok(response);
+                    }
+                }
                 return ResponseEntity.ok(response);
 
             } catch (Exception e) {
+                logger.error("Error processing username update: {}", e.getMessage(), e);
                 Map<String, Object> errorResponse = new HashMap<>();
                 errorResponse.put("status", "error");
                 errorResponse.put("message", e.getMessage());
+
+                try {
+                    if (sessionId != null && !sessionId.isEmpty() && securityManager.getSessionKey(sessionId) != null) {
+                        String encryptedError = securityManager.encrypt(sessionId,
+                                objectMapper.writeValueAsString(errorResponse));
+                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(encryptedError);
+                    }
+                } catch (Exception ex) {
+                    logger.error("Error encrypting error response: {}", ex.getMessage(), ex);
+                }
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
             }
         }, authExecutor);
@@ -261,18 +310,33 @@ public class AuthController {
 
     @Operation(summary = "Update phone number")
     @PutMapping("/update/phone")
-    public CompletableFuture<ResponseEntity<Map<String, Object>>> updatePhone(
-            @Schema(example = """
-                    {
-                        "userId": "123",
-                        "currentPassword": "securepass123",
-                        "newPhone": "412-555-0124",
-                        "authenticated": "true"
-                    }
-                    """)
-            @RequestBody Map<String, String> updateData) {
+    public CompletableFuture<ResponseEntity<?>> updatePhone(
+            @RequestHeader(value = "X-Session-ID", required = false) String sessionId,
+            @RequestBody String body) {
         return CompletableFuture.supplyAsync(() -> {
             try {
+                Map<String, String> updateData;
+                // If a session ID is provided, assume the request body is encrypted text
+                if (sessionId != null && !sessionId.isEmpty()) {
+                    try {
+                        logger.info("Received encrypted phone update request for session: {}", sessionId);
+                        String decryptedBody = securityManager.decrypt(sessionId, body);
+                        updateData = objectMapper.readValue(decryptedBody, Map.class);
+                        logger.info("Decrypted phone update request");
+                    } catch (IllegalStateException e) {
+                        // If decryption fails due to missing session key, try to parse as JSON
+                        logger.warn("Session key not found, trying to parse as regular JSON: {}", e.getMessage());
+                        try {
+                            updateData = objectMapper.readValue(body, Map.class);
+                        } catch (Exception jsonEx) {
+                            throw new RuntimeException("Failed to parse request as JSON after decryption failed", jsonEx);
+                        }
+                    }
+                } else {
+                    // For non-encrypted requests, parse the JSON string directly
+                    updateData = objectMapper.readValue(body, Map.class);
+                }
+
                 String userId = updateData.get("userId");
                 String currentPassword = updateData.get("currentPassword");
                 String newPhone = updateData.get("newPhone");
@@ -295,6 +359,16 @@ public class AuthController {
                     Map<String, Object> errorResponse = new HashMap<>();
                     errorResponse.put("status", "error");
                     errorResponse.put("message", "Current password is incorrect");
+
+                    if (sessionId != null && !sessionId.isEmpty() && securityManager.getSessionKey(sessionId) != null) {
+                        try {
+                            String encryptedError = securityManager.encrypt(sessionId,
+                                    objectMapper.writeValueAsString(errorResponse));
+                            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(encryptedError);
+                        } catch (Exception e) {
+                            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+                        }
+                    }
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
                 }
 
@@ -309,12 +383,33 @@ public class AuthController {
                 response.put("message", "Phone number updated successfully");
                 response.put("phone", updatedUser.getPhone());
 
+                if (sessionId != null && !sessionId.isEmpty() && securityManager.getSessionKey(sessionId) != null) {
+                    try {
+                        String encryptedResponse = securityManager.encrypt(sessionId,
+                                objectMapper.writeValueAsString(response));
+                        return ResponseEntity.ok(encryptedResponse);
+                    } catch (Exception e) {
+                        logger.error("Error encrypting response: {}", e.getMessage());
+                        return ResponseEntity.ok(response);
+                    }
+                }
                 return ResponseEntity.ok(response);
 
             } catch (Exception e) {
+                logger.error("Error processing phone update: {}", e.getMessage(), e);
                 Map<String, Object> errorResponse = new HashMap<>();
                 errorResponse.put("status", "error");
                 errorResponse.put("message", e.getMessage());
+
+                try {
+                    if (sessionId != null && !sessionId.isEmpty() && securityManager.getSessionKey(sessionId) != null) {
+                        String encryptedError = securityManager.encrypt(sessionId,
+                                objectMapper.writeValueAsString(errorResponse));
+                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(encryptedError);
+                    }
+                } catch (Exception ex) {
+                    logger.error("Error encrypting error response: {}", ex.getMessage(), ex);
+                }
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
             }
         }, authExecutor);
@@ -322,18 +417,33 @@ public class AuthController {
 
     @Operation(summary = "Update password")
     @PutMapping("/update/password")
-    public CompletableFuture<ResponseEntity<Map<String, Object>>> updatePassword(
-            @Schema(example = """
-                    {
-                        "userId": "123",
-                        "currentPassword": "oldpass123",
-                        "newPassword": "newpass123",
-                        "authenticated": "true"
-                    }
-                    """)
-            @RequestBody Map<String, String> updateData) {
+    public CompletableFuture<ResponseEntity<?>> updatePassword(
+            @RequestHeader(value = "X-Session-ID", required = false) String sessionId,
+            @RequestBody String body) {
         return CompletableFuture.supplyAsync(() -> {
             try {
+                Map<String, String> updateData;
+                // If a session ID is provided, assume the request body is encrypted text
+                if (sessionId != null && !sessionId.isEmpty()) {
+                    try {
+                        logger.info("Received encrypted password update request for session: {}", sessionId);
+                        String decryptedBody = securityManager.decrypt(sessionId, body);
+                        updateData = objectMapper.readValue(decryptedBody, Map.class);
+                        logger.info("Decrypted password update request");
+                    } catch (IllegalStateException e) {
+                        // If decryption fails due to missing session key, try to parse as JSON
+                        logger.warn("Session key not found, trying to parse as regular JSON: {}", e.getMessage());
+                        try {
+                            updateData = objectMapper.readValue(body, Map.class);
+                        } catch (Exception jsonEx) {
+                            throw new RuntimeException("Failed to parse request as JSON after decryption failed", jsonEx);
+                        }
+                    }
+                } else {
+                    // For non-encrypted requests, parse the JSON string directly
+                    updateData = objectMapper.readValue(body, Map.class);
+                }
+
                 String userId = updateData.get("userId");
                 String currentPassword = updateData.get("currentPassword");
                 String newPassword = updateData.get("newPassword");
@@ -356,6 +466,16 @@ public class AuthController {
                     Map<String, Object> errorResponse = new HashMap<>();
                     errorResponse.put("status", "error");
                     errorResponse.put("message", "Current password is incorrect");
+
+                    if (sessionId != null && !sessionId.isEmpty() && securityManager.getSessionKey(sessionId) != null) {
+                        try {
+                            String encryptedError = securityManager.encrypt(sessionId,
+                                    objectMapper.writeValueAsString(errorResponse));
+                            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(encryptedError);
+                        } catch (Exception e) {
+                            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+                        }
+                    }
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
                 }
 
@@ -365,12 +485,33 @@ public class AuthController {
                 response.put("status", "success");
                 response.put("message", "Password updated successfully");
 
+                if (sessionId != null && !sessionId.isEmpty() && securityManager.getSessionKey(sessionId) != null) {
+                    try {
+                        String encryptedResponse = securityManager.encrypt(sessionId,
+                                objectMapper.writeValueAsString(response));
+                        return ResponseEntity.ok(encryptedResponse);
+                    } catch (Exception e) {
+                        logger.error("Error encrypting response: {}", e.getMessage());
+                        return ResponseEntity.ok(response);
+                    }
+                }
                 return ResponseEntity.ok(response);
 
             } catch (Exception e) {
+                logger.error("Error processing password update: {}", e.getMessage(), e);
                 Map<String, Object> errorResponse = new HashMap<>();
                 errorResponse.put("status", "error");
                 errorResponse.put("message", e.getMessage());
+
+                try {
+                    if (sessionId != null && !sessionId.isEmpty() && securityManager.getSessionKey(sessionId) != null) {
+                        String encryptedError = securityManager.encrypt(sessionId,
+                                objectMapper.writeValueAsString(errorResponse));
+                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(encryptedError);
+                    }
+                } catch (Exception ex) {
+                    logger.error("Error encrypting error response: {}", ex.getMessage(), ex);
+                }
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
             }
         }, authExecutor);
@@ -378,18 +519,33 @@ public class AuthController {
 
     @Operation(summary = "Update email")
     @PutMapping("/update/email")
-    public CompletableFuture<ResponseEntity<Map<String, Object>>> updateEmail(
-            @Schema(example = """
-                    {
-                        "userId": "123",
-                        "currentPassword": "securepass123",
-                        "newEmail": "newemail@example.com",
-                        "authenticated": "true"
-                    }
-                    """)
-            @RequestBody Map<String, String> updateData) {
+    public CompletableFuture<ResponseEntity<?>> updateEmail(
+            @RequestHeader(value = "X-Session-ID", required = false) String sessionId,
+            @RequestBody String body) {
         return CompletableFuture.supplyAsync(() -> {
             try {
+                Map<String, String> updateData;
+                // If a session ID is provided, assume the request body is encrypted text
+                if (sessionId != null && !sessionId.isEmpty()) {
+                    try {
+                        logger.info("Received encrypted email update request for session: {}", sessionId);
+                        String decryptedBody = securityManager.decrypt(sessionId, body);
+                        updateData = objectMapper.readValue(decryptedBody, Map.class);
+                        logger.info("Decrypted email update request");
+                    } catch (IllegalStateException e) {
+                        // If decryption fails due to missing session key, try to parse as JSON
+                        logger.warn("Session key not found, trying to parse as regular JSON: {}", e.getMessage());
+                        try {
+                            updateData = objectMapper.readValue(body, Map.class);
+                        } catch (Exception jsonEx) {
+                            throw new RuntimeException("Failed to parse request as JSON after decryption failed", jsonEx);
+                        }
+                    }
+                } else {
+                    // For non-encrypted requests, parse the JSON string directly
+                    updateData = objectMapper.readValue(body, Map.class);
+                }
+
                 String userId = updateData.get("userId");
                 String currentPassword = updateData.get("currentPassword");
                 String newEmail = updateData.get("newEmail");
@@ -412,6 +568,16 @@ public class AuthController {
                     Map<String, Object> errorResponse = new HashMap<>();
                     errorResponse.put("status", "error");
                     errorResponse.put("message", "Current password is incorrect");
+
+                    if (sessionId != null && !sessionId.isEmpty() && securityManager.getSessionKey(sessionId) != null) {
+                        try {
+                            String encryptedError = securityManager.encrypt(sessionId,
+                                    objectMapper.writeValueAsString(errorResponse));
+                            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(encryptedError);
+                        } catch (Exception e) {
+                            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+                        }
+                    }
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
                 }
 
@@ -419,6 +585,16 @@ public class AuthController {
                     Map<String, Object> errorResponse = new HashMap<>();
                     errorResponse.put("status", "error");
                     errorResponse.put("message", "Email already in use");
+
+                    if (sessionId != null && !sessionId.isEmpty() && securityManager.getSessionKey(sessionId) != null) {
+                        try {
+                            String encryptedError = securityManager.encrypt(sessionId,
+                                    objectMapper.writeValueAsString(errorResponse));
+                            return ResponseEntity.status(HttpStatus.CONFLICT).body(encryptedError);
+                        } catch (Exception e) {
+                            return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
+                        }
+                    }
                     return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
                 }
 
@@ -429,15 +605,35 @@ public class AuthController {
                 response.put("message", "Email updated successfully");
                 response.put("email", updatedUser.getEmail());
 
+                if (sessionId != null && !sessionId.isEmpty() && securityManager.getSessionKey(sessionId) != null) {
+                    try {
+                        String encryptedResponse = securityManager.encrypt(sessionId,
+                                objectMapper.writeValueAsString(response));
+                        return ResponseEntity.ok(encryptedResponse);
+                    } catch (Exception e) {
+                        logger.error("Error encrypting response: {}", e.getMessage());
+                        return ResponseEntity.ok(response);
+                    }
+                }
                 return ResponseEntity.ok(response);
 
             } catch (Exception e) {
+                logger.error("Error processing email update: {}", e.getMessage(), e);
                 Map<String, Object> errorResponse = new HashMap<>();
                 errorResponse.put("status", "error");
                 errorResponse.put("message", e.getMessage());
+
+                try {
+                    if (sessionId != null && !sessionId.isEmpty() && securityManager.getSessionKey(sessionId) != null) {
+                        String encryptedError = securityManager.encrypt(sessionId,
+                                objectMapper.writeValueAsString(errorResponse));
+                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(encryptedError);
+                    }
+                } catch (Exception ex) {
+                    logger.error("Error encrypting error response: {}", ex.getMessage(), ex);
+                }
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
             }
         }, authExecutor);
     }
-
 }

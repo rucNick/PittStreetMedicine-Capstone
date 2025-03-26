@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import "./Home.css";
+import { encrypt, decrypt, getSessionId, isInitialized } from './security/ecdhClient';
 
 const Home = ({ username, email, password, phone, userId, onLogout }) => {
   console.log("Home component initialized", { username, email, phone, userId });
@@ -364,156 +365,372 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
   // ------------- Profile Modal Operations -------------
   
   // Open profile modal and clear previous inputs
-  const handleOpenProfileModal = () => {
-    console.log("handleOpenProfileModal: Opening profile modal and clearing inputs");
-    setCurrentPassword("");
-    setNewUsername("");
-    setNewEmail("");
-    setNewPassword("");
-    setNewPhone("");
-    setProfileError("");
-    setProfileMessage("");
-    setProfileOption("username"); // Default option
-    setShowProfileModal(true);
-  };
+const handleOpenProfileModal = () => {
+  console.log("handleOpenProfileModal: Opening profile modal and clearing inputs");
+  setCurrentPassword("");
+  setNewUsername("");
+  setNewEmail("");
+  setNewPassword("");
+  setNewPhone("");
+  setProfileError("");
+  setProfileMessage("");
+  setProfileOption("username"); // Default option
+  setShowProfileModal(true);
+};
 
-  const handleCloseProfileModal = () => {
-    console.log("handleCloseProfileModal: Closing profile modal");
-    setShowProfileModal(false);
-  };
+const handleCloseProfileModal = () => {
+  console.log("handleCloseProfileModal: Closing profile modal");
+  setShowProfileModal(false);
+};
 
-  // Handle submit of profile update based on selected option
-  const handleSubmitProfile = async () => {
-    console.log("handleSubmitProfile: called with profileOption", profileOption);
-    // For username update
-    if (profileOption === "username") {
-      // Validate new username: only letters and must differ from current username
-      const usernameRegex = /^[A-Za-z]+$/;
-      if (!newUsername.trim() || !usernameRegex.test(newUsername.trim())) {
-        setProfileError("Username must contain only letters.");
-        return;
-      }
-      if (newUsername.trim() === username) {
-        setProfileError("New username must be different from the old one.");
-        return;
-      }
-      try {
-        console.log("handleSubmitProfile: Updating username");
-        await axios.put("http://localhost:8080/api/auth/update/username", {
-          userId,
-          newUsername: newUsername.trim(),
-          authenticated: "true",
-        });
-        setProfileMessage("You have successfully updated your information. Please log out to update your information.");
-        setTimeout(() => {
-          console.log("handleSubmitProfile: Logging out after username update");
-          onLogout();
-        }, 1500);
-      } catch (error) {
-        console.error("handleSubmitProfile: Error updating username", error);
-        setProfileError(error.response?.data?.message || "Failed to update username.");
-      }
+// Handle submit of profile update based on selected option
+const handleSubmitProfile = async () => {
+  console.log("handleSubmitProfile: called with profileOption", profileOption);
+  
+  // For username update
+  if (profileOption === "username") {
+    // Validate new username: only letters and must differ from current username
+    const usernameRegex = /^[A-Za-z]+$/;
+    if (!newUsername.trim() || !usernameRegex.test(newUsername.trim())) {
+      setProfileError("Username must contain only letters.");
+      return;
     }
-    // For email update
-    else if (profileOption === "email") {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!newEmail.trim() || !emailRegex.test(newEmail.trim())) {
-        setProfileError("Please enter a valid email address.");
-        return;
-      }
-      if (newEmail.trim() === email) {
-        setProfileError("New email must be different from the old one.");
-        return;
-      }
-      if (!currentPassword.trim()) {
-        setProfileError("Current password is required.");
-        return;
-      }
-      try {
-        console.log("handleSubmitProfile: Updating email");
-        await axios.put("http://localhost:8080/api/auth/update/email", {
-          userId,
-          currentPassword: currentPassword.trim(),
-          newEmail: newEmail.trim(),
-          authenticated: "true",
-        });
-        setProfileMessage("You have successfully updated your information. Please log out to update your information.");
-        setTimeout(() => {
-          console.log("handleSubmitProfile: Logging out after email update");
-          onLogout();
-        }, 1500);
-      } catch (error) {
-        console.error("handleSubmitProfile: Error updating email", error);
-        setProfileError(error.response?.data?.message || "Failed to update email.");
-      }
+    if (newUsername.trim() === username) {
+      setProfileError("New username must be different from the old one.");
+      return;
     }
-    // For password update
-    else if (profileOption === "password") {
-      const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
-      if (!newPassword.trim() || !passwordRegex.test(newPassword.trim())) {
-        setProfileError("Password must be alphanumeric and at least 8 characters long.");
-        return;
-      }
-      if (newPassword.trim() === password) {
-        setProfileError("New password must be different from the old one.");
-        return;
-      }
-      if (!currentPassword.trim()) {
-        setProfileError("Current password is required.");
-        return;
-      }
-      try {
-        console.log("handleSubmitProfile: Updating password");
-        await axios.put("http://localhost:8080/api/auth/update/password", {
-          userId,
-          currentPassword: currentPassword.trim(),
-          newPassword: newPassword.trim(),
-          authenticated: "true",
+    
+    try {
+      console.log("handleSubmitProfile: Updating username");
+      
+      const userData = {
+        userId: userId.toString(), // Convert to string
+        newUsername: newUsername.trim(),
+        authenticated: "true",
+      };
+      
+      let response;
+      
+      // Use secure api call if security is initialized
+      if (isInitialized() && getSessionId()) {
+        console.log("Using secure encrypted username update");
+        
+        // Encrypt the user data
+        const encryptedData = await encrypt(JSON.stringify(userData));
+        
+        // Send the encrypted request
+        response = await fetch('http://localhost:8080/api/auth/update/username', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'text/plain',
+            'X-Session-ID': getSessionId()
+          },
+          body: encryptedData
         });
-        setProfileMessage("You have successfully updated your information. Please log out to update your information.");
-        setTimeout(() => {
-          console.log("handleSubmitProfile: Logging out after password update");
-          onLogout();
-        }, 1500);
-      } catch (error) {
-        console.error("handleSubmitProfile: Error updating password", error);
-        setProfileError(error.response?.data?.message || "Failed to update password.");
+        
+        if (!response.ok) {
+          throw new Error(`Username update failed: ${response.status}`);
+        }
+        
+        // Get and decrypt the response
+        const encryptedResponse = await response.text();
+        const decryptedResponse = await decrypt(encryptedResponse);
+        
+        // Parse the JSON response
+        const data = JSON.parse(decryptedResponse);
+        
+        if (data.status === 'success') {
+          setProfileMessage("You have successfully updated your information. Please log out to update your information.");
+          setTimeout(() => {
+            console.log("handleSubmitProfile: Logging out after username update");
+            onLogout();
+          }, 1500);
+        } else {
+          setProfileError(data.message || "Failed to update username.");
+        }
+      } else {
+        console.log("Using regular username update (no encryption)");
+        
+        // Use regular axios call as fallback
+        response = await axios.put("http://localhost:8080/api/auth/update/username", userData);
+        
+        if (response.data.status === 'success') {
+          setProfileMessage("You have successfully updated your information. Please log out to update your information.");
+          setTimeout(() => {
+            console.log("handleSubmitProfile: Logging out after username update");
+            onLogout();
+          }, 1500);
+        } else {
+          setProfileError(response.data.message || "Failed to update username.");
+        }
       }
+    } catch (error) {
+      console.error("handleSubmitProfile: Error updating username", error);
+      setProfileError(error.response?.data?.message || error.message || "Failed to update username.");
     }
-    // For phone update
-    else if (profileOption === "phone") {
-      const phoneRegex = /^\d{10}$/;
-      if (!newPhone.trim() || !phoneRegex.test(newPhone.trim())) {
-        setProfileError("Phone number must be a 10-digit US number.");
-        return;
-      }
-      if (newPhone.trim() === phone) {
-        setProfileError("New phone number must be different from the old one.");
-        return;
-      }
-      if (!currentPassword.trim()) {
-        setProfileError("Current password is required.");
-        return;
-      }
-      try {
-        console.log("handleSubmitProfile: Updating phone number");
-        await axios.put("http://localhost:8080/api/auth/update/phone", {
-          userId,
-          currentPassword: currentPassword.trim(),
-          newPhone: newPhone.trim(),
-          authenticated: "true",
+  }
+  
+  // For email update
+  else if (profileOption === "email") {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!newEmail.trim() || !emailRegex.test(newEmail.trim())) {
+      setProfileError("Please enter a valid email address.");
+      return;
+    }
+    if (newEmail.trim() === email) {
+      setProfileError("New email must be different from the old one.");
+      return;
+    }
+    if (!currentPassword.trim()) {
+      setProfileError("Current password is required.");
+      return;
+    }
+    
+    try {
+      console.log("handleSubmitProfile: Updating email");
+      
+      const userData = {
+        userId: userId.toString(), // Convert to string
+        currentPassword: currentPassword.trim(),
+        newEmail: newEmail.trim(),
+        authenticated: "true",
+      };
+      
+      let response;
+      
+      // Use secure api call if security is initialized
+      if (isInitialized() && getSessionId()) {
+        console.log("Using secure encrypted email update");
+        
+        // Encrypt the user data
+        const encryptedData = await encrypt(JSON.stringify(userData));
+        
+        // Send the encrypted request
+        response = await fetch('http://localhost:8080/api/auth/update/email', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'text/plain',
+            'X-Session-ID': getSessionId()
+          },
+          body: encryptedData
         });
-        setProfileMessage("You have successfully updated your information. Please log out to update your information.");
-        setTimeout(() => {
-          console.log("handleSubmitProfile: Logging out after phone update");
-          onLogout();
-        }, 1500);
-      } catch (error) {
-        console.error("handleSubmitProfile: Error updating phone number", error);
-        setProfileError(error.response?.data?.message || "Failed to update phone number.");
+        
+        if (!response.ok) {
+          throw new Error(`Email update failed: ${response.status}`);
+        }
+        
+        // Get and decrypt the response
+        const encryptedResponse = await response.text();
+        const decryptedResponse = await decrypt(encryptedResponse);
+        
+        // Parse the JSON response
+        const data = JSON.parse(decryptedResponse);
+        
+        if (data.status === 'success') {
+          setProfileMessage("You have successfully updated your information. Please log out to update your information.");
+          setTimeout(() => {
+            console.log("handleSubmitProfile: Logging out after email update");
+            onLogout();
+          }, 1500);
+        } else {
+          setProfileError(data.message || "Failed to update email.");
+        }
+      } else {
+        console.log("Using regular email update (no encryption)");
+        
+        // Use regular axios call as fallback
+        response = await axios.put("http://localhost:8080/api/auth/update/email", userData);
+        
+        if (response.data.status === 'success') {
+          setProfileMessage("You have successfully updated your information. Please log out to update your information.");
+          setTimeout(() => {
+            console.log("handleSubmitProfile: Logging out after email update");
+            onLogout();
+          }, 1500);
+        } else {
+          setProfileError(response.data.message || "Failed to update email.");
+        }
       }
+    } catch (error) {
+      console.error("handleSubmitProfile: Error updating email", error);
+      setProfileError(error.response?.data?.message || error.message || "Failed to update email.");
     }
-  };
+  }
+  
+  // For password update
+  else if (profileOption === "password") {
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
+    if (!newPassword.trim() || !passwordRegex.test(newPassword.trim())) {
+      setProfileError("Password must be alphanumeric and at least 8 characters long.");
+      return;
+    }
+    if (newPassword.trim() === password) {
+      setProfileError("New password must be different from the old one.");
+      return;
+    }
+    if (!currentPassword.trim()) {
+      setProfileError("Current password is required.");
+      return;
+    }
+    
+    try {
+      console.log("handleSubmitProfile: Updating password");
+      
+      const userData = {
+        userId: userId.toString(), // Convert to string
+        currentPassword: currentPassword.trim(),
+        newPassword: newPassword.trim(), 
+        authenticated: "true",
+      };
+      
+      let response;
+      
+      // Use secure api call if security is initialized
+      if (isInitialized() && getSessionId()) {
+        console.log("Using secure encrypted password update");
+        
+        // Encrypt the user data
+        const encryptedData = await encrypt(JSON.stringify(userData));
+        
+        // Send the encrypted request
+        response = await fetch('http://localhost:8080/api/auth/update/password', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'text/plain',
+            'X-Session-ID': getSessionId()
+          },
+          body: encryptedData
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Password update failed: ${response.status}`);
+        }
+        
+        // Get and decrypt the response
+        const encryptedResponse = await response.text();
+        const decryptedResponse = await decrypt(encryptedResponse);
+        
+        // Parse the JSON response
+        const data = JSON.parse(decryptedResponse);
+        
+        if (data.status === 'success') {
+          setProfileMessage("You have successfully updated your information. Please log out to update your information.");
+          setTimeout(() => {
+            console.log("handleSubmitProfile: Logging out after password update");
+            onLogout();
+          }, 1500);
+        } else {
+          setProfileError(data.message || "Failed to update password.");
+        }
+      } else {
+        console.log("Using regular password update (no encryption)");
+        
+        // Use regular axios call as fallback
+        response = await axios.put("http://localhost:8080/api/auth/update/password", userData);
+        
+        if (response.data.status === 'success') {
+          setProfileMessage("You have successfully updated your information. Please log out to update your information.");
+          setTimeout(() => {
+            console.log("handleSubmitProfile: Logging out after password update");
+            onLogout();
+          }, 1500);
+        } else {
+          setProfileError(response.data.message || "Failed to update password.");
+        }
+      }
+    } catch (error) {
+      console.error("handleSubmitProfile: Error updating password", error);
+      setProfileError(error.response?.data?.message || error.message || "Failed to update password.");
+    }
+  }
+  
+  // For phone update
+  else if (profileOption === "phone") {
+    const phoneRegex = /^\d{10}$/;
+    if (!newPhone.trim() || !phoneRegex.test(newPhone.trim())) {
+      setProfileError("Phone number must be a 10-digit US number.");
+      return;
+    }
+    if (newPhone.trim() === phone) {
+      setProfileError("New phone number must be different from the old one.");
+      return;
+    }
+    if (!currentPassword.trim()) {
+      setProfileError("Current password is required.");
+      return;
+    }
+    
+    try {
+      console.log("handleSubmitProfile: Updating phone number");
+      
+      const userData = {
+        userId: userId.toString(), // Convert to string
+        currentPassword: currentPassword.trim(),
+        newPhone: newPhone.trim(),
+        authenticated: "true",
+      };
+      
+      let response;
+      
+      // Use secure api call if security is initialized
+      if (isInitialized() && getSessionId()) {
+        console.log("Using secure encrypted phone update");
+        
+        // Encrypt the user data
+        const encryptedData = await encrypt(JSON.stringify(userData));
+        
+        // Send the encrypted request
+        response = await fetch('http://localhost:8080/api/auth/update/phone', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'text/plain',
+            'X-Session-ID': getSessionId()
+          },
+          body: encryptedData
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Phone update failed: ${response.status}`);
+        }
+        
+        // Get and decrypt the response
+        const encryptedResponse = await response.text();
+        const decryptedResponse = await decrypt(encryptedResponse);
+        
+        // Parse the JSON response
+        const data = JSON.parse(decryptedResponse);
+        
+        if (data.status === 'success') {
+          setProfileMessage("You have successfully updated your information. Please log out to update your information.");
+          setTimeout(() => {
+            console.log("handleSubmitProfile: Logging out after phone update");
+            onLogout();
+          }, 1500);
+        } else {
+          setProfileError(data.message || "Failed to update phone number.");
+        }
+      } else {
+        console.log("Using regular phone update (no encryption)");
+        
+        // Use regular axios call as fallback
+        response = await axios.put("http://localhost:8080/api/auth/update/phone", userData);
+        
+        if (response.data.status === 'success') {
+          setProfileMessage("You have successfully updated your information. Please log out to update your information.");
+          setTimeout(() => {
+            console.log("handleSubmitProfile: Logging out after phone update");
+            onLogout();
+          }, 1500);
+        } else {
+          setProfileError(response.data.message || "Failed to update phone number.");
+        }
+      }
+    } catch (error) {
+      console.error("handleSubmitProfile: Error updating phone number", error);
+      setProfileError(error.response?.data?.message || error.message || "Failed to update phone number.");
+    }
+  }
+};
 
   // ================= Rendering Section =================
   console.log("Home: Rendering component");
