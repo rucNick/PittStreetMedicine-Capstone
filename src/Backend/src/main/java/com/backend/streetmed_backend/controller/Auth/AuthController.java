@@ -54,18 +54,23 @@ public class AuthController {
 
     @Operation(summary = "Register a new user")
     @PostMapping("/register")
-    public CompletableFuture<ResponseEntity<Map<String, Object>>> register(
-            @Schema(example = """
-                    {
-                        "username": "johndoe",
-                        "email": "john@example.com",
-                        "password": "securepass123",
-                        "phone": "412-555-0123"
-                    }
-                    """)
-            @RequestBody Map<String, String> userData) {
+    public CompletableFuture<ResponseEntity<?>> register(
+            @RequestHeader(value = "X-Session-ID", required = false) String sessionId,
+            @RequestBody String body) {
         return CompletableFuture.supplyAsync(() -> {
             try {
+                Map<String, String> userData;
+                // If a session ID is provided, assume the request body is encrypted text
+                if (sessionId != null) {
+                    logger.info("Received encrypted registration request for session: {}", sessionId);
+                    String decryptedBody = securityManager.decrypt(sessionId, body);
+                    userData = objectMapper.readValue(decryptedBody, Map.class);
+                    logger.info("Decrypted registration request for user: {}", userData.get("username"));
+                } else {
+                    // For non-encrypted requests, parse the JSON string directly
+                    userData = objectMapper.readValue(body, Map.class);
+                }
+
                 if (userData.get("username") == null || userData.get("email") == null ||
                         userData.get("password") == null) {
                     throw new RuntimeException("Missing required fields");
@@ -88,12 +93,28 @@ public class AuthController {
                 response.put("message", "User registered successfully");
                 response.put("userId", savedUser.getUserId());
 
-                return ResponseEntity.ok(response);
+                if (sessionId != null) {
+                    // Encrypt the response if the request was encrypted
+                    String encryptedResponse = securityManager.encrypt(sessionId, objectMapper.writeValueAsString(response));
+                    return ResponseEntity.ok(encryptedResponse);
+                } else {
+                    return ResponseEntity.ok(response);
+                }
 
             } catch (Exception e) {
+                logger.error("Error processing registration: {}", e.getMessage(), e);
                 Map<String, Object> errorResponse = new HashMap<>();
                 errorResponse.put("status", "error");
                 errorResponse.put("message", e.getMessage());
+
+                try {
+                    if (sessionId != null) {
+                        String encryptedError = securityManager.encrypt(sessionId, objectMapper.writeValueAsString(errorResponse));
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(encryptedError);
+                    }
+                } catch (Exception ex) {
+                    logger.error("Error encrypting error response: {}", ex.getMessage(), ex);
+                }
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
             }
         }, authExecutor);

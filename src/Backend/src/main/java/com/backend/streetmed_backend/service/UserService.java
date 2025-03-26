@@ -35,11 +35,25 @@ public class UserService {
         newUser.setPhone(user.getPhone());
         newUser.setRole(user.getRole());
 
-        // Create metadata
-        UserMetadata metadata = new UserMetadata();
-        newUser.setMetadata(metadata);
+        // First save the user to generate the userId
+        User savedUser = userRepository.save(newUser);
 
-        return userRepository.saveAndFlush(newUser);
+        // Now create metadata and associate it with the saved user
+        UserMetadata metadata = new UserMetadata();
+        metadata.setCreatedAt(LocalDateTime.now());
+        metadata.setLastLogin(LocalDateTime.now());
+        metadata.setUser(savedUser);
+
+        // Set additional metadata fields if provided
+        if (user.getMetadata() != null) {
+            metadata.setFirstName(user.getMetadata().getFirstName());
+            metadata.setLastName(user.getMetadata().getLastName());
+        }
+
+        savedUser.setMetadata(metadata);
+
+        // Save everything again
+        return userRepository.saveAndFlush(savedUser);
     }
 
     public boolean verifyUserPassword(String plainTextPassword, String hashedPassword) {

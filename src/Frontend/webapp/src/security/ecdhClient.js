@@ -251,3 +251,48 @@ export const getSessionId = () => {
 export const isInitialized = () => {
   return securityContext.initialized;
 };
+
+
+/**
+ * Performs an encrypted API call
+ * @param {string} url - The API endpoint URL
+ * @param {string} method - HTTP method (GET, POST, PUT, DELETE)
+ * @param {object} data - The request data
+ * @returns {Promise<any>} - The decrypted response data
+ */
+export const secureApiCall = async (url, method, data) => {
+  if (!isInitialized()) {
+    throw new Error('Security not initialized. Cannot make secure API call.');
+  }
+  
+  try {
+    // Encrypt the request data
+    const encryptedData = await encrypt(JSON.stringify(data));
+    
+    // Make the request with the session ID header
+    const response = await fetch(url, {
+      method: method,
+      headers: {
+        'Content-Type': 'text/plain',  // Keep text/plain for now
+        'X-Session-ID': getSessionId()
+      },
+      body: encryptedData  // Send the encrypted data directly without JSON.stringify
+    });
+    
+    if (!response.ok) {
+      throw new Error(`API call failed with status: ${response.status}`);
+    }
+    
+    // Get the encrypted response
+    const encryptedResponse = await response.text();
+    
+    // Decrypt the response
+    const decryptedResponse = await decrypt(encryptedResponse);
+    
+    // Parse and return the response
+    return JSON.parse(decryptedResponse);
+  } catch (error) {
+    console.error('Secure API call failed:', error);
+    throw error;
+  }
+};

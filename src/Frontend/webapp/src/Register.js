@@ -1,11 +1,39 @@
-//=========================================== JS part ==============================================
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+// Import the security functions from your ecdhClient.js file
+import { 
+  performKeyExchange, 
+  encrypt, 
+  decrypt, 
+  getSessionId, 
+  isInitialized 
+} from './security/ecdhClient';
 
 const Register = () => {
   const navigate = useNavigate();
+  // Add state to track if security is initialized
+  const [securityInitialized, setSecurityInitialized] = useState(false);
+
+  // Initialize security on component mount
+  useEffect(() => {
+    const initSecurity = async () => {
+      try {
+        console.log("Initializing security for registration...");
+        const result = await performKeyExchange();
+        if (result.success) {
+          console.log("Security initialized successfully for registration");
+          setSecurityInitialized(true);
+        } else {
+          console.error("Failed to initialize security:", result.error);
+        }
+      } catch (error) {
+        console.error("Error during security initialization:", error);
+      }
+    };
+
+    initSecurity();
+  }, []);
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -52,6 +80,12 @@ const Register = () => {
   };
 
   const validateEmail = () => {
+    // If email is empty, consider it valid since it's optional
+    if (!email.trim()) {
+      setEmailError('');
+      return true;
+    }
+    
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       setEmailError('The email is not formatted correctly');
@@ -62,6 +96,12 @@ const Register = () => {
   };
 
   const validatePhone = () => {
+    // If phone is empty, consider it valid since it's optional
+    if (!phone.trim()) {
+      setPhoneError('');
+      return true;
+    }
+    
     // Mobile phone numbers are assumed to be 10 to 11 digits long
     const phoneRegex = /^\d{10,11}$/;
     if (!phoneRegex.test(phone)) {
@@ -72,9 +112,10 @@ const Register = () => {
     return true;
   };
 
-  // submit
+  // Modified submit handler for encrypted registration
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
     // Check in turn
     const isUsernameValid = validateUsername();
     const isPasswordValid = validatePassword();
@@ -82,32 +123,81 @@ const Register = () => {
     const isEmailValid = validateEmail();
     const isPhoneValid = validatePhone();
 
-    if (!isUsernameValid || !isPasswordValid || !isConfirmPasswordValid || !isEmailValid || !isPhoneValid) {
+    if (!isUsernameValid || !isPasswordValid || !isConfirmPasswordValid || 
+        !isEmailValid || !isPhoneValid) {
       return;
     }
 
-    // Send to the backend
+    // Prepare user data
     const userData = {
       username,
       password,
-      email,
-      phone,
       role: "CLIENT"
     };
+    
+    // Only add email and phone if they're provided
+    if (email.trim()) {
+      userData.email = email;
+    }
+    if (phone.trim()) {
+      userData.phone = phone;
+    }
 
     try {
-      const response = await axios.post('http://localhost:8080/api/auth/register', userData);
-      if (response.data.status === 'success') {
-        setMessage('Successful registration！');
-        // After 2 seconds you will be redirected back to the login page
-        setTimeout(() => {
-          navigate('/');
-        }, 2000);
+      // Use secure registration if security is initialized
+      if (securityInitialized && isInitialized()) {
+        console.log("Using secure encrypted registration");
+        
+        // Encrypt the user data
+        const encryptedData = await encrypt(JSON.stringify(userData));
+        
+        // Send the encrypted registration request
+        const response = await fetch('http://localhost:8080/api/auth/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'text/plain',
+            'X-Session-ID': getSessionId()
+          },
+          body: encryptedData
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Registration failed: ${response.status}`);
+        }
+        
+        // Get and decrypt the response
+        const encryptedResponse = await response.text();
+        const decryptedResponse = await decrypt(encryptedResponse);
+        
+        // Parse the JSON response
+        const data = JSON.parse(decryptedResponse);
+        
+        if (data.status === 'success') {
+          setMessage('Successful registration!');
+          setTimeout(() => {
+            navigate('/');
+          }, 2000);
+        } else {
+          setMessage(data.message || 'Registration failed');
+        }
       } else {
-        setMessage(response.data.message || 'Registration failed');
+        console.log("Using regular registration (no encryption)");
+        
+        // Use regular registration as fallback
+        const response = await axios.post('http://localhost:8080/api/auth/register', userData);
+        
+        if (response.data.status === 'success') {
+          setMessage('Successful registration!');
+          setTimeout(() => {
+            navigate('/');
+          }, 2000);
+        } else {
+          setMessage(response.data.message || 'Registration failed');
+        }
       }
     } catch (error) {
-      setMessage(error.response?.data?.message || 'Registration failed');
+      console.error("Registration error:", error);
+      setMessage(error.response?.data?.message || error.message || 'Registration failed');
     }
   };
 
@@ -115,8 +205,6 @@ const Register = () => {
   const handleGoBack = () => {
     navigate('/');
   };
-
-//=========================================== HTML part ==============================================
 
   return (
     <div style={styles.container}>
@@ -126,7 +214,7 @@ const Register = () => {
       <h2>New Account</h2>
       <form style={styles.form} onSubmit={handleSubmit}>
         <div style={styles.formGroup}>
-          <label>Username:</label>
+          <label>Username: <span style={styles.requiredField}>*</span></label>
           <input
             type="text"
             value={username}
@@ -138,7 +226,7 @@ const Register = () => {
           {usernameError && <p style={styles.errorText}>{usernameError}</p>}
         </div>
         <div style={styles.formGroup}>
-          <label>Password:</label>
+          <label>Password: <span style={styles.requiredField}>*</span></label>
           <input
             type="password"
             value={password}
@@ -150,7 +238,7 @@ const Register = () => {
           {passwordError && <p style={styles.errorText}>{passwordError}</p>}
         </div>
         <div style={styles.formGroup}>
-          <label>Confirm Password:</label>
+          <label>Confirm Password: <span style={styles.requiredField}>*</span></label>
           <input
             type="password"
             value={confirmPassword}
@@ -162,26 +250,24 @@ const Register = () => {
           {confirmPasswordError && <p style={styles.errorText}>{confirmPasswordError}</p>}
         </div>
         <div style={styles.formGroup}>
-          <label>Email:</label>
+          <label>Email: <span style={styles.optionalField}>(Optional)</span></label>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             onBlur={validateEmail}
             style={styles.input}
-            required
           />
           {emailError && <p style={styles.errorText}>{emailError}</p>}
         </div>
         <div style={styles.formGroup}>
-          <label>Phone Number:</label>
+          <label>Phone Number: <span style={styles.optionalField}>(Optional)</span></label>
           <input
             type="text"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             onBlur={validatePhone}
             style={styles.input}
-            required
           />
           {phoneError && <p style={styles.errorText}>{phoneError}</p>}
         </div>
@@ -190,6 +276,17 @@ const Register = () => {
         </button>
         {message && <p style={styles.message}>{message}</p>}
       </form>
+      
+      {/* Display security status indicator (optional) */}
+      {securityInitialized ? (
+        <p style={{ color: 'green', fontSize: '12px', marginTop: '10px' }}>
+          Secure connection established
+        </p>
+      ) : (
+        <p style={{ color: 'red', fontSize: '12px', marginTop: '10px' }}>
+          Establishing secure connection...
+        </p>
+      )}
     </div>
   );
 };
@@ -252,6 +349,15 @@ const styles = {
   message: {
     marginTop: '1rem',
     textAlign: 'center',
+  },
+  requiredField: {
+    color: 'red',
+    fontSize: '14px',
+  },
+  optionalField: {
+    color: '#999',
+    fontSize: '12px',
+    fontStyle: 'italic',
   }
 };
 
