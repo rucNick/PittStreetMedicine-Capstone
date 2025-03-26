@@ -180,20 +180,6 @@ const Register = () => {
         } else {
           setMessage(data.message || 'Registration failed');
         }
-      } else {
-        console.log("Using regular registration (no encryption)");
-        
-        // Use regular registration as fallback
-        const response = await axios.post('http://localhost:8080/api/auth/register', userData);
-        
-        if (response.data.status === 'success') {
-          setMessage('Successful registration!');
-          setTimeout(() => {
-            navigate('/');
-          }, 2000);
-        } else {
-          setMessage(response.data.message || 'Registration failed');
-        }
       }
     } catch (error) {
       console.error("Registration error:", error);
