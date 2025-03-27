@@ -1,9 +1,14 @@
-# StreetMed Backend API Documentation
+# StreetMed Backend API Documentation - Updated
 
 ## Table of Contents
 - [Technology Stack](#technology-stack)
 - [Project Structure](#project-structure)
+- [Security Enhancements](#security-enhancements)
+  - [ECDH Key Exchange](#ecdh-key-exchange)
+  - [Encrypted Communication](#encrypted-communication)
+  - [End-to-End Security Flow](#end-to-end-security-flow)
 - [Authentication API](#authentication-api)
+  - [Secure Endpoints](#secure-endpoints)
   - [Register](#register)
   - [Login](#login)
   - [Profile Management](#profile-management)
@@ -41,6 +46,7 @@
   - [Approve Application](#approve-volunteer-application)
   - [Reject Application](#reject-volunteer-application)
 - [Business Logic](#business-logic)
+  - [Security Flow](#security-flow)
   - [Authentication Flow](#authentication-flow)
   - [Password Recovery Flow](#password-recovery-flow)
   - [Email Notification System](#email-notification-system)
@@ -60,6 +66,9 @@
 - Spring Mail (for email notifications)
 - Maven
 - Cross-Origin Resource Sharing (CORS) enabled for localhost:3000
+- Spring Security Crypto (for password hashing)
+- AES-GCM encryption for secure communications
+- ECDH key exchange using NIST P-256 curve
 
 ## Project Structure
 ```
@@ -74,6 +83,8 @@ com.backend.streetmed_backend/
 │   │   └── CargoImageController.java
 │   ├── Order/
 │   │   └── OrderController.java
+│   ├── Security/
+│   │   └── ECDHController.java 
 │   └── Services/
 │       ├── FeedbackController.java
 │       └── VolunteerController.java
@@ -115,17 +126,106 @@ com.backend.streetmed_backend/
 |    ├── EmailService.java
 |    ├── FeedbackService.java
 |    └── VolunteerApplicationService.java
-|── Security/
+└── security/  <!-- New security package -->
+    ├── ECDHService.java
+    ├── EncryptionUtil.java
+    ├── PasswordHash.java
+    ├── RSASignature.java
+    └── SecurityManager.java
 ```
 
+## Security Enhancements
+
+The system now incorporates enhanced security mechanisms to protect sensitive data during transmission between the client and server.
+
+### ECDH Key Exchange
+
+The application implements Elliptic Curve Diffie-Hellman (ECDH) key exchange protocol to establish a secure shared secret between client and server without transmitting the secret itself.
+
+**Key Components:**
+- `ECDHController`: Handles key exchange API endpoints
+- `ECDHService`: Manages key pair generation and shared secret computation
+- `SecurityManager`: Coordinates the security flow and session management
+
+**Key Exchange Endpoints:**
+
+```http
+GET /api/security/initiate-handshake
+Response:
+{
+    "sessionId": "string (UUID)",
+    "serverPublicKey": "string (Base64-encoded public key)"
+}
+```
+
+```http
+POST /api/security/complete-handshake
+Content-Type: application/json
+
+Request Body:
+{
+    "sessionId": "string (UUID from initiate-handshake)",
+    "clientPublicKey": "string (Base64-encoded public key)"
+}
+
+Response:
+{
+    "status": "success",
+    "message": "Handshake completed successfully"
+}
+```
+
+### Encrypted Communication
+
+After key exchange, all sensitive API communications can be encrypted using AES-GCM encryption:
+
+**Key Components:**
+- `EncryptionUtil`: Handles AES-GCM encryption/decryption operations
+- `SecurityManager`: Manages session keys and encryption/decryption operations
+
+**Process:**
+1. The client includes the session ID in the X-Session-ID header
+2. The request body is encrypted before transmission
+3. The server uses the session ID to retrieve the correct encryption key
+4. The server decrypts the request, processes it, and encrypts the response
+5. The client decrypts the response using the shared key
+
+### End-to-End Security Flow
+
+1. **Session Initialization:**
+   - Client requests a handshake and receives server public key and session ID
+   - Client generates its own key pair and sends public key to server
+   - Both sides independently compute the same shared secret
+   - Shared secret is used to derive AES-256 symmetric key
+
+2. **Secure Communication:**
+   - All sensitive data is encrypted using AES-GCM with the derived key
+   - Each request includes the session ID to identify the correct encryption key
+   - Responses are encrypted using the same key
+
+3. **Session Management:**
+   - Sessions expire after 30 minutes of inactivity
+   - Scheduled cleanup task removes expired sessions every 5 minutes
+   - Each session has its own unique encryption key
+
 ## Authentication API
+
+### Secure Endpoints
+
+All authentication endpoints now support encrypted communication. The client can choose to encrypt sensitive data by:
+1. Establishing a secure session via the ECDH key exchange
+2. Including the session ID in the X-Session-ID header
+3. Encrypting the request body before sending
+4. The server will return encrypted responses that must be decrypted
 
 ### Register
 ```http
 POST /api/auth/register
 Content-Type: application/json
+Headers (optional):
+  X-Session-ID: string (for encrypted requests)
 
-Request Body:
+Request Body (plain or encrypted):
 {
     "username": "string",
     "email": "string",
@@ -133,7 +233,7 @@ Request Body:
     "phone": "string" (optional)
 }
 
-Response:
+Response (plain or encrypted):
 {
     "status": "success",
     "message": "User registered successfully",
@@ -145,14 +245,16 @@ Response:
 ```http
 POST /api/auth/login
 Content-Type: application/json
+Headers (optional):
+  X-Session-ID: string (for encrypted requests)
 
-Request Body:
+Request Body (plain or encrypted):
 {
     "username": "string",  // Can be username or email
     "password": "string"
 }
 
-Response:
+Response (plain or encrypted):
 {
     "status": "success",
     "message": "Login successful",
@@ -170,15 +272,17 @@ Response:
 ```http
 PUT /api/auth/update/username
 Content-Type: application/json
+Headers (optional):
+  X-Session-ID: string (for encrypted requests)
 
-Request Body:
+Request Body (plain or encrypted):
 {
     "userId": "string",
     "newUsername": "string",
     "authenticated": "true"
 }
 
-Response:
+Response (plain or encrypted):
 {
     "status": "success",
     "message": "Username updated successfully",
@@ -190,8 +294,10 @@ Response:
 ```http
 PUT /api/auth/update/password
 Content-Type: application/json
+Headers (optional):
+  X-Session-ID: string (for encrypted requests)
 
-Request Body:
+Request Body (plain or encrypted):
 {
     "userId": "string",
     "currentPassword": "string",
@@ -199,7 +305,7 @@ Request Body:
     "authenticated": "true"
 }
 
-Response:
+Response (plain or encrypted):
 {
     "status": "success",
     "message": "Password updated successfully"
@@ -210,8 +316,10 @@ Response:
 ```http
 PUT /api/auth/update/email
 Content-Type: application/json
+Headers (optional):
+  X-Session-ID: string (for encrypted requests)
 
-Request Body:
+Request Body (plain or encrypted):
 {
     "userId": "string",
     "currentPassword": "string",
@@ -219,7 +327,7 @@ Request Body:
     "authenticated": "true"
 }
 
-Response:
+Response (plain or encrypted):
 {
     "status": "success",
     "message": "Email updated successfully",
@@ -231,8 +339,10 @@ Response:
 ```http
 PUT /api/auth/update/phone
 Content-Type: application/json
+Headers (optional):
+  X-Session-ID: string (for encrypted requests)
 
-Request Body:
+Request Body (plain or encrypted):
 {
     "userId": "string",
     "currentPassword": "string",
@@ -240,7 +350,7 @@ Request Body:
     "authenticated": "true"
 }
 
-Response:
+Response (plain or encrypted):
 {
     "status": "success",
     "message": "Phone number updated successfully",
@@ -254,13 +364,15 @@ Response:
 ```http
 POST /api/auth/password/request-reset
 Content-Type: application/json
+Headers (optional):
+  X-Session-ID: string (for encrypted requests)
 
-Request Body:
+Request Body (plain or encrypted):
 {
     "email": "string"
 }
 
-Response:
+Response (plain or encrypted):
 {
     "status": "success",
     "message": "Recovery code sent to your email"
@@ -271,15 +383,17 @@ Response:
 ```http
 POST /api/auth/password/verify-reset
 Content-Type: application/json
+Headers (optional):
+  X-Session-ID: string (for encrypted requests)
 
-Request Body:
+Request Body (plain or encrypted):
 {
     "email": "string",
     "otp": "string",
     "newPassword": "string"
 }
 
-Response:
+Response (plain or encrypted):
 {
     "status": "success",
     "message": "Password reset successfully"
@@ -305,7 +419,6 @@ spring.mail.properties.mail.smtp.starttls.enable=true
 # Email Service Toggle
 email.service.enabled=true
 ```
-
 
 ## Admin API
 
@@ -1052,23 +1165,52 @@ Response:
 
 ## Business Logic
 
+### Security Flow
+
+1. **ECDH Key Exchange:**
+   - Client initiates a request to the `/api/security/initiate-handshake` endpoint
+   - Server generates a key pair and returns the public key along with a session ID
+   - Client generates its own key pair and sends the public key to the server via `/api/security/complete-handshake`
+   - Both sides compute the same shared secret independently
+   - The shared secret is hashed with SHA-256 to derive an AES-256 symmetric key
+   - The derived key is used for encryption/decryption of subsequent communications
+
+2. **Request Processing with Encryption:**
+   - AuthController and other sensitive controllers parse requests flexibly:
+     - If X-Session-ID header is present, attempt to decrypt the body
+     - If decryption fails or no session ID, treat as regular JSON
+   - Controllers build responses with similar flexibility:
+     - If session ID and valid key exist, encrypt the response
+     - Otherwise return regular JSON response
+   - Client side must handle both encrypted and unencrypted responses
+
+3. **Session Management:**
+   - Session data includes key pairs, computed shared secrets, and derived AES keys
+   - Sessions expire after 30 minutes of inactivity
+   - Scheduled cleanup task runs every 5 minutes to remove expired sessions
+   - Each session has a unique ID (UUID) and encryption key
+   - Failed session lookups are handled gracefully with fallback to unencrypted communication
+
 ### Authentication Flow
 1. **Registration**
    - Users can only register as CLIENT role
    - System creates user metadata automatically
    - Email and username uniqueness is validated
    - Phone number is optional
+   - Now supports encrypted registration requests
 
 2. **Login Process**
    - Validates username/email and password
    - Updates last login timestamp
    - Returns user role and authentication status
+   - Supports encrypted login requests and responses
 
 3. **Profile Management**
    - Users can update their username, email, phone, and password
    - Password changes require current password verification
    - Email changes require current password verification
    - All updates check for conflicts with existing users
+   - All profile updates can be encrypted for additional security
 
 4. **Admin Access**
    - Separated into dedicated AdminController
@@ -1236,6 +1378,7 @@ Response:
    - Most endpoints require authentication
    - Guest services for limited operations
    - Admin operations require additional header verification
+   - Sensitive endpoints now support encrypted communication
 
 2. **Role-Based Access**
    - CLIENT: Self-service operations
@@ -1244,8 +1387,11 @@ Response:
    - GUEST: Limited order creation
 
 3. **Security Measures**
-   - Password hashing
+   - Password hashing using BCrypt
    - Current password verification for sensitive changes
    - One-time password (OTP) for password recovery
    - Input validation
    - CORS protection
+   - ECDH key exchange for secure communication
+   - AES-GCM encryption for sensitive data
+   - Session management with timeouts
