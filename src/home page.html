@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pitt Street Medicine</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="page-container">
+      <header class="site-header">
+        <div class="header-content">
+          <div class="logo-container">
+            <img
+              src="" \\TODO: add source
+              alt="Pitt Street Medicine Logo"
+              class="logo"
+            />
+            <h1 class="site-title">Pitt Street Medicine</h1>
+          </div>
+          <div class="header-right">
+            <nav class="main-nav">
+              <ul class="nav-list">
+                <li class="nav-item">
+                  <a href="#" class="nav-link">About us</a>
+                </li>
+                <li class="nav-item">
+                  <a href="#" class="nav-link">Volunteering</a>
+                </li>
+                <li class="nav-item"><a href="#" class="nav-link">Donate</a></li>
+                <li class="nav-item"><a href="#" class="nav-link">Contact</a></li>
+              </ul>
+              <button class="mobile-menu-toggle" aria-label="Toggle menu">
+                <span class="menu-bar"></span>
+                <span class="menu-bar"></span>
+                <span class="menu-bar"></span>
+              </button>
+            </nav>
+            <div class="auth-buttons">
+              <a href="#" class="btn btn-login">Log In</a> \\TODO: add colors in style sheet
+              <a href="#" class="btn btn-signup">Sign Up</a>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="main-content"> \\TODO: fix responsive sizing
+        <div class="content-wrapper">
+          <article class="feature-article">
+            <img
+              src="" \\TODO: add source
+              alt="Street Medicine at Pitt"
+              class="feature-image"
+            />
+            <div class="article-content">
+              <h2 class="article-title">
+                Street Medicine at Pitt serves Pittsburghers without homes — and
+                educates future medical professionals
+              </h2>
+              <p class="article-text">
+                It's a little after 6 p.m. on a Wednesday in January, and
+                student members of Street Medicine at Pitt form a huddle on a
+                downtown Pittsburgh sidewalk. They're about to start their
+                evening rounds, providing health care, cold weather supplies and
+                a listening ear to men who are experiencing homelessness and are
+                waiting to enter the Winter Shelter at the Smithfield United
+                Church of Christ. The evening's weather is 40 degrees with clear
+                skies, but the temperature is expected to drop into the single
+                digits the next day, increasing outdoor sleepers' risks for
+                frostbite and hypothermia.
+              </p>
+            </div>
+          </article>
+
+          <section class="content-blocks">
+            <article class="content-block beige-block">
+              <img
+                src="" \\TODO: add source
+                alt="Pic 1"
+                class="block-image"
+              />
+              <div class="block-content">
+                <h3 class="block-title">Lorem ipsum dolor sit amet</h3>
+                <p class="block-text">
+                  Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed
+                  do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+                  Ut enim ad minim veniam, quis nostrud exercitation ullamco
+                  laboris nisi ut aliquip ex ea commodo consequat. Duis aute
+                  irure dolor in reprehenderit in voluptate velit esse cillum
+                  dolore eu fugiat nulla pariatur.
+                </p>
+              </div>
+            </article>
+
+            <article class="content-block blue-block">
+              <div class="block-content">
+                <h3 class="block-title">Lorem ipsum dolor sit amet</h3>
+                <p class="block-text">
+                  Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed
+                  do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+                  Ut enim ad minim veniam, quis nostrud exercitation ullamco
+                  laboris nisi ut aliquip ex ea commodo consequat. Duis aute
+                  irure dolor in reprehenderit in voluptate velit esse cillum
+                  dolore eu fugiat nulla pariatur.
+                </p>
+              </div>
+              <img
+                src="" \\TODO: add source
+                alt="Pic 2"
+                class="block-image"
+              />
+            </article>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      document
+        .querySelector(".mobile-menu-toggle")
+        .addEventListener("click", function () {
+          document.querySelector(".nav-list").classList.toggle("nav-active");
+        });
+    </script>
+  </body>
+</html>
