@@ -7,7 +7,7 @@ import {
   decrypt, 
   getSessionId, 
   isInitialized 
-} from './security/ecdhClient';
+} from '../../security/ecdhClient';
 
 const Register = () => {
   const navigate = useNavigate();

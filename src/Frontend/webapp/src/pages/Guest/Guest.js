@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import "./Guest.css";
+import "../../css/Guest/Guest.css";
 
 const Guest = ({ onLogout }) => {
   const navigate = useNavigate();

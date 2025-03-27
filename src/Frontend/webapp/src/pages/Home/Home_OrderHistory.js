@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import "./Home_OrderHistory.css";
+import "../../css/Home/Home_OrderHistory.css";
 
 const Home_OrderHistory = ({ userId }) => {
   const navigate = useNavigate();

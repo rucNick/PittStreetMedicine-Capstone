@@ -1,19 +1,19 @@
 // App.js
 import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Login from "./Login";
-import Home from "./Home";
-import Home_Feedback from "./Home_Feedback"; // Feedback page component
-import Home_Profile from "./Home_Profile"; // profile page component
-import Home_OrderHistory from "./Home_OrderHistory"; // Order History page component
-import Register from "./Register";
-import Guest from "./Guest";
-import VolunteerAppli from "./volunteer_appli";
-import Volunteer from "./Volunteer";
-import Admin from "./Admin";
-import CargoAdmin from "./Cargo_Admin";
-import CargoVolunteer from "./Cargo_Volunteer";
-import ResetPassword from "./ResetPassword";
+import Login from "../Login/Login";
+import Home from "../Home/Home";
+import Home_Feedback from "../Home/Home_Feedback"; // Feedback page component
+import Home_Profile from "../Home/Home_Profile"; // profile page component
+import Home_OrderHistory from "../Home/Home_OrderHistory"; // Order History page component
+import Register from "../Register/Register";
+import Guest from "../Guest/Guest";
+import VolunteerAppli from "../Volunteer/volunteer_appli";
+import Volunteer from "../Volunteer/Volunteer";
+import Admin from "../Admin/Admin";
+import CargoAdmin from "../Admin/Cargo_Admin";
+import CargoVolunteer from "../Volunteer/Cargo_Volunteer";
+import ResetPassword from "../../ResetPassword";
 
 function App({ securityInitialized = false }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);

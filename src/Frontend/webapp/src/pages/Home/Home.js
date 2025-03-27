@@ -1,7 +1,7 @@
 //=========================================== JS part ==============================================
 import React, { useState } from "react";
 import axios from "axios";
-import "./Home.css";
+import "../../css/Home/Home.css";
 
 //import { encrypt, decrypt, getSessionId, isInitialized } from "./security/ecdhClient";
 

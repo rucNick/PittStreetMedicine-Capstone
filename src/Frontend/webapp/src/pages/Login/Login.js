@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { encrypt, decrypt, getSessionId, isInitialized } from './security/ecdhClient';
+import { encrypt, decrypt, getSessionId, isInitialized } from '../../security/ecdhClient';
 
 const Login = ({ onLoginSuccess }) => {
   const navigate = useNavigate();

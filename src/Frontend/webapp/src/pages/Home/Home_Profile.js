@@ -1,9 +1,9 @@
 // Home_Profile.js
 import React, { useState } from "react";
 import axios from "axios";
-import { encrypt, decrypt, getSessionId, isInitialized } from "./security/ecdhClient";
+import { encrypt, decrypt, getSessionId, isInitialized } from "../../security/ecdhClient";
 import { useNavigate } from "react-router-dom";
-import "./Home_Profile.css";
+import "../../css/Home/Home_Profile.css";
 
 const Home_Profile = ({
   username,
