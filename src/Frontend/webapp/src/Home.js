@@ -1,26 +1,22 @@
 //=========================================== JS part ==============================================
-
 import React, { useState } from "react";
 import axios from "axios";
 import "./Home.css";
-import { encrypt, decrypt, getSessionId, isInitialized } from './security/ecdhClient';
 
-const Home = ({ username, email, password, phone, userId, onLogout }) => {
+//import { encrypt, decrypt, getSessionId, isInitialized } from "./security/ecdhClient";
+
+import { useNavigate } from "react-router-dom"; // for pages jump
+
+//const Home = ({ username, email, password, phone, userId, onLogout }) => {
+const Home = ({ username, email, phone, userId, onLogout }) => {
   console.log("Home component initialized", { username, email, phone, userId });
-
-  // ============== Order History & UI States ==============
-  const [orders, setOrders] = useState([]);
-  const [showOrders, setShowOrders] = useState(false);
-  const [ordersLoading, setOrdersLoading] = useState(false);
-  const [ordersError, setOrdersError] = useState("");
-  console.log("Order History & UI States initialized");
 
   // ============== Cart States ==============
   const [showCart, setShowCart] = useState(false);
   const [cart, setCart] = useState([]);
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [notes, setNotes] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState(""); // If empty, will use registered phone
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [cartError, setCartError] = useState("");
   const [cartMessage, setCartMessage] = useState("");
   console.log("Cart States initialized");
@@ -34,96 +30,15 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
   const [selectedQuantity, setSelectedQuantity] = useState(1);
   console.log("New Order and Cargo Items States initialized");
 
-  // ============== Feedback States ==============
-  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
-  const [feedbackContent, setFeedbackContent] = useState("");
-  const [feedbackPhoneNumber, setFeedbackPhoneNumber] = useState("");
-  const [feedbackError, setFeedbackError] = useState("");
-  const [feedbackMessage, setFeedbackMessage] = useState("");
-  console.log("Feedback States initialized");
+  // ============== Customize Item Related State ==============
+  const [showCustomItemModal, setShowCustomItemModal] = useState(false);
+  const [customItemName, setCustomItemName] = useState("");
+  const [customItemQuantity, setCustomItemQuantity] = useState(1);
 
-  // ============== Profile Update States ==============
-  const [showProfileModal, setShowProfileModal] = useState(false);
-  // Field selection state: "username", "email", "password", or "phone"
-  const [profileOption, setProfileOption] = useState("username");
-  // Input states for profile update
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newUsername, setNewUsername] = useState("");
-  const [newEmail, setNewEmail] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [newPhone, setNewPhone] = useState("");
-  const [profileError, setProfileError] = useState("");
-  const [profileMessage, setProfileMessage] = useState("");
-  console.log("Profile Update States initialized");
+  // Initialize navigate hook for page navigation (Profile, Feedback, Order History)
+  const navigate = useNavigate();
 
-  // ============== Customize item related status ==============
-  const [showCustomItemModal, setShowCustomItemModal] = useState(false); 
-  const [customItemName, setCustomItemName] = useState("");         
-  const [customItemQuantity, setCustomItemQuantity] = useState(1);  
-
-  // ================= Order History, Cancel Order, Fetch Cargo Items, etc. =================
-  const toggleOrders = async () => {
-    console.log("toggleOrders: called");
-    if (!userId || typeof userId !== "number") {
-      console.log("toggleOrders: Invalid userId, guest user detected");
-      setOrdersError("Order history is not available for guest users.");
-      setShowOrders(false);
-      return;
-    }
-
-    if (!showOrders) {
-      try {
-        console.log("toggleOrders: Loading orders...");
-        setOrdersLoading(true);
-        setOrdersError("");
-        const response = await axios.get(
-          `http://localhost:8080/api/orders/user/${userId}`,
-          { params: { authenticated: true, userRole: "CLIENT", userId } }
-        );
-        console.log("toggleOrders: Received response", response);
-        if (response.data.status === "success") {
-          const filtered = response.data.orders.filter((o) => o.status !== "CANCELLED");
-          console.log("toggleOrders: Filtered orders", filtered);
-          setOrders(filtered);
-        } else {
-          console.log("toggleOrders: Response indicates failure", response.data);
-          setOrdersError(response.data.message || "Failed to load orders.");
-        }
-      } catch (error) {
-        console.error("toggleOrders: Error occurred", error);
-        setOrdersError(error.response?.data?.message || "Failed to load orders.");
-      } finally {
-        setOrdersLoading(false);
-        console.log("toggleOrders: Loading complete");
-      }
-    }
-    setShowOrders(!showOrders);
-    console.log("toggleOrders: showOrders set to", !showOrders);
-  };
-
-  const handleCancelOrder = async (orderId) => {
-    console.log("handleCancelOrder: called for orderId", orderId);
-    try {
-      const payload = { authenticated: true, userId, userRole: "CLIENT" };
-      const response = await axios.post(
-        `http://localhost:8080/api/orders/${orderId}/cancel`,
-        payload
-      );
-      console.log("handleCancelOrder: Received response", response);
-      if (response.data.status === "success") {
-        if (showOrders) {
-          console.log("handleCancelOrder: Toggling orders to refresh list");
-          await toggleOrders();
-          await toggleOrders();
-        }
-      } else {
-        alert(response.data.message || "Failed to cancel order.");
-      }
-    } catch (error) {
-      console.error("handleCancelOrder: Error occurred", error);
-      alert(error.response?.data?.message || "Failed to cancel order.");
-    }
-  };
+  // ================= Other functions (Cart, New Order, etc.) =================
 
   const fetchCargoItems = async () => {
     console.log("fetchCargoItems: Fetching cargo items");
@@ -188,7 +103,7 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
     setShowCustomItemModal(true);
   };
 
-  // === Add custom items to your cart ===
+  // === Add custom items to cart ===
   const handleAddCustomItemToCart = () => {
     if (!customItemName.trim()) {
       alert("Please enter an item name.");
@@ -199,19 +114,14 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
       alert("Please enter a valid quantity (positive integer).");
       return;
     }
-    // Determine if there is an item with the same name in your cart
     const newCart = [...cart];
-    const existingIndex = newCart.findIndex(
-      (c) => c.name === customItemName.trim()
-    );
+    const existingIndex = newCart.findIndex((c) => c.name === customItemName.trim());
     if (existingIndex >= 0) {
       newCart[existingIndex].quantity += quantity;
     } else {
       newCart.push({ name: customItemName.trim(), quantity });
     }
     setCart(newCart);
-
-    // Close the popup and reset the input
     setShowCustomItemModal(false);
     setCustomItemName("");
     setCustomItemQuantity(1);
@@ -297,455 +207,37 @@ const Home = ({ username, email, password, phone, userId, onLogout }) => {
       setDeliveryAddress("");
       setNotes("");
       setPhoneNumber("");
-      if (showOrders) {
-        console.log("placeOrderWithLocation: Refreshing orders");
-        await toggleOrders();
-        await toggleOrders();
-      }
     } catch (error) {
       console.error("placeOrderWithLocation: Error occurred", error);
       setCartError(error.response?.data?.message || "Order creation failed.");
     }
   };
 
-  const handleOpenFeedbackModal = () => {
-    console.log("handleOpenFeedbackModal: Opening feedback modal");
-    setFeedbackContent("");
-    setFeedbackPhoneNumber("");
-    setFeedbackError("");
-    setFeedbackMessage("");
-    setShowFeedbackModal(true);
+  // Modified: Remove orders history logic from Home.
+  // Instead, when "View Orders History" is clicked, navigate to the separate Order History page.
+  const handleOrderHistoryNavigation = () => {
+    navigate("/orderhistory");
   };
 
-  const handleCloseFeedbackModal = () => {
-    console.log("handleCloseFeedbackModal: Closing feedback modal");
-    setShowFeedbackModal(false);
-  };
 
-  const handleSubmitFeedback = async () => {
-    console.log("handleSubmitFeedback: called");
-    if (!feedbackContent.trim()) {
-      console.log("handleSubmitFeedback: Feedback content empty");
-      setFeedbackError("Feedback content cannot be empty.");
-      return;
-    }
-    if (!feedbackPhoneNumber.trim()) {
-      console.log("handleSubmitFeedback: Feedback phone number empty");
-      setFeedbackError("Phone number is required.");
-      return;
-    }
-    setFeedbackError("");
-    try {
-      const payload = {
-        name: username,
-        phoneNumber: feedbackPhoneNumber,
-        content: feedbackContent,
-      };
-      console.log("handleSubmitFeedback: Sending payload", payload);
-      const response = await axios.post("http://localhost:8080/api/feedback/submit", payload);
-      console.log("handleSubmitFeedback: Received response", response);
-      if (response.data.status === "success") {
-        setFeedbackMessage("Feedback submitted successfully!");
-        setTimeout(() => {
-          console.log("handleSubmitFeedback: Closing feedback modal after submission");
-          setShowFeedbackModal(false);
-          setFeedbackContent("");
-          setFeedbackPhoneNumber("");
-          setFeedbackMessage("");
-        }, 1500);
-      } else {
-        setFeedbackError(response.data.message || "Failed to submit feedback.");
-      }
-    } catch (error) {
-      console.error("handleSubmitFeedback: Error occurred", error);
-      setFeedbackError(error.response?.data?.message || "Failed to submit feedback.");
-    }
-  };
 
-  // ------------- Profile Modal Operations -------------
-  
-  // Open profile modal and clear previous inputs
-const handleOpenProfileModal = () => {
-  console.log("handleOpenProfileModal: Opening profile modal and clearing inputs");
-  setCurrentPassword("");
-  setNewUsername("");
-  setNewEmail("");
-  setNewPassword("");
-  setNewPhone("");
-  setProfileError("");
-  setProfileMessage("");
-  setProfileOption("username"); // Default option
-  setShowProfileModal(true);
-};
 
-const handleCloseProfileModal = () => {
-  console.log("handleCloseProfileModal: Closing profile modal");
-  setShowProfileModal(false);
-};
 
-// Handle submit of profile update based on selected option
-const handleSubmitProfile = async () => {
-  console.log("handleSubmitProfile: called with profileOption", profileOption);
-  
-  // For username update
-  if (profileOption === "username") {
-    // Validate new username: only letters and must differ from current username
-    const usernameRegex = /^[A-Za-z]+$/;
-    if (!newUsername.trim() || !usernameRegex.test(newUsername.trim())) {
-      setProfileError("Username must contain only letters.");
-      return;
-    }
-    if (newUsername.trim() === username) {
-      setProfileError("New username must be different from the old one.");
-      return;
-    }
-    
-    try {
-      console.log("handleSubmitProfile: Updating username");
-      
-      const userData = {
-        userId: userId.toString(), // Convert to string
-        newUsername: newUsername.trim(),
-        authenticated: "true",
-      };
-      
-      let response;
-      
-      // Use secure api call if security is initialized
-      if (isInitialized() && getSessionId()) {
-        console.log("Using secure encrypted username update");
-        
-        // Encrypt the user data
-        const encryptedData = await encrypt(JSON.stringify(userData));
-        
-        // Send the encrypted request
-        response = await fetch('http://localhost:8080/api/auth/update/username', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'text/plain',
-            'X-Session-ID': getSessionId()
-          },
-          body: encryptedData
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Username update failed: ${response.status}`);
-        }
-        
-        // Get and decrypt the response
-        const encryptedResponse = await response.text();
-        const decryptedResponse = await decrypt(encryptedResponse);
-        
-        // Parse the JSON response
-        const data = JSON.parse(decryptedResponse);
-        
-        if (data.status === 'success') {
-          setProfileMessage("You have successfully updated your information. Please log out to update your information.");
-          setTimeout(() => {
-            console.log("handleSubmitProfile: Logging out after username update");
-            onLogout();
-          }, 1500);
-        } else {
-          setProfileError(data.message || "Failed to update username.");
-        }
-      } else {
-        console.log("Using regular username update (no encryption)");
-        
-        // Use regular axios call as fallback
-        response = await axios.put("http://localhost:8080/api/auth/update/username", userData);
-        
-        if (response.data.status === 'success') {
-          setProfileMessage("You have successfully updated your information. Please log out to update your information.");
-          setTimeout(() => {
-            console.log("handleSubmitProfile: Logging out after username update");
-            onLogout();
-          }, 1500);
-        } else {
-          setProfileError(response.data.message || "Failed to update username.");
-        }
-      }
-    } catch (error) {
-      console.error("handleSubmitProfile: Error updating username", error);
-      setProfileError(error.response?.data?.message || error.message || "Failed to update username.");
-    }
-  }
-  
-  // For email update
-  else if (profileOption === "email") {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!newEmail.trim() || !emailRegex.test(newEmail.trim())) {
-      setProfileError("Please enter a valid email address.");
-      return;
-    }
-    if (newEmail.trim() === email) {
-      setProfileError("New email must be different from the old one.");
-      return;
-    }
-    if (!currentPassword.trim()) {
-      setProfileError("Current password is required.");
-      return;
-    }
-    
-    try {
-      console.log("handleSubmitProfile: Updating email");
-      
-      const userData = {
-        userId: userId.toString(), // Convert to string
-        currentPassword: currentPassword.trim(),
-        newEmail: newEmail.trim(),
-        authenticated: "true",
-      };
-      
-      let response;
-      
-      // Use secure api call if security is initialized
-      if (isInitialized() && getSessionId()) {
-        console.log("Using secure encrypted email update");
-        
-        // Encrypt the user data
-        const encryptedData = await encrypt(JSON.stringify(userData));
-        
-        // Send the encrypted request
-        response = await fetch('http://localhost:8080/api/auth/update/email', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'text/plain',
-            'X-Session-ID': getSessionId()
-          },
-          body: encryptedData
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Email update failed: ${response.status}`);
-        }
-        
-        // Get and decrypt the response
-        const encryptedResponse = await response.text();
-        const decryptedResponse = await decrypt(encryptedResponse);
-        
-        // Parse the JSON response
-        const data = JSON.parse(decryptedResponse);
-        
-        if (data.status === 'success') {
-          setProfileMessage("You have successfully updated your information. Please log out to update your information.");
-          setTimeout(() => {
-            console.log("handleSubmitProfile: Logging out after email update");
-            onLogout();
-          }, 1500);
-        } else {
-          setProfileError(data.message || "Failed to update email.");
-        }
-      } else {
-        console.log("Using regular email update (no encryption)");
-        
-        // Use regular axios call as fallback
-        response = await axios.put("http://localhost:8080/api/auth/update/email", userData);
-        
-        if (response.data.status === 'success') {
-          setProfileMessage("You have successfully updated your information. Please log out to update your information.");
-          setTimeout(() => {
-            console.log("handleSubmitProfile: Logging out after email update");
-            onLogout();
-          }, 1500);
-        } else {
-          setProfileError(response.data.message || "Failed to update email.");
-        }
-      }
-    } catch (error) {
-      console.error("handleSubmitProfile: Error updating email", error);
-      setProfileError(error.response?.data?.message || error.message || "Failed to update email.");
-    }
-  }
-  
-  // For password update
-  else if (profileOption === "password") {
-    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
-    if (!newPassword.trim() || !passwordRegex.test(newPassword.trim())) {
-      setProfileError("Password must be alphanumeric and at least 8 characters long.");
-      return;
-    }
-    if (newPassword.trim() === password) {
-      setProfileError("New password must be different from the old one.");
-      return;
-    }
-    if (!currentPassword.trim()) {
-      setProfileError("Current password is required.");
-      return;
-    }
-    
-    try {
-      console.log("handleSubmitProfile: Updating password");
-      
-      const userData = {
-        userId: userId.toString(), // Convert to string
-        currentPassword: currentPassword.trim(),
-        newPassword: newPassword.trim(), 
-        authenticated: "true",
-      };
-      
-      let response;
-      
-      // Use secure api call if security is initialized
-      if (isInitialized() && getSessionId()) {
-        console.log("Using secure encrypted password update");
-        
-        // Encrypt the user data
-        const encryptedData = await encrypt(JSON.stringify(userData));
-        
-        // Send the encrypted request
-        response = await fetch('http://localhost:8080/api/auth/update/password', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'text/plain',
-            'X-Session-ID': getSessionId()
-          },
-          body: encryptedData
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Password update failed: ${response.status}`);
-        }
-        
-        // Get and decrypt the response
-        const encryptedResponse = await response.text();
-        const decryptedResponse = await decrypt(encryptedResponse);
-        
-        // Parse the JSON response
-        const data = JSON.parse(decryptedResponse);
-        
-        if (data.status === 'success') {
-          setProfileMessage("You have successfully updated your information. Please log out to update your information.");
-          setTimeout(() => {
-            console.log("handleSubmitProfile: Logging out after password update");
-            onLogout();
-          }, 1500);
-        } else {
-          setProfileError(data.message || "Failed to update password.");
-        }
-      } else {
-        console.log("Using regular password update (no encryption)");
-        
-        // Use regular axios call as fallback
-        response = await axios.put("http://localhost:8080/api/auth/update/password", userData);
-        
-        if (response.data.status === 'success') {
-          setProfileMessage("You have successfully updated your information. Please log out to update your information.");
-          setTimeout(() => {
-            console.log("handleSubmitProfile: Logging out after password update");
-            onLogout();
-          }, 1500);
-        } else {
-          setProfileError(response.data.message || "Failed to update password.");
-        }
-      }
-    } catch (error) {
-      console.error("handleSubmitProfile: Error updating password", error);
-      setProfileError(error.response?.data?.message || error.message || "Failed to update password.");
-    }
-  }
-  
-  // For phone update
-  else if (profileOption === "phone") {
-    const phoneRegex = /^\d{10}$/;
-    if (!newPhone.trim() || !phoneRegex.test(newPhone.trim())) {
-      setProfileError("Phone number must be a 10-digit US number.");
-      return;
-    }
-    if (newPhone.trim() === phone) {
-      setProfileError("New phone number must be different from the old one.");
-      return;
-    }
-    if (!currentPassword.trim()) {
-      setProfileError("Current password is required.");
-      return;
-    }
-    
-    try {
-      console.log("handleSubmitProfile: Updating phone number");
-      
-      const userData = {
-        userId: userId.toString(), // Convert to string
-        currentPassword: currentPassword.trim(),
-        newPhone: newPhone.trim(),
-        authenticated: "true",
-      };
-      
-      let response;
-      
-      // Use secure api call if security is initialized
-      if (isInitialized() && getSessionId()) {
-        console.log("Using secure encrypted phone update");
-        
-        // Encrypt the user data
-        const encryptedData = await encrypt(JSON.stringify(userData));
-        
-        // Send the encrypted request
-        response = await fetch('http://localhost:8080/api/auth/update/phone', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'text/plain',
-            'X-Session-ID': getSessionId()
-          },
-          body: encryptedData
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Phone update failed: ${response.status}`);
-        }
-        
-        // Get and decrypt the response
-        const encryptedResponse = await response.text();
-        const decryptedResponse = await decrypt(encryptedResponse);
-        
-        // Parse the JSON response
-        const data = JSON.parse(decryptedResponse);
-        
-        if (data.status === 'success') {
-          setProfileMessage("You have successfully updated your information. Please log out to update your information.");
-          setTimeout(() => {
-            console.log("handleSubmitProfile: Logging out after phone update");
-            onLogout();
-          }, 1500);
-        } else {
-          setProfileError(data.message || "Failed to update phone number.");
-        }
-      } else {
-        console.log("Using regular phone update (no encryption)");
-        
-        // Use regular axios call as fallback
-        response = await axios.put("http://localhost:8080/api/auth/update/phone", userData);
-        
-        if (response.data.status === 'success') {
-          setProfileMessage("You have successfully updated your information. Please log out to update your information.");
-          setTimeout(() => {
-            console.log("handleSubmitProfile: Logging out after phone update");
-            onLogout();
-          }, 1500);
-        } else {
-          setProfileError(response.data.message || "Failed to update phone number.");
-        }
-      }
-    } catch (error) {
-      console.error("handleSubmitProfile: Error updating phone number", error);
-      setProfileError(error.response?.data?.message || error.message || "Failed to update phone number.");
-    }
-  }
-};
-
-  // ================= Rendering Section =================
+  // ================================== Rendering Section =================
   console.log("Home: Rendering component");
   return (
     <div className="container">
       {/* Navbar */}
       <div className="navbar">
         <div className="navGreeting">
-          {/* Display current username and Profile button */}
           Hello, {username}!
-          <button className="profileButton" onClick={handleOpenProfileModal}>
+          {/* Profile button navigates to Profile page */}
+          <button className="profileButton" onClick={() => navigate("/profile")}>
             Profile
           </button>
         </div>
-        <button className="feedbackButton" onClick={handleOpenFeedbackModal}>
+        {/* Feedback button navigates to Feedback page */}
+        <button className="feedbackButton" onClick={() => navigate("/feedback")}>
           Feedback
         </button>
         <button className="cartButton" onClick={toggleCart}>
@@ -760,77 +252,33 @@ const handleSubmitProfile = async () => {
       <div className="content">
         <h2>Welcome Back, {username}!</h2>
         <div className="buttonRow">
-          <button className="toggleOrdersButton" onClick={toggleOrders}>
+          {/* Modified: "View Orders History" button navigates to separate Order History page */}
+          <button className="toggleOrdersButton" onClick={handleOrderHistoryNavigation}>
             View Orders History
           </button>
           <button className="newOrderButton" onClick={handleOpenNewOrder}>
             Make a New Order
           </button>
         </div>
-        {ordersLoading && <p>Loading orders...</p>}
-        {ordersError && <p className="errorText">{ordersError}</p>}
-        {showOrders && !ordersLoading && (
-          <div className="ordersList">
-            {orders.length === 0 ? (
-              <p>No orders found.</p>
-            ) : (
-              orders.map((order, idx) => (
-                <div key={idx} className="orderItem">
-                  <p><strong>Order ID:</strong> {order.orderId}</p>
-                  <p><strong>Address:</strong> {order.deliveryAddress}</p>
-                  <p><strong>Notes:</strong> {order.notes}</p>
-                  <p><strong>Request Time:</strong> {order.requestTime}</p>
-                  {order.orderItems && order.orderItems.length > 0 ? (
-                    <>
-                      <p><strong>Total Items:</strong> {order.orderItems.length}</p>
-                      <ul style={{ marginLeft: "20px" }}>
-                        {order.orderItems.map((item, iidx) => (
-                          <li key={iidx}>
-                            {item.itemName} x {item.quantity}
-                          </li>
-                        ))}
-                      </ul>
-                    </>
-                  ) : (
-                    <p><em>No items found for this order.</em></p>
-                  )}
-                  <button
-                    className="deleteButton"
-                    onClick={() => handleCancelOrder(order.orderId)}
-                  >
-                    Delete
-                  </button>
-                  <hr />
-                </div>
-              ))
-            )}
-          </div>
-        )}
 
-        {/* when click "Make a New Order" ，show Available Items */}
+        {/* Available Items */}
         {showNewOrder && (
           <div style={{ marginTop: "20px", textAlign: "left" }}>
-            {/*  “Didn't find items your want?” */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <h3>Available Items</h3>
               <div
                 style={{ color: "#1890ff", cursor: "pointer", marginLeft: "10px" }}
                 onClick={handleOpenCustomItemModal}
               >
-                Didn't find items your want? Click here.
+                Didn't find items you want? Click here.
               </div>
             </div>
-
             <div className="itemGrid" style={{ marginTop: "10px" }}>
               {cargoItems.length === 0 ? (
                 <p>No items found in cargo.</p>
               ) : (
                 cargoItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="itemCard"
-                    onClick={() => handleSelectItem(item)}
-                  >
+                  <div key={item.id} className="itemCard" onClick={() => handleSelectItem(item)}>
                     {item.imageId ? (
                       <img
                         src={`http://localhost:8080/api/cargo/images/${item.imageId}`}
@@ -838,17 +286,11 @@ const handleSubmitProfile = async () => {
                         className="itemImage"
                       />
                     ) : (
-                      <div className="itemImagePlaceholder">
-                        No Image
-                      </div>
+                      <div className="itemImagePlaceholder">No Image</div>
                     )}
                     <h4>{item.name}</h4>
-                    <p style={{ fontSize: "14px", color: "#999" }}>
-                      {item.category}
-                    </p>
-                    <p style={{ fontSize: "14px" }}>
-                      Total Stock: {item.quantity}
-                    </p>
+                    <p style={{ fontSize: "14px", color: "#999" }}>{item.category}</p>
+                    <p style={{ fontSize: "14px" }}>Total Stock: {item.quantity}</p>
                   </div>
                 ))
               )}
@@ -900,13 +342,11 @@ const handleSubmitProfile = async () => {
                       setSelectedSize(e.target.value);
                     }}
                   >
-                    {Object.entries(selectedItem.sizeQuantities).map(
-                      ([size, qty]) => (
-                        <option key={size} value={size}>
-                          {size} (stock: {qty})
-                        </option>
-                      )
-                    )}
+                    {Object.entries(selectedItem.sizeQuantities).map(([size, qty]) => (
+                      <option key={size} value={size}>
+                        {size} (stock: {qty})
+                      </option>
+                    ))}
                   </select>
                 </div>
               )}
@@ -933,7 +373,7 @@ const handleSubmitProfile = async () => {
         </div>
       )}
 
-      {/* === Custom item pop-ups === */}
+      {/* Custom Item Popup */}
       {showCustomItemModal && (
         <div className="modalOverlay">
           <div className="modalContent">
@@ -960,10 +400,7 @@ const handleSubmitProfile = async () => {
             <button className="button" onClick={handleAddCustomItemToCart}>
               Add to Cart
             </button>
-            <button
-              className="cancelButton"
-              onClick={() => setShowCustomItemModal(false)}
-            >
+            <button className="cancelButton" onClick={() => setShowCustomItemModal(false)}>
               Cancel
             </button>
           </div>
@@ -1046,195 +483,6 @@ const handleSubmitProfile = async () => {
             </button>
             <button className="cancelButton" onClick={toggleCart}>
               Close
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Feedback Modal */}
-      {showFeedbackModal && (
-        <div className="modalOverlay">
-          <div className="modalContent">
-            <h3>Submit Feedback</h3>
-            <div className="formGroup">
-              <label>Phone Number:</label>
-              <input
-                type="text"
-                value={feedbackPhoneNumber}
-                onChange={(e) => {
-                  console.log("Feedback Modal: Phone Number changed to", e.target.value);
-                  setFeedbackPhoneNumber(e.target.value);
-                }}
-                className="input"
-              />
-            </div>
-            <div className="formGroup">
-              <label>Feedback:</label>
-              <textarea
-                value={feedbackContent}
-                onChange={(e) => {
-                  console.log("Feedback Modal: Feedback content changed");
-                  setFeedbackContent(e.target.value);
-                }}
-                className="input textareaInput"
-              />
-            </div>
-            {feedbackError && <p className="errorText">{feedbackError}</p>}
-            {feedbackMessage && <p className="successText">{feedbackMessage}</p>}
-            <button className="button" onClick={handleSubmitFeedback}>
-              Submit Feedback
-            </button>
-            <button className="cancelButton" onClick={handleCloseFeedbackModal}>
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Profile Modal */}
-      {showProfileModal && (
-        <div className="modalOverlay">
-          <div className="modalContent">
-            <h3>Update Profile</h3>
-            {/* Display current username */}
-            <p>Current Username: {username}</p>
-            {/* Radio buttons to choose which field to update */}
-            <div className="formGroup">
-              <label>Select field to update:</label>
-              <div>
-                <label>
-                  <input
-                    type="radio"
-                    value="username"
-                    checked={profileOption === "username"}
-                    onChange={(e) => {
-                      console.log("Profile Modal: profileOption changed to", e.target.value);
-                      setProfileOption(e.target.value);
-                    }}
-                  />
-                  Username
-                </label>
-                <label style={{ marginLeft: "10px" }}>
-                  <input
-                    type="radio"
-                    value="email"
-                    checked={profileOption === "email"}
-                    onChange={(e) => {
-                      console.log("Profile Modal: profileOption changed to", e.target.value);
-                      setProfileOption(e.target.value);
-                    }}
-                  />
-                  Email
-                </label>
-                <label style={{ marginLeft: "10px" }}>
-                  <input
-                    type="radio"
-                    value="password"
-                    checked={profileOption === "password"}
-                    onChange={(e) => {
-                      console.log("Profile Modal: profileOption changed to", e.target.value);
-                      setProfileOption(e.target.value);
-                    }}
-                  />
-                  Password
-                </label>
-                <label style={{ marginLeft: "10px" }}>
-                  <input
-                    type="radio"
-                    value="phone"
-                    checked={profileOption === "phone"}
-                    onChange={(e) => {
-                      console.log("Profile Modal: profileOption changed to", e.target.value);
-                      setProfileOption(e.target.value);
-                    }}
-                  />
-                  Phone Number
-                </label>
-              </div>
-            </div>
-            {/* Current password field is required for all updates except username */}
-            {(profileOption === "email" || profileOption === "password" || profileOption === "phone") && (
-              <div className="formGroup">
-                <label>Current Password:</label>
-                <input
-                  type="password"
-                  value={currentPassword}
-                  onChange={(e) => {
-                    console.log("Profile Modal: Current Password changed");
-                    setCurrentPassword(e.target.value);
-                  }}
-                  className="input"
-                />
-              </div>
-            )}
-            {/* Conditionally render input based on selected option */}
-            {profileOption === "username" && (
-              <div className="formGroup">
-                <label>New Username:</label>
-                <input
-                  type="text"
-                  value={newUsername}
-                  onChange={(e) => {
-                    console.log("Profile Modal: New Username changed to", e.target.value);
-                    setNewUsername(e.target.value);
-                  }}
-                  className="input"
-                  placeholder="Only letters"
-                />
-              </div>
-            )}
-            {profileOption === "email" && (
-              <div className="formGroup">
-                <label>New Email:</label>
-                <input
-                  type="email"
-                  value={newEmail}
-                  onChange={(e) => {
-                    console.log("Profile Modal: New Email changed to", e.target.value);
-                    setNewEmail(e.target.value);
-                  }}
-                  className="input"
-                  placeholder="example@domain.com"
-                />
-              </div>
-            )}
-            {profileOption === "password" && (
-              <div className="formGroup">
-                <label>New Password:</label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => {
-                    console.log("Profile Modal: New Password changed");
-                    setNewPassword(e.target.value);
-                  }}
-                  className="input"
-                  placeholder="Alphanumeric, min 8 chars"
-                />
-              </div>
-            )}
-            {profileOption === "phone" && (
-              <div className="formGroup">
-                <label>New Phone Number:</label>
-                <input
-                  type="text"
-                  value={newPhone}
-                  onChange={(e) => {
-                    console.log("Profile Modal: New Phone Number changed to", e.target.value);
-                    setNewPhone(e.target.value);
-                  }}
-                  className="input"
-                  placeholder="10-digit number"
-                />
-              </div>
-            )}
-            {profileError && <p className="errorText">{profileError}</p>}
-            {profileMessage && <p className="successText">{profileMessage}</p>}
-            <button className="button" onClick={handleSubmitProfile}>
-              Submit Profile Update
-            </button>
-            <button className="cancelButton" onClick={handleCloseProfileModal}>
-              Cancel
             </button>
           </div>
         </div>

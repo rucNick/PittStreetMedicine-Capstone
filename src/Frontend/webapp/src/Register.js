@@ -14,6 +14,8 @@ const Register = () => {
   // Add state to track if security is initialized
   const [securityInitialized, setSecurityInitialized] = useState(false);
 
+  const baseURL = process.env.REACT_APP_BASE_URL || 'http://localhost:8080';
+
   // Initialize security on component mount
   useEffect(() => {
     const initSecurity = async () => {
@@ -151,7 +153,7 @@ const Register = () => {
         const encryptedData = await encrypt(JSON.stringify(userData));
         
         // Send the encrypted registration request
-        const response = await fetch('http://localhost:8080/api/auth/register', {
+        const response = await fetch(`${baseURL}/api/auth/register`, {
           method: 'POST',
           headers: {
             'Content-Type': 'text/plain',

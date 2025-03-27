@@ -62,10 +62,6 @@ const Login = ({ onLoginSuccess }) => {
           body: encryptedData
         });
         
-        if (!response.ok) {
-          throw new Error(`Login failed: ${response.status}`);
-        }
-        
         // Get and decrypt the response
         const encryptedResponse = await response.text();
         const decryptedResponse = await decrypt(encryptedResponse);
@@ -73,7 +69,8 @@ const Login = ({ onLoginSuccess }) => {
         // Parse the JSON response
         const data = JSON.parse(decryptedResponse);
         
-        // Process the login result
+        // Process the login result: If authenticated is false, 
+        // throw the error message returned by the backend
         if (data.authenticated) {
           setMessage("Login success!");
           console.log("User info:", data);
@@ -92,12 +89,12 @@ const Login = ({ onLoginSuccess }) => {
             role: data.role
           });
         } else {
-          setMessage("Login failure: " + (data.message || "Unknown error"));
+          throw new Error(data.message || "Login failed");
         }
       } 
     } catch (error) {
       console.error("Login error:", error);
-      setMessage("Login error: " + (error.response?.data?.message || error.message));
+      setMessage("Login error: " + error.message);
     }
   };
   
@@ -355,7 +352,6 @@ const styles = {
     borderRadius: '4px',
     cursor: 'pointer',
   },
-
   bottomRightContainer: {
     position: 'fixed',
     bottom: '10px',
