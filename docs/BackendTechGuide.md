@@ -222,10 +222,10 @@ All authentication endpoints now support encrypted communication. The client can
 ```http
 POST /api/auth/register
 Content-Type: application/json
-Headers (optional):
+Headers:
   X-Session-ID: string (for encrypted requests)
 
-Request Body (plain or encrypted):
+Request Body (encrypted):
 {
     "username": "string",
     "email": "string",
@@ -233,7 +233,7 @@ Request Body (plain or encrypted):
     "phone": "string" (optional)
 }
 
-Response (plain or encrypted):
+Response (encrypted):
 {
     "status": "success",
     "message": "User registered successfully",
@@ -245,16 +245,16 @@ Response (plain or encrypted):
 ```http
 POST /api/auth/login
 Content-Type: application/json
-Headers (optional):
+Headers:
   X-Session-ID: string (for encrypted requests)
 
-Request Body (plain or encrypted):
+Request Body (encrypted):
 {
     "username": "string",  // Can be username or email
     "password": "string"
 }
 
-Response (plain or encrypted):
+Response (encrypted):
 {
     "status": "success",
     "message": "Login successful",
