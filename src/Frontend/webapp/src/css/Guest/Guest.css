@@ -2,22 +2,23 @@
 
 .container {
     min-height: 100vh;
-    background-color: #f0f2f5;
+    background-color: #d3d3d3;
     font-family: Arial, sans-serif;
-  }
-  
-  .navbar {
+}
+
+.navbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background-color: #1890ff;
+    background-color: #f0f2f5;
     color: white;
     padding: 10px 20px;
-  }
-  
-  .navGreeting {
+}
+
+.navGreeting {
     font-size: 20px;
-  }
+    color: #003366;
+}
   
   .logoutButton {
     padding: 8px 16px;
