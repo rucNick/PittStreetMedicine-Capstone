@@ -27,6 +27,7 @@
     border-radius: 4px;
     cursor: pointer;
     color: white;
+    margin-left: 10px;
   }
   
   .content {
@@ -38,16 +39,20 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     text-align: center;
   }
-  
-  .newOrderButton {
-    padding: 10px 20px;
-    background-color: #52c41a;
+
+.newOrderButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 24px;
+    background-color: #f0db9d;
     border: none;
-    border-radius: 4px;
+    border-radius: 20px;
     cursor: pointer;
-    color: white;
-    margin-right: 10px;
-  }
+    color: #333;
+    margin-right: 10px auto;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+}
   
   .cartButton {
     padding: 10px 20px;
