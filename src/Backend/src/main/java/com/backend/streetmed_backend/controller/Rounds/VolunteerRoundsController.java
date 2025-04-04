@@ -279,25 +279,17 @@ public class VolunteerRoundsController {
         }, asyncExecutor);
     }
 
-    @Operation(summary = "Sign up for a round",
-            description = "Allows a volunteer to sign up for a round. If the round is full, they will be added to the waitlist.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Signed up successfully"),
-            @ApiResponse(responseCode = "401", description = "Not authenticated"),
-            @ApiResponse(responseCode = "400", description = "Invalid request"),
-            @ApiResponse(responseCode = "404", description = "Round not found")
-    })
     @PostMapping("/{roundId}/signup")
     public CompletableFuture<ResponseEntity<Map<String, Object>>> signupForRound(
             @PathVariable Integer roundId,
             @RequestBody @Schema(example = """
-            {
-                "authenticated": true,
-                "userId": 1,
-                "userRole": "VOLUNTEER",
-                "requestedRole": "VOLUNTEER"
-            }
-            """) Map<String, Object> requestData) {
+        {
+            "authenticated": true,
+            "userId": 1,
+            "userRole": "VOLUNTEER",
+            "requestedRole": "VOLUNTEER"
+        }
+        """) Map<String, Object> requestData) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 Boolean authenticated = (Boolean) requestData.get("authenticated");
@@ -327,7 +319,14 @@ public class VolunteerRoundsController {
 
                 Map<String, Object> response = new HashMap<>();
                 response.put("status", "success");
-                response.put("message", "Signup successful");
+
+                // Customized message based on role and status
+                if ("TEAM_LEAD".equals(signup.getRole()) || "CLINICIAN".equals(signup.getRole())) {
+                    response.put("message", "You have been confirmed as " + signup.getRole());
+                } else {
+                    response.put("message", "You've been added to the waitlist. Admin approval required.");
+                }
+
                 response.put("signupId", signup.getSignupId());
                 response.put("signupStatus", signup.getStatus());
                 response.put("authenticated", true);

@@ -312,7 +312,7 @@ public class RoundSignupService {
         } else if ("CLINICIAN".equals(role)) {
             handleClinicianSignup(round, userId, signup);
         } else {
-            // Regular volunteer signup
+            // Regular volunteer signup - always waitlist first
             handleRegularVolunteerSignup(round, signup);
         }
 
@@ -394,18 +394,8 @@ public class RoundSignupService {
      * Handle signup for regular volunteer
      */
     private void handleRegularVolunteerSignup(Rounds round, RoundSignup signup) {
-        // Count existing confirmed participants
-        long confirmedParticipants = roundSignupRepository.countConfirmedVolunteersForRound(round.getRoundId());
-
-        // Check if there's space available
-        if (confirmedParticipants < round.getMaxParticipants()) {
-            // Space available, confirm immediately
-            signup.setStatus("CONFIRMED");
-        } else {
-            // No space, add to waitlist with lottery number
-            signup.setStatus("WAITLISTED");
-            signup.setLotteryNumber(generateLotteryNumber());
-        }
+        signup.setStatus("WAITLISTED");
+        signup.setLotteryNumber(generateLotteryNumber());
     }
 
     /**
