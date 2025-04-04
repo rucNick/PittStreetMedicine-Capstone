@@ -53,7 +53,7 @@ public class AdminController {
 
 
     @Operation(summary = "Update volunteer sub role (Admin only)")
-    @PostMapping("/volunteer/subrole")
+    @PutMapping("/volunteer/subrole")
     public CompletableFuture<ResponseEntity<Map<String, Object>>> updateVolunteerSubRole(
             @RequestBody Map<String, String> requestData) {
         return CompletableFuture.supplyAsync(() -> {
@@ -349,7 +349,7 @@ public class AdminController {
                 // Set email if provided
                 if (email != null && !email.trim().isEmpty()) {
                     newUser.setEmail(email);
-                } else if (role.equals("CLIENT")) {
+                } else {
                     // For CLIENT role, if email is not provided, use username as email
                     newUser.setEmail(username);
                 }
@@ -550,7 +550,7 @@ public class AdminController {
 
     @Operation(summary = "Reset user password (Admin only)",
             description = "Resets a user's password to the provided new password.")
-    @PostMapping("/user/reset-password/{userId}")
+    @PutMapping("/user/reset-password/{userId}")
     public CompletableFuture<ResponseEntity<Map<String, Object>>> resetPassword(
             @Parameter(description = "ID of the user whose password to reset")
             @PathVariable Integer userId,

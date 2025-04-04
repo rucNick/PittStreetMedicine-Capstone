@@ -253,8 +253,7 @@ public class VolunteerRoundsController {
                 LocalDateTime now = LocalDateTime.now();
                 for (Map<String, Object> roundInfo : myRounds) {
                     Object startTimeObj = roundInfo.get("startTime");
-                    if (startTimeObj instanceof LocalDateTime) {
-                        LocalDateTime startTime = (LocalDateTime) startTimeObj;
+                    if (startTimeObj instanceof LocalDateTime startTime) {
                         if (startTime.isAfter(now)) {
                             upcomingRounds.add(roundInfo);
                         } else {
@@ -359,7 +358,7 @@ public class VolunteerRoundsController {
             @ApiResponse(responseCode = "400", description = "Cannot cancel less than 24 hours before"),
             @ApiResponse(responseCode = "404", description = "Signup not found")
     })
-    @PostMapping("/signup/{signupId}/cancel")
+    @DeleteMapping("/signup/{signupId}")
     public CompletableFuture<ResponseEntity<Map<String, Object>>> cancelSignup(
             @PathVariable Integer signupId,
             @RequestBody @Schema(example = """

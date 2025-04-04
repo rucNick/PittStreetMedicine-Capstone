@@ -69,7 +69,7 @@ public class AdminRoundsController {
 
                 if (!Boolean.TRUE.equals(authenticated)) {
                     Map<String, Object> errorResponse = new HashMap<>();
-                    errorResponse.put("status", "error");
+                    errorResponse.put(getStatus(), "error");
                     errorResponse.put("message", "Not authenticated");
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
                 }
@@ -95,14 +95,14 @@ public class AdminRoundsController {
                 Rounds savedRound = roundsService.createRound(round);
 
                 Map<String, Object> response = new HashMap<>();
-                response.put("status", "success");
+                response.put(getStatus(), "success");
                 response.put("message", "Round created successfully");
                 response.put("roundId", savedRound.getRoundId());
 
                 return ResponseEntity.ok(response);
             } catch (Exception e) {
                 Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put("status", "error");
+                errorResponse.put(getStatus(), "error");
                 errorResponse.put("message", e.getMessage());
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
             }
@@ -140,7 +140,7 @@ public class AdminRoundsController {
 
                 if (!Boolean.TRUE.equals(authenticated)) {
                     Map<String, Object> errorResponse = new HashMap<>();
-                    errorResponse.put("status", "error");
+                    errorResponse.put(getStatus(), "error");
                     errorResponse.put("message", "Not authenticated");
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
                 }
@@ -167,21 +167,21 @@ public class AdminRoundsController {
                 if (requestData.containsKey("maxParticipants")) {
                     existingRound.setMaxParticipants((Integer) requestData.get("maxParticipants"));
                 }
-                if (requestData.containsKey("status")) {
-                    existingRound.setStatus((String) requestData.get("status"));
+                if (requestData.containsKey(getStatus())) {
+                    existingRound.setStatus((String) requestData.get(getStatus()));
                 }
 
                 Rounds updatedRound = roundsService.updateRound(roundId, existingRound);
 
                 Map<String, Object> response = new HashMap<>();
-                response.put("status", "success");
+                response.put(getStatus(), "success");
                 response.put("message", "Round updated successfully");
                 response.put("roundId", updatedRound.getRoundId());
 
                 return ResponseEntity.ok(response);
             } catch (Exception e) {
                 Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put("status", "error");
+                errorResponse.put(getStatus(), "error");
                 errorResponse.put("message", e.getMessage());
 
                 if (e.getMessage().contains("not found")) {
@@ -201,7 +201,7 @@ public class AdminRoundsController {
             @ApiResponse(responseCode = "403", description = "Unauthorized - Admin access only"),
             @ApiResponse(responseCode = "404", description = "Round not found")
     })
-    @PostMapping("/{roundId}/cancel")
+    @PutMapping("/{roundId}/cancel")
     public CompletableFuture<ResponseEntity<Map<String, Object>>> cancelRound(
             @PathVariable Integer roundId,
             @RequestBody @Schema(example = """
@@ -217,7 +217,7 @@ public class AdminRoundsController {
 
                 if (!Boolean.TRUE.equals(authenticated)) {
                     Map<String, Object> errorResponse = new HashMap<>();
-                    errorResponse.put("status", "error");
+                    errorResponse.put(getStatus(), "error");
                     errorResponse.put("message", "Not authenticated");
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
                 }
@@ -225,14 +225,14 @@ public class AdminRoundsController {
                 Rounds cancelledRound = roundsService.cancelRound(roundId);
 
                 Map<String, Object> response = new HashMap<>();
-                response.put("status", "success");
+                response.put(getStatus(), "success");
                 response.put("message", "Round cancelled successfully");
                 response.put("roundId", cancelledRound.getRoundId());
 
                 return ResponseEntity.ok(response);
             } catch (Exception e) {
                 Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put("status", "error");
+                errorResponse.put(getStatus(), "error");
                 errorResponse.put("message", e.getMessage());
 
                 if (e.getMessage().contains("not found")) {
@@ -259,7 +259,7 @@ public class AdminRoundsController {
             try {
                 if (!Boolean.TRUE.equals(authenticated)) {
                     Map<String, Object> errorResponse = new HashMap<>();
-                    errorResponse.put("status", "error");
+                    errorResponse.put(getStatus(), "error");
                     errorResponse.put("message", "Not authenticated");
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
                 }
@@ -267,13 +267,13 @@ public class AdminRoundsController {
                 List<Rounds> allRounds = roundsService.getAllRounds();
 
                 Map<String, Object> response = new HashMap<>();
-                response.put("status", "success");
+                response.put(getStatus(), "success");
                 response.put("rounds", allRounds);
 
                 return ResponseEntity.ok(response);
             } catch (Exception e) {
                 Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put("status", "error");
+                errorResponse.put(getStatus(), "error");
                 errorResponse.put("message", e.getMessage());
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
             }
@@ -295,7 +295,7 @@ public class AdminRoundsController {
             try {
                 if (!Boolean.TRUE.equals(authenticated)) {
                     Map<String, Object> errorResponse = new HashMap<>();
-                    errorResponse.put("status", "error");
+                    errorResponse.put(getStatus(), "error");
                     errorResponse.put("message", "Not authenticated");
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
                 }
@@ -303,13 +303,13 @@ public class AdminRoundsController {
                 List<Rounds> upcomingRounds = roundsService.getUpcomingRounds();
 
                 Map<String, Object> response = new HashMap<>();
-                response.put("status", "success");
+                response.put(getStatus(), "success");
                 response.put("rounds", upcomingRounds);
 
                 return ResponseEntity.ok(response);
             } catch (Exception e) {
                 Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put("status", "error");
+                errorResponse.put(getStatus(), "error");
                 errorResponse.put("message", e.getMessage());
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
             }
@@ -333,7 +333,7 @@ public class AdminRoundsController {
             try {
                 if (!Boolean.TRUE.equals(authenticated)) {
                     Map<String, Object> errorResponse = new HashMap<>();
-                    errorResponse.put("status", "error");
+                    errorResponse.put(getStatus(), "error");
                     errorResponse.put("message", "Not authenticated");
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
                 }
@@ -360,7 +360,7 @@ public class AdminRoundsController {
                 participantCounts.put("hasClinician", roundSignupService.hasClinician(roundId));
 
                 Map<String, Object> response = new HashMap<>();
-                response.put("status", "success");
+                response.put(getStatus(), "success");
                 response.put("round", roundDetails);
                 response.put("signups", signups);
                 response.put("participantCounts", participantCounts);
@@ -368,7 +368,7 @@ public class AdminRoundsController {
                 return ResponseEntity.ok(response);
             } catch (Exception e) {
                 Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put("status", "error");
+                errorResponse.put(getStatus(), "error");
                 errorResponse.put("message", e.getMessage());
 
                 if (e.getMessage().contains("not found")) {
@@ -404,7 +404,7 @@ public class AdminRoundsController {
 
                 if (!Boolean.TRUE.equals(authenticated)) {
                     Map<String, Object> errorResponse = new HashMap<>();
-                    errorResponse.put("status", "error");
+                    errorResponse.put(getStatus(), "error");
                     errorResponse.put("message", "Not authenticated");
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
                 }
@@ -412,14 +412,14 @@ public class AdminRoundsController {
                 List<RoundSignup> selectedSignups = roundSignupService.runLotteryForRound(roundId);
 
                 Map<String, Object> response = new HashMap<>();
-                response.put("status", "success");
+                response.put(getStatus(), "success");
                 response.put("message", "Lottery run successfully");
                 response.put("selectedVolunteers", selectedSignups.size());
 
                 return ResponseEntity.ok(response);
             } catch (Exception e) {
                 Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put("status", "error");
+                errorResponse.put(getStatus(), "error");
                 errorResponse.put("message", e.getMessage());
 
                 if (e.getMessage().contains("not found")) {
@@ -439,7 +439,7 @@ public class AdminRoundsController {
             @ApiResponse(responseCode = "403", description = "Unauthorized - Admin access only"),
             @ApiResponse(responseCode = "404", description = "Signup not found")
     })
-    @PostMapping("/signup/{signupId}/confirm")
+    @PutMapping("/signup/{signupId}/confirm")
     public CompletableFuture<ResponseEntity<Map<String, Object>>> confirmSignup(
             @PathVariable Integer signupId,
             @RequestBody @Schema(example = """
@@ -457,7 +457,7 @@ public class AdminRoundsController {
 
                 if (!Boolean.TRUE.equals(authenticated)) {
                     Map<String, Object> errorResponse = new HashMap<>();
-                    errorResponse.put("status", "error");
+                    errorResponse.put(getStatus(), "error");
                     errorResponse.put("message", "Not authenticated");
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
                 }
@@ -467,7 +467,7 @@ public class AdminRoundsController {
 
                 if (!"WAITLISTED".equals(signup.getStatus())) {
                     Map<String, Object> errorResponse = new HashMap<>();
-                    errorResponse.put("status", "error");
+                    errorResponse.put(getStatus(), "error");
                     errorResponse.put("message", "Only waitlisted signups can be manually confirmed");
                     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
                 }
@@ -478,15 +478,15 @@ public class AdminRoundsController {
                 RoundSignup confirmedSignup = roundSignupService.updateSignup(signup);
 
                 Map<String, Object> response = new HashMap<>();
-                response.put("status", "success");
+                response.put(getStatus(), "success");
                 response.put("message", "Volunteer confirmed successfully");
                 response.put("signupId", confirmedSignup.getSignupId());
-                response.put("status", confirmedSignup.getStatus());
+                response.put(getStatus(), confirmedSignup.getStatus());
 
                 return ResponseEntity.ok(response);
             } catch (Exception e) {
                 Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put("status", "error");
+                errorResponse.put(getStatus(), "error");
                 errorResponse.put("message", e.getMessage());
 
                 if (e.getMessage().contains("not found")) {
@@ -498,6 +498,10 @@ public class AdminRoundsController {
         }, asyncExecutor);
     }
 
+    private static String getStatus() {
+        return "status";
+    }
+
     @Operation(summary = "Remove a volunteer from a round",
             description = "Removes a volunteer from a round. Only accessible by administrators.")
     @ApiResponses(value = {
@@ -506,7 +510,7 @@ public class AdminRoundsController {
             @ApiResponse(responseCode = "403", description = "Unauthorized - Admin access only"),
             @ApiResponse(responseCode = "404", description = "Signup not found")
     })
-    @PostMapping("/signup/{signupId}/remove")
+    @DeleteMapping("/signup/{signupId}")
     public CompletableFuture<ResponseEntity<Map<String, Object>>> removeSignup(
             @PathVariable Integer signupId,
             @RequestBody @Schema(example = """
@@ -524,7 +528,7 @@ public class AdminRoundsController {
 
                 if (!Boolean.TRUE.equals(authenticated)) {
                     Map<String, Object> errorResponse = new HashMap<>();
-                    errorResponse.put("status", "error");
+                    errorResponse.put(getStatus(), "error");
                     errorResponse.put("message", "Not authenticated");
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
                 }
@@ -538,7 +542,7 @@ public class AdminRoundsController {
                 roundSignupService.adminCancelSignup(signupId, adminId);
 
                 Map<String, Object> response = new HashMap<>();
-                response.put("status", "success");
+                response.put(getStatus(), "success");
                 response.put("message", "Volunteer removed successfully");
                 response.put("roundId", roundId);
                 response.put("userId", userId);
@@ -546,7 +550,7 @@ public class AdminRoundsController {
                 return ResponseEntity.ok(response);
             } catch (Exception e) {
                 Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put("status", "error");
+                errorResponse.put(getStatus(), "error");
                 errorResponse.put("message", e.getMessage());
 
                 if (e.getMessage().contains("not found")) {
@@ -574,7 +578,7 @@ public class AdminRoundsController {
             try {
                 if (!Boolean.TRUE.equals(authenticated)) {
                     Map<String, Object> errorResponse = new HashMap<>();
-                    errorResponse.put("status", "error");
+                    errorResponse.put(getStatus(), "error");
                     errorResponse.put("message", "Not authenticated");
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
                 }
@@ -590,7 +594,7 @@ public class AdminRoundsController {
                     Map<String, Object> signupDetails = new HashMap<>();
                     signupDetails.put("signupId", signup.getSignupId());
                     signupDetails.put("userId", signup.getUserId());
-                    signupDetails.put("status", signup.getStatus());
+                    signupDetails.put(getStatus(), signup.getStatus());
                     signupDetails.put("role", signup.getRole());
                     signupDetails.put("signupTime", signup.getSignupTime());
                     signupDetails.put("lotteryNumber", signup.getLotteryNumber());
@@ -613,7 +617,7 @@ public class AdminRoundsController {
                 });
 
                 Map<String, Object> response = new HashMap<>();
-                response.put("status", "success");
+                response.put(getStatus(), "success");
                 response.put("roundId", roundId);
                 response.put("waitlistedCount", waitlistedSignups.size());
                 response.put("waitlistedVolunteers", waitlistedWithDetails);
@@ -621,7 +625,7 @@ public class AdminRoundsController {
                 return ResponseEntity.ok(response);
             } catch (Exception e) {
                 Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put("status", "error");
+                errorResponse.put(getStatus(), "error");
                 errorResponse.put("message", e.getMessage());
 
                 if (e.getMessage().contains("not found")) {
