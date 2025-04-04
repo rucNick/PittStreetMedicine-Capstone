@@ -18,10 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
@@ -176,11 +173,21 @@ public class AdminController {
                     userInfo.put("phone", user.getPhone() != null ? user.getPhone() : "");
                     userInfo.put("role", user.getRole());
 
-                    switch (user.getRole()) {
-                        case "CLIENT" -> clientUsers.add(userInfo);
-                        case "VOLUNTEER" -> volunteerUsers.add(userInfo);
-                        case "ADMIN" -> adminUsers.add(userInfo);
-                        default -> {}
+                    // If the user is a volunteer, add the volunteer sub role.
+                    if ("VOLUNTEER".equals(user.getRole())) {
+                        Optional<VolunteerSubRole> subRoleOpt = volunteerSubRoleService.getVolunteerSubRole(user.getUserId());
+                        String volunteerSubRoleStr = subRoleOpt
+                                .map(vsr -> vsr.getSubRole().toString())
+                                .orElse(VolunteerSubRole.SubRoleType.REGULAR.toString());
+                        userInfo.put("volunteerSubRole", volunteerSubRoleStr);
+                        volunteerUsers.add(userInfo);
+                    } else {
+                        switch (user.getRole()) {
+                            case "CLIENT" -> clientUsers.add(userInfo);
+                            case "ADMIN" -> adminUsers.add(userInfo);
+                            default -> {
+                            }
+                        }
                     }
                 }
 
