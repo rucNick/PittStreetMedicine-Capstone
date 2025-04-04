@@ -3,9 +3,9 @@ import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Login from "../Login/Login";
 import Home from "../Home/Home";
-import Home_Feedback from "../Home/Home_Feedback"; // Feedback page component
-import Home_Profile from "../Home/Home_Profile"; // profile page component
-import Home_OrderHistory from "../Home/Home_OrderHistory"; // Order History page component
+import HomeFeedback from "../Home/Home_Feedback"; // Feedback page component
+import HomeProfile from "../Home/Home_Profile"; // profile page component
+import HomeOrderHistory from "../Home/Home_OrderHistory"; // Order History page component
 import Register from "../Register/Register";
 import Guest from "../Guest/Guest";
 import VolunteerAppli from "../Volunteer/volunteer_appli";
@@ -14,8 +14,8 @@ import Admin from "../Admin/Admin";
 import CargoAdmin from "../Admin/Cargo_Admin";
 import CargoVolunteer from "../Volunteer/Cargo_Volunteer";
 import ResetPassword from "../../ResetPassword";
-import Round_Admin from "../Round/Round_Admin";
-import Volunteer_Dashboard from "../Volunteer/Volunteer_Dashboard";
+import RoundAdmin from "../Round/Round_Admin";
+import VolunteerDashboard from "../Volunteer/Volunteer_Dashboard";
 
 function App({ securityInitialized = false }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -91,17 +91,17 @@ function App({ securityInitialized = false }) {
             )
           }
         />
-        <Route path="/feedback" element={<Home_Feedback username={userData.username} />} />
-        <Route path="/profile" element={<Home_Profile username={userData.username} email={userData.email} phone={userData.phone} userId={userData.userId} onLogout={handleLogout} />} />
-        <Route path="/orderhistory" element={<Home_OrderHistory userId={userData.userId} />} />
+        <Route path="/feedback" element={<HomeFeedback username={userData.username} />} />
+        <Route path="/profile" element={<HomeProfile username={userData.username} email={userData.email} phone={userData.phone} userId={userData.userId} onLogout={handleLogout} />} />
+        <Route path="/orderhistory" element={<HomeOrderHistory userId={userData.userId} />} />
         <Route path="/register" element={<Register />} />
         <Route path="/guest" element={<Guest onLogout={handleLogout} />} />
         <Route path="/volunteerAppli" element={<VolunteerAppli />} />
         <Route path="/cargo_admin" element={<CargoAdmin userData={userData} />} />
         <Route path="/cargo_volunteer" element={<CargoVolunteer />} />
         <Route path="/reset_password" element={<ResetPassword />} />
-        <Route path="/round_admin" element={<Round_Admin />} />
-        <Route path="/volunteer_dashboard" element={<Volunteer_Dashboard userData={userData} />} />
+        <Route path="/round_admin" element={<RoundAdmin />} />
+        <Route path="/volunteer_dashboard" element={<VolunteerDashboard userData={userData} />} />
       </Routes>
     </Router>
   );
