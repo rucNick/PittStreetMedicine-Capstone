@@ -7,7 +7,6 @@ function Round_Admin() {
   const navigate = useNavigate();
   const userData = JSON.parse(sessionStorage.getItem("auth_user")) || {};
 
-
   const [activeTab, setActiveTab] = useState("viewRounds");
   const [rounds, setRounds] = useState([]);
   const [roundFilter, setRoundFilter] = useState("all");
@@ -29,6 +28,15 @@ function Round_Admin() {
   const [modalTab, setModalTab] = useState("details");
   const [modalLotteryResult, setModalLotteryResult] = useState("");
   const [modalRoundDetails, setModalRoundDetails] = useState(null);
+
+  const [updateRoundStep, setUpdateRoundStep] = useState("inputId");
+  const [roundIdToUpdate, setRoundIdToUpdate] = useState("");
+  const [updateRoundData, setUpdateRoundData] = useState(null);
+
+  const formatDatetimeLocal = (dt) => {
+    if (!dt) return "";
+    return new Date(dt).toISOString().slice(0,16);
+  };
 
   // 1. view rounds
   const fetchRounds = async () => {
@@ -203,7 +211,54 @@ function Round_Admin() {
     }
   };
 
+  const fetchRoundForUpdate = async () => {
+    try {
+      const response = await axios.get(`/api/admin/rounds/${roundIdToUpdate}`, {
+        params: {
+          authenticated: true,
+          adminUsername: userData.username
+        }
+      });
+      if (response.data.status === "success") {
+        const round = response.data.round;
+        round.startTime = formatDatetimeLocal(round.startTime);
+        round.endTime = formatDatetimeLocal(round.endTime);
+        setUpdateRoundData(round);
+        setUpdateRoundStep("editForm");
+        setMessage("");
+      } else {
+        setMessage(response.data.message || "Error fetching round");
+      }
+    } catch (error) {
+      console.error(error);
+      setMessage(error.response?.data?.message || error.message);
+    }
+  };
 
+  const updateRound = async () => {
+    try {
+      const payload = {
+        authenticated: true,
+        adminUsername: userData.username,
+        title: updateRoundData.title,
+        description: updateRoundData.description,
+        startTime: updateRoundData.startTime,
+        endTime: updateRoundData.endTime,
+        location: updateRoundData.location,
+        maxParticipants: parseInt(updateRoundData.maxParticipants, 10),
+        status: updateRoundData.status
+      };
+      const response = await axios.put(`/api/admin/rounds/${updateRoundData.roundId}`, payload);
+      if (response.data.status === "success") {
+        setMessage("Round updated successfully with ID: " + response.data.roundId);
+      } else {
+        setMessage(response.data.message || "Error updating round");
+      }
+    } catch (error) {
+      console.error(error);
+      setMessage(error.response?.data?.message || error.message);
+    }
+  };
 
   return (
     <div className="container">
@@ -211,6 +266,7 @@ function Round_Admin() {
       <div className="navbar">
         <button className="navButton" onClick={() => { setActiveTab("viewRounds"); fetchRounds(); }}>View Rounds</button>
         <button className="navButton" onClick={() => setActiveTab("createRound")}>Create Round</button>
+        <button className="navButton" onClick={() => { setActiveTab("updateRound"); setUpdateRoundStep("inputId"); setRoundIdToUpdate(""); setUpdateRoundData(null); }}>Update Rounds</button>
         <button className="navButton" onClick={() => navigate('/')}>Back to Dashboard</button>
       </div>
 
@@ -273,6 +329,30 @@ function Round_Admin() {
               <input className="input" type="text" placeholder="Clinician ID (optional)" value={newRound.clinicianId} onChange={(e) => setNewRound({ ...newRound, clinicianId: e.target.value })} />
               <button className="action-button" onClick={createRound}>Create Round</button>
             </div>
+          </div>
+        )}
+
+        {activeTab === "updateRound" && (
+          <div>
+            <h2>Update Round</h2>
+            {updateRoundStep === "inputId" && (
+              <div className="form-container">
+                <input className="input" type="text" placeholder="Enter Round ID" value={roundIdToUpdate} onChange={(e) => setRoundIdToUpdate(e.target.value)} />
+                <button className="action-button" onClick={fetchRoundForUpdate}>Next</button>
+              </div>
+            )}
+            {updateRoundStep === "editForm" && updateRoundData && (
+              <div className="form-container">
+                <input className="input" type="text" placeholder="Title" value={updateRoundData.title} onChange={(e) => setUpdateRoundData({ ...updateRoundData, title: e.target.value })} />
+                <input className="input" type="text" placeholder="Description" value={updateRoundData.description} onChange={(e) => setUpdateRoundData({ ...updateRoundData, description: e.target.value })} />
+                <input className="input" type="datetime-local" placeholder="Start Time" value={updateRoundData.startTime} onChange={(e) => setUpdateRoundData({ ...updateRoundData, startTime: e.target.value })} />
+                <input className="input" type="datetime-local" placeholder="End Time" value={updateRoundData.endTime} onChange={(e) => setUpdateRoundData({ ...updateRoundData, endTime: e.target.value })} />
+                <input className="input" type="text" placeholder="Location" value={updateRoundData.location} onChange={(e) => setUpdateRoundData({ ...updateRoundData, location: e.target.value })} />
+                <input className="input" type="text" placeholder="Max Participants" value={updateRoundData.maxParticipants} onChange={(e) => setUpdateRoundData({ ...updateRoundData, maxParticipants: e.target.value })} />
+                <input className="input" type="text" placeholder="Status" value={updateRoundData.status || ""} onChange={(e) => setUpdateRoundData({ ...updateRoundData, status: e.target.value })} />
+                <button className="action-button" onClick={updateRound}>Update Round</button>
+              </div>
+            )}
           </div>
         )}
       </div>
