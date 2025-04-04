@@ -2,8 +2,10 @@ package com.backend.streetmed_backend.controller.Auth;
 
 import com.backend.streetmed_backend.entity.user_entity.User;
 import com.backend.streetmed_backend.entity.user_entity.UserMetadata;
+import com.backend.streetmed_backend.entity.user_entity.VolunteerSubRole;
 import com.backend.streetmed_backend.service.EmailService;
 import com.backend.streetmed_backend.service.UserService;
+import com.backend.streetmed_backend.service.VolunteerSubRoleService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -36,17 +38,73 @@ public class AdminController {
     private final Executor readOnlyExecutor;
     private static final String ALLOWED_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-_=+";
     private final SecureRandom random = new SecureRandom();
+    private final VolunteerSubRoleService volunteerSubRoleService;
 
     @Autowired
     public AdminController(
             UserService userService,
+            VolunteerSubRoleService volunteerSubRoleService,
             EmailService emailService,
             @Qualifier("authExecutor") Executor authExecutor,
             @Qualifier("readOnlyExecutor") Executor readOnlyExecutor) {
         this.userService = userService;
+        this.volunteerSubRoleService = volunteerSubRoleService;
         this.emailService = emailService;
         this.authExecutor = authExecutor;
         this.readOnlyExecutor = readOnlyExecutor;
+    }
+
+
+    @Operation(summary = "Update volunteer sub role (Admin only)")
+    @PostMapping("/volunteer/subrole")
+    public CompletableFuture<ResponseEntity<Map<String, Object>>> updateVolunteerSubRole(
+            @RequestBody Map<String, String> requestData) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                String adminUsername = requestData.get("adminUsername");
+                String authStatus = requestData.get("authenticated");
+                if (!"true".equals(authStatus)) {
+                    Map<String, Object> errorResponse = new HashMap<>();
+                    errorResponse.put("status", "error");
+                    errorResponse.put("message", "Not authenticated");
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+                }
+
+                User admin = userService.findByUsername(adminUsername);
+                if (admin == null || !"ADMIN".equals(admin.getRole())) {
+                    Map<String, Object> errorResponse = new HashMap<>();
+                    errorResponse.put("status", "error");
+                    errorResponse.put("message", "Unauthorized access");
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
+                }
+
+                Integer userId = Integer.parseInt(requestData.get("userId"));
+                String subRoleStr = requestData.get("volunteerSubRole");
+                String notes = requestData.get("notes");
+
+                VolunteerSubRole.SubRoleType subRole;
+                try {
+                    subRole = VolunteerSubRole.SubRoleType.valueOf(subRoleStr.toUpperCase());
+                } catch (IllegalArgumentException e) {
+                    Map<String, Object> errorResponse = new HashMap<>();
+                    errorResponse.put("status", "error");
+                    errorResponse.put("message", "Invalid volunteer sub role provided");
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+                }
+
+                VolunteerSubRole updatedSubRole = volunteerSubRoleService.assignVolunteerSubRole(userId, subRole, admin.getUserId(), notes);
+                Map<String, Object> response = new HashMap<>();
+                response.put("status", "success");
+                response.put("message", "Volunteer sub role updated successfully");
+                response.put("volunteerSubRole", updatedSubRole.getSubRole().toString());
+                return ResponseEntity.ok(response);
+            } catch (Exception e) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("status", "error");
+                errorResponse.put("message", e.getMessage());
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+            }
+        }, authExecutor);
     }
 
     @Operation(summary = "Migrate all passwords to hashed format")

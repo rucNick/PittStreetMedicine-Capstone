@@ -1,8 +1,10 @@
 package com.backend.streetmed_backend.controller.Auth;
 
 import com.backend.streetmed_backend.entity.user_entity.User;
+import com.backend.streetmed_backend.entity.user_entity.VolunteerSubRole;
 import com.backend.streetmed_backend.security.SecurityManager;
 import com.backend.streetmed_backend.service.UserService;
+import com.backend.streetmed_backend.service.VolunteerSubRoleService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
@@ -29,17 +32,20 @@ public class AuthController {
     private final Executor readOnlyExecutor;
     private final ObjectMapper objectMapper;
     private final SecurityManager securityManager;
+    private final VolunteerSubRoleService volunteerSubRoleService;
 
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
 
     @Autowired
     public AuthController(
             UserService userService,
+            VolunteerSubRoleService volunteerSubRoleService,
             @Qualifier("authExecutor") Executor authExecutor,
             @Qualifier("readOnlyExecutor") Executor readOnlyExecutor,
             SecurityManager securityManager,
             ObjectMapper objectMapper) {
         this.userService = userService;
+        this.volunteerSubRoleService = volunteerSubRoleService;
         this.authExecutor = authExecutor;
         this.readOnlyExecutor = readOnlyExecutor;
         this.securityManager = securityManager;
@@ -177,6 +183,15 @@ public class AuthController {
                         response.put("email", user.getEmail());
                     }
 
+                    // Enrich volunteer users with sub role details
+                    if ("VOLUNTEER".equals(user.getRole())) {
+                        Optional<VolunteerSubRole> subRoleOpt = volunteerSubRoleService.getVolunteerSubRole(user.getUserId());
+                        // Default to REGULAR if no sub role is assigned.
+                        String subRoleStr = subRoleOpt.map(vsr -> vsr.getSubRole().toString())
+                                .orElse(VolunteerSubRole.SubRoleType.REGULAR.toString());
+                        response.put("volunteerSubRole", subRoleStr);
+                    }
+
                     return buildResponse(sessionId, response, HttpStatus.OK);
                 } else {
                     Map<String, Object> errorResponse = new HashMap<>();
@@ -190,11 +205,11 @@ public class AuthController {
                 Map<String, Object> errorResponse = new HashMap<>();
                 errorResponse.put("status", "error");
                 errorResponse.put("message", e.getMessage());
-                errorResponse.put("authenticated", false);
                 return buildResponse(sessionId, errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
             }
         }, readOnlyExecutor);
     }
+
 
     @Operation(summary = "Update username")
     @PutMapping("/update/username")
