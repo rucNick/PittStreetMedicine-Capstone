@@ -25,6 +25,7 @@ const Volunteer_Dashboard = ({ userData }) => {
   const [selectedRoundDetails, setSelectedRoundDetails] = useState(null);
 
   const loadMyRounds = useCallback(async () => {
+    if (!userData || !userData.userId) return;
     try {
       const response = await axios.get('http://localhost:8080/api/rounds/my-rounds', {
         params: {
@@ -43,9 +44,10 @@ const Volunteer_Dashboard = ({ userData }) => {
     } catch (error) {
       setMyRoundsError(error.response?.data?.message || error.message);
     }
-  }, [userData.userId]);
+  }, [userData]);
 
   const loadAllUpcomingRounds = useCallback(async () => {
+    if (!userData || !userData.userId) return;
     try {
       const response = await axios.get('http://localhost:8080/api/rounds/all', {
         params: {
@@ -63,9 +65,10 @@ const Volunteer_Dashboard = ({ userData }) => {
     } catch (error) {
       setAllRoundsError(error.response?.data?.message || error.message);
     }
-  }, [userData.userId]);
+  }, [userData]);
 
   const loadAssignedOrders = useCallback(async () => {
+    if (!userData || !userData.userId) return;
     try {
       const response = await axios.get('http://localhost:8080/api/orders/all', {
         params: {
@@ -79,7 +82,7 @@ const Volunteer_Dashboard = ({ userData }) => {
     } catch (error) {
       setOrdersError(error.response?.data?.message || error.message);
     }
-  }, [userData.userId]);
+  }, [userData]);
 
   const signupForRound = async (roundId, requestedRole = 'VOLUNTEER') => {
     try {
@@ -108,7 +111,6 @@ const Volunteer_Dashboard = ({ userData }) => {
         }
       });
       alert(response.data.message);
-      // reload
       loadMyRounds();
       loadAllUpcomingRounds();
       handleDateClick(selectedDate);
@@ -117,7 +119,6 @@ const Volunteer_Dashboard = ({ userData }) => {
     }
   };
 
-  // click calendar show rounds
   const handleDateClick = (date) => {
     setSelectedDate(date);
     const dateStr = date.toISOString().split('T')[0];
@@ -129,7 +130,6 @@ const Volunteer_Dashboard = ({ userData }) => {
     setShowRoundsModal(true);
   };
 
-  // highlight days in calendar
   const highlightDates = ({ date, view }) => {
     if (view !== 'month') return null;
     const dateStr = date.toISOString().split('T')[0];
@@ -140,7 +140,6 @@ const Volunteer_Dashboard = ({ userData }) => {
     return found ? 'highlight-day' : null;
   };
 
-  // ======= open "Full View" modal =======
   const openFullViewModal = async (roundId) => {
     try {
       const response = await axios.get(`http://localhost:8080/api/rounds/${roundId}`, {
@@ -166,15 +165,13 @@ const Volunteer_Dashboard = ({ userData }) => {
     setSelectedRoundDetails(null);
   };
 
-  // ======= cancel sign up in full view =======
   const handleCancelSignupFullView = async () => {
     if (!selectedRoundDetails) return;
-    const signupDetails = selectedRoundDetails.signupDetails;
-    if (!signupDetails || !signupDetails.signupId) {
+    const signupId = (selectedRoundDetails.signupDetails && selectedRoundDetails.signupDetails.signupId) || selectedRoundDetails.signupId;
+    if (!signupId) {
       alert("No signup found for this round");
       return;
     }
-    const signupId = signupDetails.signupId;
     try {
       const response = await axios.delete(`http://localhost:8080/api/rounds/signup/${signupId}`, {
         data: {
@@ -184,7 +181,6 @@ const Volunteer_Dashboard = ({ userData }) => {
         }
       });
       alert(response.data.message);
-      // close/refresh modal
       closeFullViewModal();
       loadMyRounds();
       loadAllUpcomingRounds();
@@ -193,41 +189,47 @@ const Volunteer_Dashboard = ({ userData }) => {
     }
   };
 
-  // load data
   useEffect(() => {
+    if (!userData || !userData.userId) return;
     loadMyRounds();
     loadAllUpcomingRounds();
     loadAssignedOrders();
-  }, [loadMyRounds, loadAllUpcomingRounds, loadAssignedOrders]);
+  }, [loadMyRounds, loadAllUpcomingRounds, loadAssignedOrders, userData]);
 
   return (
     <div className="volunteer-dashboard-container">
-      {/* go back button */}
       <div className="dashboard-header">
         <button className="back-btn" onClick={() => navigate("/")}>Back</button>
       </div>
-
-      {/* left: rounds and orders */}
       <div className="volunteer-left-panel">
         <h2>My Upcoming Rounds</h2>
         {myRoundsError && <p className="error-text">{myRoundsError}</p>}
         <div className="rounds-cards">
           {myUpcomingRounds.length === 0 && <p>No upcoming rounds yet.</p>}
           {myUpcomingRounds.map((round) => (
-            <div key={round.roundId} className="round-card">
+            <div
+              key={round.roundId}
+              className="round-card"
+              style={{
+                backgroundColor:
+                  round.signupStatus === 'CONFIRMED'
+                    ? 'lightgreen'
+                    : round.signupStatus === 'WAITLISTED'
+                    ? 'lightyellow'
+                    : undefined
+              }}
+            >
               <h3>{round.title}</h3>
               <p>{round.description}</p>
               <p>Location: {round.location}</p>
               <p>Start: {new Date(round.startTime).toLocaleString()}</p>
               <p>End: {new Date(round.endTime).toLocaleString()}</p>
-              {/* open full view modal */}
               <button className="open-view-btn" onClick={() => openFullViewModal(round.roundId)}>
                 Open full view
               </button>
             </div>
           ))}
         </div>
-
         <h2>Assigned Orders</h2>
         {ordersError && <p className="error-text">{ordersError}</p>}
         <div className="orders-cards">
@@ -241,16 +243,12 @@ const Volunteer_Dashboard = ({ userData }) => {
           ))}
         </div>
       </div>
-
-      {/* calendar */}
       <div className="volunteer-right-panel">
         <h2>Select a date to see rounds</h2>
         <Calendar
           onClickDay={handleDateClick}
           tileClassName={highlightDates}
         />
-
-        {/* modal by click days in calendar*/}
         {showRoundsModal && (
           <div className="rounds-modal">
             <div className="rounds-modal-content">
@@ -285,8 +283,6 @@ const Volunteer_Dashboard = ({ userData }) => {
           </div>
         )}
       </div>
-
-      {/* ======= Full View modal ======= */}
       {fullViewModalOpen && selectedRoundDetails && (
         <div className="fullview-modal" onClick={closeFullViewModal}>
           <div className="fullview-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -297,14 +293,11 @@ const Volunteer_Dashboard = ({ userData }) => {
             <p><strong>End:</strong> {new Date(selectedRoundDetails.endTime).toLocaleString()}</p>
             <p><strong>Available Slots:</strong> {selectedRoundDetails.availableSlots}</p>
             <p><strong>Already Signed Up?</strong> {selectedRoundDetails.userSignedUp ? 'Yes' : 'No'}</p>
-
-            {/* sign up Cancel button */}
-            {selectedRoundDetails.userSignedUp && selectedRoundDetails.signupDetails && (
+            {selectedRoundDetails.userSignedUp && (selectedRoundDetails.signupDetails || selectedRoundDetails.signupId) && (
               <button className="cancel-signup-btn" onClick={handleCancelSignupFullView}>
                 Cancel Signup
               </button>
             )}
-
             <button className="close-modal-btn" onClick={closeFullViewModal}>
               Close
             </button>
