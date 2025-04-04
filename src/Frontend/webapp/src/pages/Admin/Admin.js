@@ -150,7 +150,7 @@ const Admin = ({ onLogout, userData }) => {
       alert("Cannot reset password: User ID is missing");
       return;
     }
-    
+
     const newPassword = window.prompt("Enter new password for user " + user.username);
     if (!newPassword) return;
     console.log("resetUserPassword: Resetting password for userId", user.userId);
@@ -342,6 +342,10 @@ const Admin = ({ onLogout, userData }) => {
           </button>
           <button onClick={() => { console.log("Navigation: Navigating to Cargo Admin page"); navigate('/cargo_admin'); }} style={styles.navButton}>
             Cargo Admin
+          </button>
+          <button
+            onClick={() => { console.log("Navigation: Navigating to Round page"); navigate('/round_admin'); }} style={styles.navButton} >
+            Rounds
           </button>
         </div>
 
