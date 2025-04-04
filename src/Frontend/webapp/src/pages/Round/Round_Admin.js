@@ -90,7 +90,7 @@ function Round_Admin() {
   const cancelRoundById = async (roundId, e) => {
     e.stopPropagation();
     try {
-      const response = await axios.post(`/api/admin/rounds/${roundId}/cancel`, {
+      const response = await axios.put(`/api/admin/rounds/${roundId}/cancel`, {
         authenticated: true,
         adminUsername: userData.username
       });
@@ -163,7 +163,7 @@ function Round_Admin() {
   // approve/reject signups（in modal）
   const confirmSignup = async (signupId) => {
     try {
-      const response = await axios.post(`/api/admin/rounds/signup/${signupId}/confirm`, {
+      const response = await axios.put(`/api/admin/rounds/signup/${signupId}/confirm`, {
         authenticated: true,
         adminUsername: userData.username,
         adminId: userData.userId
@@ -182,10 +182,14 @@ function Round_Admin() {
 
   const rejectSignup = async (signupId) => {
     try {
-      const response = await axios.post(`/api/admin/rounds/signup/${signupId}/reject`, {
-        authenticated: true,
-        adminUsername: userData.username,
-        adminId: userData.userId
+      const response = await axios.request({
+        method: 'delete',
+        url: `/api/admin/rounds/signup/${signupId}`,
+        data: {
+          authenticated: true,
+          adminUsername: userData.username,
+          adminId: userData.userId
+        }
       });
       if (response.data.status === "success") {
         setMessage("Signup rejected: " + signupId);
@@ -330,7 +334,12 @@ function Round_Admin() {
                         {modalRoundDetails.signups.map((signup, idx) => (
                           <tr key={idx}>
                             <td className="table-cell">{signup.signupId}</td>
-                            <td className="table-cell">{signup.volunteerName || "N/A"}</td>
+                            <td className="table-cell">
+                              {signup.firstName
+                                ? signup.firstName + (signup.lastName ? ' ' + signup.lastName : '')
+                                : (signup.username || 'N/A')
+                              }
+                            </td>
                             <td className="table-cell">{signup.status}</td>
                             <td className="table-cell">
                               <button className="action-button" onClick={() => confirmSignup(signup.signupId)}>Confirm</button>

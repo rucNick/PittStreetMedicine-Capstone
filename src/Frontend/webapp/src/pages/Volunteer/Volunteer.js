@@ -97,11 +97,11 @@ const Volunteer = ({ onLogout, userData }) => {
               View Processing Orders
             </button>
             {/* New button to go to Cargo_Volunteer.js */}
-            <button
-              style={styles.actionButton}
-              onClick={() => navigate('/cargo_volunteer')}
-            >
+            <button style={styles.actionButton} onClick={() => navigate('/cargo_volunteer')}>
               Cargo Volunteer
+            </button>
+            <button style={styles.actionButton} onClick={() => navigate('/volunteer_dashboard')} >
+              Dashboard
             </button>
           </div>
           {loading && <p>Loading orders...</p>}

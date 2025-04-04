@@ -15,6 +15,7 @@ import CargoAdmin from "../Admin/Cargo_Admin";
 import CargoVolunteer from "../Volunteer/Cargo_Volunteer";
 import ResetPassword from "../../ResetPassword";
 import Round_Admin from "../Round/Round_Admin";
+import Volunteer_Dashboard from "../Volunteer/Volunteer_Dashboard";
 
 function App({ securityInitialized = false }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -100,6 +101,7 @@ function App({ securityInitialized = false }) {
         <Route path="/cargo_volunteer" element={<CargoVolunteer />} />
         <Route path="/reset_password" element={<ResetPassword />} />
         <Route path="/round_admin" element={<Round_Admin />} />
+        <Route path="/volunteer_dashboard" element={<Volunteer_Dashboard userData={userData} />} />
       </Routes>
     </Router>
   );
