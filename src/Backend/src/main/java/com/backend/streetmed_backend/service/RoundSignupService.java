@@ -3,6 +3,7 @@ package com.backend.streetmed_backend.service;
 import com.backend.streetmed_backend.entity.rounds_entity.Rounds;
 import com.backend.streetmed_backend.entity.rounds_entity.RoundSignup;
 import com.backend.streetmed_backend.entity.user_entity.User;
+import com.backend.streetmed_backend.entity.user_entity.UserMetadata;
 import com.backend.streetmed_backend.entity.user_entity.VolunteerSubRole;
 import com.backend.streetmed_backend.repository.Rounds.RoundsRepository;
 import com.backend.streetmed_backend.repository.Rounds.RoundSignupRepository;
@@ -41,6 +42,231 @@ public class RoundSignupService {
         this.userRepository = userRepository;
         this.volunteerSubRoleRepository = volunteerSubRoleRepository;
         this.emailService = emailService;
+    }
+
+    /**
+     * Get a signup by ID
+     */
+    public RoundSignup findSignupById(Integer signupId) {
+        return roundSignupRepository.findById(signupId)
+                .orElseThrow(() -> new RuntimeException("Signup not found"));
+    }
+
+    /**
+     * Update a signup
+     */
+    public RoundSignup updateSignup(RoundSignup signup) {
+        return roundSignupRepository.save(signup);
+    }
+
+    /**
+     * Get all signups for a round
+     */
+    public List<RoundSignup> getAllSignupsForRound(Integer roundId) {
+        return roundSignupRepository.findByRoundId(roundId);
+    }
+
+    /**
+     * Get team lead for a round
+     */
+    public Optional<RoundSignup> getTeamLeadForRound(Integer roundId) {
+        return roundSignupRepository.findTeamLeadForRound(roundId);
+    }
+
+    /**
+     * Get clinician for a round
+     */
+    public Optional<RoundSignup> getClinicianForRound(Integer roundId) {
+        return roundSignupRepository.findClinicianForRound(roundId);
+    }
+
+    /**
+     * Check if a round has a team lead
+     */
+    public boolean hasTeamLead(Integer roundId) {
+        return roundSignupRepository.hasTeamLead(roundId);
+    }
+
+    /**
+     * Check if a round has a clinician
+     */
+    public boolean hasClinician(Integer roundId) {
+        return roundSignupRepository.hasClinician(roundId);
+    }
+
+    /**
+     * Add user details to a signup map
+     */
+    public void addUserDetailsToSignup(Map<String, Object> signupDetails, Integer userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        signupDetails.put("username", user.getUsername());
+        signupDetails.put("email", user.getEmail());
+        signupDetails.put("phone", user.getPhone());
+
+        UserMetadata metadata = user.getMetadata();
+        if (metadata != null) {
+            signupDetails.put("firstName", metadata.getFirstName());
+            signupDetails.put("lastName", metadata.getLastName());
+        }
+    }
+
+    /**
+     * Admin cancel signup - bypasses 24 hour restriction
+     */
+    @Transactional
+    public void adminCancelSignup(Integer signupId, Integer adminId) {
+        RoundSignup signup = roundSignupRepository.findById(signupId)
+                .orElseThrow(() -> new RuntimeException("Signup not found"));
+
+        Rounds round = roundsRepository.findById(signup.getRoundId())
+                .orElseThrow(() -> new RuntimeException("Round not found"));
+
+        // Delete the signup
+        roundSignupRepository.delete(signup);
+
+        // If this was a confirmed regular volunteer, run lottery to fill the spot
+        if ("CONFIRMED".equals(signup.getStatus()) && "VOLUNTEER".equals(signup.getRole())) {
+            runLotteryForRound(signup.getRoundId());
+        }
+
+        // Notify the user - send email if enabled
+        try {
+            User user = userRepository.findById(signup.getUserId()).orElse(null);
+            if (user != null && user.getEmail() != null && emailService.isEmailServiceEnabled()) {
+                Map<String, Object> emailData = new HashMap<>();
+                emailData.put("roundTitle", round.getTitle());
+                emailData.put("startTime", round.getStartTime());
+                emailData.put("location", round.getLocation());
+                emailData.put("action", "removed by administrator");
+
+                // Send email notification in a non-blocking way
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        emailService.sendRoundCancellationEmail(user.getEmail(), emailData);
+                    } catch (Exception e) {
+                        logger.error("Failed to send removal notification email to {}: {}",
+                                user.getEmail(), e.getMessage());
+                    }
+                });
+            }
+        } catch (Exception e) {
+            logger.error("Error notifying user {} about removal: {}", signup.getUserId(), e.getMessage());
+        }
+    }
+
+    /**
+     * Check if a user has already signed up for a round
+     */
+    public boolean isUserSignedUp(Integer roundId, Integer userId) {
+        return roundSignupRepository.existsByRoundIdAndUserId(roundId, userId);
+    }
+
+    /**
+     * Count confirmed volunteers for a round (excluding team lead and clinician)
+     */
+    public long countConfirmedVolunteersForRound(Integer roundId) {
+        return roundSignupRepository.countConfirmedVolunteersForRound(roundId);
+    }
+
+    /**
+     * Get signup details for a user in a round
+     */
+    public Map<String, Object> getUserSignupDetails(Integer roundId, Integer userId) {
+        RoundSignup signup = roundSignupRepository.findByRoundIdAndUserId(roundId, userId)
+                .orElseThrow(() -> new RuntimeException("Signup not found"));
+
+        Map<String, Object> details = new HashMap<>();
+        details.put("signupId", signup.getSignupId());
+        details.put("role", signup.getRole());
+        details.put("status", signup.getStatus());
+        details.put("signupTime", signup.getSignupTime());
+
+        if ("WAITLISTED".equals(signup.getStatus()) && signup.getLotteryNumber() != null) {
+            details.put("lotteryNumber", signup.getLotteryNumber());
+
+            // Get position in waitlist
+            List<RoundSignup> waitlist = roundSignupRepository.findByRoundIdAndStatusOrderByLotteryNumberAsc(
+                    roundId, "WAITLISTED");
+
+            int position = 0;
+            for (int i = 0; i < waitlist.size(); i++) {
+                if (waitlist.get(i).getSignupId().equals(signup.getSignupId())) {
+                    position = i + 1; // 1-based position
+                    break;
+                }
+            }
+
+            details.put("waitlistPosition", position);
+        }
+
+        return details;
+    }
+
+    /**
+     * Get rounds that a volunteer has signed up for
+     */
+    public List<Map<String, Object>> getVolunteerSignups(Integer userId) {
+        List<RoundSignup> signups = roundSignupRepository.findByUserId(userId);
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        for (RoundSignup signup : signups) {
+            try {
+                Rounds round = roundsRepository.findById(signup.getRoundId()).orElse(null);
+                if (round != null) {
+                    Map<String, Object> roundInfo = new HashMap<>();
+
+                    // Basic round info
+                    roundInfo.put("roundId", round.getRoundId());
+                    roundInfo.put("title", round.getTitle());
+                    roundInfo.put("description", round.getDescription());
+                    roundInfo.put("startTime", round.getStartTime());
+                    roundInfo.put("endTime", round.getEndTime());
+                    roundInfo.put("location", round.getLocation());
+                    roundInfo.put("status", round.getStatus());
+
+                    // Signup info
+                    roundInfo.put("signupId", signup.getSignupId());
+                    roundInfo.put("role", signup.getRole());
+                    roundInfo.put("signupStatus", signup.getStatus());
+                    roundInfo.put("signupTime", signup.getSignupTime());
+
+                    // Check if the round is in the past
+                    boolean isPast = round.getEndTime().isBefore(LocalDateTime.now());
+                    roundInfo.put("isPast", isPast);
+
+                    // Check if signup can be canceled (24+ hours in advance)
+                    boolean canCancel = false;
+                    if (!isPast && "CONFIRMED".equals(signup.getStatus())) {
+                        LocalDateTime now = LocalDateTime.now();
+                        long hoursUntilRound = ChronoUnit.HOURS.between(now, round.getStartTime());
+                        canCancel = hoursUntilRound >= 24;
+                    }
+                    roundInfo.put("canCancel", canCancel);
+
+                    // Special role info
+                    boolean isTeamLead = "TEAM_LEAD".equals(signup.getRole());
+                    boolean isClinician = "CLINICIAN".equals(signup.getRole());
+                    roundInfo.put("isTeamLead", isTeamLead);
+                    roundInfo.put("isClinician", isClinician);
+
+                    result.add(roundInfo);
+                }
+            } catch (Exception e) {
+                logger.error("Error fetching round details for signup {}: {}",
+                        signup.getSignupId(), e.getMessage());
+            }
+        }
+
+        // Sort by start time (newest first)
+        result.sort((map1, map2) -> {
+            LocalDateTime dt1 = (LocalDateTime) map1.get("startTime");
+            LocalDateTime dt2 = (LocalDateTime) map2.get("startTime");
+            return dt2.compareTo(dt1);
+        });
+
+        return result;
     }
 
     /**
@@ -143,13 +369,9 @@ public class RoundSignupService {
      */
     private void handleTeamLeadSignup(Rounds round, Integer userId, RoundSignup signup) {
         // If already has a team lead, reject
-        if (round.getTeamLeadId() != null) {
+        if (hasTeamLead(round.getRoundId())) {
             throw new RuntimeException("This round already has a team lead assigned");
         }
-
-        // Assign user as team lead
-        round.setTeamLeadId(userId);
-        roundsRepository.save(round);
 
         // Confirm signup immediately
         signup.setStatus("CONFIRMED");
@@ -160,13 +382,9 @@ public class RoundSignupService {
      */
     private void handleClinicianSignup(Rounds round, Integer userId, RoundSignup signup) {
         // If already has a clinician, reject
-        if (round.getClinicianId() != null) {
+        if (hasClinician(round.getRoundId())) {
             throw new RuntimeException("This round already has a clinician assigned");
         }
-
-        // Assign user as clinician
-        round.setClinicianId(userId);
-        roundsRepository.save(round);
 
         // Confirm signup immediately
         signup.setStatus("CONFIRMED");
@@ -274,15 +492,6 @@ public class RoundSignupService {
             throw new RuntimeException("Cannot cancel signup less than 24 hours before the round");
         }
 
-        // Handle special roles
-        if ("TEAM_LEAD".equals(signup.getRole())) {
-            round.setTeamLeadId(null);
-            roundsRepository.save(round);
-        } else if ("CLINICIAN".equals(signup.getRole())) {
-            round.setClinicianId(null);
-            roundsRepository.save(round);
-        }
-
         // Delete the signup
         roundSignupRepository.delete(signup);
 
@@ -290,129 +499,6 @@ public class RoundSignupService {
         if ("CONFIRMED".equals(signup.getStatus()) && "VOLUNTEER".equals(signup.getRole())) {
             runLotteryForRound(signup.getRoundId());
         }
-    }
-
-    /**
-     * Get all signups for a round
-     */
-    public List<Map<String, Object>> getAllSignupsForRound(Integer roundId) {
-        List<RoundSignup> signups = roundSignupRepository.findByRoundId(roundId);
-        List<Map<String, Object>> result = new ArrayList<>();
-
-        for (RoundSignup signup : signups) {
-            Map<String, Object> signupData = new HashMap<>();
-            signupData.put("signupId", signup.getSignupId());
-            signupData.put("userId", signup.getUserId());
-            signupData.put("role", signup.getRole());
-            signupData.put("status", signup.getStatus());
-            signupData.put("signupTime", signup.getSignupTime());
-
-            // Fetch user details
-            try {
-                User user = userRepository.findById(signup.getUserId()).orElse(null);
-                if (user != null) {
-                    signupData.put("username", user.getUsername());
-                    signupData.put("email", user.getEmail());
-                    signupData.put("phone", user.getPhone());
-                    if (user.getMetadata() != null) {
-                        signupData.put("firstName", user.getMetadata().getFirstName());
-                        signupData.put("lastName", user.getMetadata().getLastName());
-                    }
-                }
-            } catch (Exception e) {
-                logger.error("Error fetching user details for signup {}: {}", signup.getSignupId(), e.getMessage());
-            }
-
-            result.add(signupData);
-        }
-
-        return result;
-    }
-
-    /**
-     * Get all rounds a volunteer has signed up for
-     */
-    public List<Map<String, Object>> getVolunteerSignups(Integer userId) {
-        List<RoundSignup> signups = roundSignupRepository.findByUserId(userId);
-        List<Map<String, Object>> result = new ArrayList<>();
-
-        for (RoundSignup signup : signups) {
-            Map<String, Object> signupData = new HashMap<>();
-            signupData.put("signupId", signup.getSignupId());
-            signupData.put("roundId", signup.getRoundId());
-            signupData.put("role", signup.getRole());
-            signupData.put("status", signup.getStatus());
-            signupData.put("signupTime", signup.getSignupTime());
-
-            // Fetch round details
-            try {
-                Rounds round = roundsRepository.findById(signup.getRoundId()).orElse(null);
-                if (round != null) {
-                    signupData.put("roundTitle", round.getTitle());
-                    signupData.put("startTime", round.getStartTime());
-                    signupData.put("endTime", round.getEndTime());
-                    signupData.put("location", round.getLocation());
-                    signupData.put("roundStatus", round.getStatus());
-                }
-            } catch (Exception e) {
-                logger.error("Error fetching round details for signup {}: {}", signup.getSignupId(), e.getMessage());
-            }
-
-            result.add(signupData);
-        }
-
-        return result;
-    }
-
-    /**
-     * Admin override to confirm a waitlisted volunteer
-     */
-    @Transactional
-    public RoundSignup adminConfirmSignup(Integer signupId, Integer adminId) {
-        // Verify admin
-        User admin = userRepository.findById(adminId)
-                .orElseThrow(() -> new RuntimeException("Admin not found"));
-
-        if (!"ADMIN".equals(admin.getRole())) {
-            throw new RuntimeException("Only admins can perform this operation");
-        }
-
-        RoundSignup signup = roundSignupRepository.findById(signupId)
-                .orElseThrow(() -> new RuntimeException("Signup not found"));
-
-        // Check if signup is waitlisted
-        if (!"WAITLISTED".equals(signup.getStatus())) {
-            throw new RuntimeException("Can only confirm waitlisted signups");
-        }
-
-        // Confirm the signup
-        signup.setStatus("CONFIRMED");
-        signup.setUpdatedAt(LocalDateTime.now());
-
-        return roundSignupRepository.save(signup);
-    }
-
-    /**
-     * Admin override to reject a waitlisted or confirmed volunteer
-     */
-    @Transactional
-    public RoundSignup adminRejectSignup(Integer signupId, Integer adminId) {
-        // Verify admin
-        User admin = userRepository.findById(adminId)
-                .orElseThrow(() -> new RuntimeException("Admin not found"));
-
-        if (!"ADMIN".equals(admin.getRole())) {
-            throw new RuntimeException("Only admins can perform this operation");
-        }
-
-        RoundSignup signup = roundSignupRepository.findById(signupId)
-                .orElseThrow(() -> new RuntimeException("Signup not found"));
-
-        // Reject the signup
-        signup.setStatus("REJECTED");
-        signup.setUpdatedAt(LocalDateTime.now());
-
-        return roundSignupRepository.save(signup);
     }
 
     /**
@@ -430,40 +516,6 @@ public class RoundSignupService {
     }
 
     /**
-     * Check if a user has already signed up for a round
-     */
-    public boolean isUserSignedUp(Integer roundId, Integer userId) {
-        return roundSignupRepository.existsByRoundIdAndUserId(roundId, userId);
-    }
-
-    /**
-     * Get participant counts for a round
-     */
-    public Map<String, Object> getParticipantCounts(Integer roundId) {
-        Map<String, Object> counts = new HashMap<>();
-
-        // Count confirmed volunteers
-        long confirmedVolunteers = roundSignupRepository.countConfirmedVolunteersForRound(roundId);
-
-        // Count waitlisted volunteers
-        List<RoundSignup> waitlisted = roundSignupRepository.findByRoundIdAndStatusOrderByLotteryNumberAsc(roundId, "WAITLISTED");
-
-        counts.put("confirmedCount", confirmedVolunteers);
-        counts.put("waitlistedCount", waitlisted.size());
-
-        // Check if team lead and clinician are assigned
-        Rounds round = roundsRepository.findById(roundId).orElse(null);
-        if (round != null) {
-            counts.put("hasTeamLead", round.getTeamLeadId() != null);
-            counts.put("hasClinician", round.getClinicianId() != null);
-            counts.put("maxParticipants", round.getMaxParticipants());
-            counts.put("availableSlots", round.getMaxParticipants() - confirmedVolunteers);
-        }
-
-        return counts;
-    }
-
-    /**
      * Check if a volunteer has the team lead role
      */
     public boolean hasTeamLeadRole(Integer userId) {
@@ -475,5 +527,15 @@ public class RoundSignupService {
      */
     public boolean hasClinicianRole(Integer userId) {
         return volunteerSubRoleRepository.existsByUserIdAndSubRole(userId, VolunteerSubRole.SubRoleType.CLINICIAN);
+    }
+
+    /**
+     * Find a user's signup for a specific round
+     * @param roundId The round ID
+     * @param userId The user ID
+     * @return Optional containing the signup if found
+     */
+    public Optional<RoundSignup> findByRoundIdAndUserId(Integer roundId, Integer userId) {
+        return roundSignupRepository.findByRoundIdAndUserId(roundId, userId);
     }
 }

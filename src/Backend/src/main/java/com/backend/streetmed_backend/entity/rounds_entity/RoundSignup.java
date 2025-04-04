@@ -4,7 +4,8 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "round_signups")
+@Table(name = "round_signups",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"round_id", "user_id"}))
 public class RoundSignup {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -110,6 +111,23 @@ public class RoundSignup {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    // Helper methods
+    public boolean isTeamLead() {
+        return "TEAM_LEAD".equals(role);
+    }
+
+    public boolean isClinician() {
+        return "CLINICIAN".equals(role);
+    }
+
+    public boolean isConfirmed() {
+        return "CONFIRMED".equals(status);
+    }
+
+    public boolean isWaitlisted() {
+        return "WAITLISTED".equals(status);
     }
 
     // Pre-update callback

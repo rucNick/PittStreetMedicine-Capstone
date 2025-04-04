@@ -3,19 +3,22 @@ package com.backend.streetmed_backend.service;
 import com.backend.streetmed_backend.entity.rounds_entity.Rounds;
 import com.backend.streetmed_backend.entity.rounds_entity.RoundSignup;
 import com.backend.streetmed_backend.entity.user_entity.User;
-import com.backend.streetmed_backend.entity.user_entity.VolunteerSubRole;
 import com.backend.streetmed_backend.repository.Rounds.RoundsRepository;
 import com.backend.streetmed_backend.repository.Rounds.RoundSignupRepository;
 import com.backend.streetmed_backend.repository.User.UserRepository;
-import com.backend.streetmed_backend.repository.User.VolunteerSubRoleRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.time.LocalTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 @Service
@@ -24,21 +27,68 @@ public class RoundsService {
     private final RoundsRepository roundsRepository;
     private final RoundSignupRepository roundSignupRepository;
     private final UserRepository userRepository;
-    private final VolunteerSubRoleRepository volunteerSubRoleRepository;
     private final EmailService emailService;
+    private final RoundSignupService roundSignupService;
     private static final Logger logger = LoggerFactory.getLogger(RoundsService.class);
 
     @Autowired
     public RoundsService(RoundsRepository roundsRepository,
                          RoundSignupRepository roundSignupRepository,
                          UserRepository userRepository,
-                         VolunteerSubRoleRepository volunteerSubRoleRepository,
-                         EmailService emailService) {
+                         EmailService emailService,
+                         RoundSignupService roundSignupService) {
         this.roundsRepository = roundsRepository;
         this.roundSignupRepository = roundSignupRepository;
         this.userRepository = userRepository;
-        this.volunteerSubRoleRepository = volunteerSubRoleRepository;
         this.emailService = emailService;
+        this.roundSignupService = roundSignupService;
+    }
+
+    /**
+     * Get all rounds (including past, upcoming, and canceled)
+     */
+    public List<Rounds> getAllRounds() {
+        return roundsRepository.findAll();
+    }
+
+    /**
+     * Get rounds for a specific date range (for calendar)
+     * @param startDate The start of the date range
+     * @param endDate The end of the date range
+     * @return A list of rounds within the date range
+     */
+    public List<Rounds> getRoundsForDateRange(LocalDateTime startDate, LocalDateTime endDate) {
+        return roundsRepository.findRoundsForDateRange(startDate, endDate);
+    }
+
+    /**
+     * Get rounds for a specific month (for monthly calendar view)
+     * @param year The year
+     * @param month The month (1-12)
+     * @return A list of rounds for the month
+     */
+    public List<Rounds> getRoundsForMonth(int year, int month) {
+        LocalDateTime startOfMonth = LocalDateTime.of(year, month, 1, 0, 0);
+        LocalDateTime endOfMonth;
+        if (month == 12) {
+            endOfMonth = LocalDateTime.of(year + 1, 1, 1, 0, 0).minusNanos(1);
+        } else {
+            endOfMonth = LocalDateTime.of(year, month + 1, 1, 0, 0).minusNanos(1);
+        }
+
+        return getRoundsForDateRange(startOfMonth, endOfMonth);
+    }
+
+    /**
+     * Get rounds for a specific day (for daily view)
+     * @param date The date
+     * @return A list of rounds for the day
+     */
+    public List<Rounds> getRoundsForDay(LocalDate date) {
+        LocalDateTime startOfDay = date.atStartOfDay();
+        LocalDateTime endOfDay = date.atTime(LocalTime.MAX);
+
+        return getRoundsForDateRange(startOfDay, endOfDay);
     }
 
     /**
@@ -76,13 +126,7 @@ public class RoundsService {
         existingRound.setMaxParticipants(updatedRound.getMaxParticipants());
         existingRound.setUpdatedAt(LocalDateTime.now());
 
-        // Optional fields
-        if (updatedRound.getTeamLeadId() != null) {
-            existingRound.setTeamLeadId(updatedRound.getTeamLeadId());
-        }
-        if (updatedRound.getClinicianId() != null) {
-            existingRound.setClinicianId(updatedRound.getClinicianId());
-        }
+        // Set status if provided
         if (updatedRound.getStatus() != null) {
             existingRound.setStatus(updatedRound.getStatus());
         }
@@ -173,181 +217,154 @@ public class RoundsService {
      * Get rounds that need a team lead
      */
     public List<Rounds> getRoundsNeedingTeamLead() {
-        return roundsRepository.findByTeamLeadIdIsNullAndStartTimeAfterOrderByStartTimeAsc(LocalDateTime.now());
+        return roundsRepository.findRoundsNeedingTeamLead(LocalDateTime.now());
     }
 
     /**
      * Get rounds that need a clinician
      */
     public List<Rounds> getRoundsNeedingClinician() {
-        return roundsRepository.findByClinicianIdIsNullAndStartTimeAfterOrderByStartTimeAsc(LocalDateTime.now());
-    }
-
-    /**
-     * Assign a team lead to a round
-     */
-    @Transactional
-    public Rounds assignTeamLead(Integer roundId, Integer userId) {
-        // Check if user exists and has TEAM_LEAD role
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
-
-        if (!"VOLUNTEER".equals(user.getRole())) {
-            throw new RuntimeException("User must be a volunteer to be assigned as team lead");
-        }
-
-        // Check if user has TEAM_LEAD sub-role
-        boolean isTeamLead = volunteerSubRoleRepository.existsByUserIdAndSubRole(
-                userId, VolunteerSubRole.SubRoleType.TEAM_LEAD);
-
-        if (!isTeamLead) {
-            throw new RuntimeException("User must have TEAM_LEAD sub-role to be assigned as team lead");
-        }
-
-        Rounds round = roundsRepository.findById(roundId)
-                .orElseThrow(() -> new RuntimeException("Round not found with ID: " + roundId));
-
-        // Update round with team lead ID
-        round.setTeamLeadId(userId);
-        round.setUpdatedAt(LocalDateTime.now());
-
-        // Create a signup record for the team lead
-        Optional<RoundSignup> existingSignup = roundSignupRepository.findByRoundIdAndUserId(roundId, userId);
-        if (existingSignup.isPresent()) {
-            RoundSignup signup = existingSignup.get();
-            signup.setRole("TEAM_LEAD");
-            signup.setStatus("CONFIRMED");
-            signup.setUpdatedAt(LocalDateTime.now());
-            roundSignupRepository.save(signup);
-        } else {
-            RoundSignup signup = new RoundSignup(roundId, userId, "TEAM_LEAD");
-            signup.setStatus("CONFIRMED");
-            roundSignupRepository.save(signup);
-        }
-
-        return roundsRepository.save(round);
-    }
-
-    /**
-     * Assign a clinician to a round
-     */
-    @Transactional
-    public Rounds assignClinician(Integer roundId, Integer userId) {
-        // Check if user exists and has CLINICIAN role
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
-
-        if (!"VOLUNTEER".equals(user.getRole())) {
-            throw new RuntimeException("User must be a volunteer to be assigned as clinician");
-        }
-
-        // Check if user has CLINICIAN sub-role
-        boolean isClinician = volunteerSubRoleRepository.existsByUserIdAndSubRole(
-                userId, VolunteerSubRole.SubRoleType.CLINICIAN);
-
-        if (!isClinician) {
-            throw new RuntimeException("User must have CLINICIAN sub-role to be assigned as clinician");
-        }
-
-        Rounds round = roundsRepository.findById(roundId)
-                .orElseThrow(() -> new RuntimeException("Round not found with ID: " + roundId));
-
-        // Update round with clinician ID
-        round.setClinicianId(userId);
-        round.setUpdatedAt(LocalDateTime.now());
-
-        // Create a signup record for the clinician
-        Optional<RoundSignup> existingSignup = roundSignupRepository.findByRoundIdAndUserId(roundId, userId);
-        if (existingSignup.isPresent()) {
-            RoundSignup signup = existingSignup.get();
-            signup.setRole("CLINICIAN");
-            signup.setStatus("CONFIRMED");
-            signup.setUpdatedAt(LocalDateTime.now());
-            roundSignupRepository.save(signup);
-        } else {
-            RoundSignup signup = new RoundSignup(roundId, userId, "CLINICIAN");
-            signup.setStatus("CONFIRMED");
-            roundSignupRepository.save(signup);
-        }
-
-        return roundsRepository.save(round);
-    }
-
-    /**
-     * Send reminders for rounds happening tomorrow
-     * This would typically be called by a scheduled task
-     */
-    @Transactional(readOnly = true)
-    public void sendRoundReminders() {
-        LocalDateTime tomorrow = LocalDateTime.now().plusDays(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
-        LocalDateTime dayAfterTomorrow = tomorrow.plusDays(1);
-
-        List<Rounds> tomorrowRounds = roundsRepository.findRoundsForNext7Days(tomorrow, dayAfterTomorrow);
-
-        for (Rounds round : tomorrowRounds) {
-            List<RoundSignup> confirmedSignups = roundSignupRepository.findByRoundIdAndStatusOrderBySignupTimeAsc(
-                    round.getRoundId(), "CONFIRMED");
-
-            for (RoundSignup signup : confirmedSignups) {
-                try {
-                    User user = userRepository.findById(signup.getUserId()).orElse(null);
-                    if (user != null && user.getEmail() != null && emailService.isEmailServiceEnabled()) {
-                        Map<String, Object> emailData = new HashMap<>();
-                        emailData.put("roundTitle", round.getTitle());
-                        emailData.put("startTime", round.getStartTime());
-                        emailData.put("location", round.getLocation());
-                        emailData.put("role", signup.getRole());
-
-                        // Send email notification in a non-blocking way
-                        CompletableFuture.runAsync(() -> {
-                            try {
-                                emailService.sendRoundReminderEmail(user.getEmail(), emailData);
-                            } catch (Exception e) {
-                                logger.error("Failed to send round reminder email to {}: {}",
-                                        user.getEmail(), e.getMessage());
-                            }
-                        });
-                    }
-                } catch (Exception e) {
-                    logger.error("Error sending reminder to user {} for round {}: {}",
-                            signup.getUserId(), round.getRoundId(), e.getMessage());
-                }
-            }
-        }
-    }
-
-    /**
-     * Get rounds for a specific date range
-     */
-    public List<Rounds> getRoundsForDateRange(LocalDateTime startDate, LocalDateTime endDate) {
-        return roundsRepository.findRoundsForNext7Days(startDate, endDate);
-    }
-
-    /**
-     * Count upcoming rounds
-     */
-    public long countUpcomingRounds() {
-        return roundsRepository.countUpcomingRounds(LocalDateTime.now());
-    }
-
-    /**
-     * Get rounds by status
-     */
-    public List<Rounds> getRoundsByStatus(String status) {
-        return roundsRepository.findByStatus(status);
+        return roundsRepository.findRoundsNeedingClinician(LocalDateTime.now());
     }
 
     /**
      * Get rounds where a user is team lead
      */
     public List<Rounds> getRoundsForTeamLead(Integer userId) {
-        return roundsRepository.findByTeamLeadId(userId);
+        return roundsRepository.findRoundsWhereUserIsTeamLead(userId);
     }
 
     /**
      * Get rounds where a user is clinician
      */
     public List<Rounds> getRoundsForClinician(Integer userId) {
-        return roundsRepository.findByClinicianId(userId);
+        return roundsRepository.findRoundsWhereUserIsClinician(userId);
+    }
+
+    /**
+     * Get rounds where a user is participating (any role)
+     */
+    public List<Rounds> getRoundsForUser(Integer userId) {
+        return roundsRepository.findRoundsForUser(userId);
+    }
+
+    /**
+     * Get detailed round information including team lead and clinician details
+     */
+    public Map<String, Object> getRoundWithDetails(Integer roundId) {
+        Rounds round = roundsRepository.findById(roundId)
+                .orElseThrow(() -> new RuntimeException("Round not found with ID: " + roundId));
+
+        Map<String, Object> roundDetails = new HashMap<>();
+        roundDetails.put("roundId", round.getRoundId());
+        roundDetails.put("title", round.getTitle());
+        roundDetails.put("description", round.getDescription());
+        roundDetails.put("startTime", round.getStartTime());
+        roundDetails.put("endTime", round.getEndTime());
+        roundDetails.put("location", round.getLocation());
+        roundDetails.put("status", round.getStatus());
+        roundDetails.put("maxParticipants", round.getMaxParticipants());
+
+        // Calculate availability
+        long confirmedVolunteers = roundSignupRepository.countConfirmedVolunteersForRound(roundId);
+        int availableSlots = round.getMaxParticipants() - (int)confirmedVolunteers;
+
+        roundDetails.put("confirmedVolunteers", confirmedVolunteers);
+        roundDetails.put("availableSlots", availableSlots);
+        roundDetails.put("openForSignup", availableSlots > 0);
+
+        // Get team lead information
+        Optional<RoundSignup> teamLeadSignup = roundSignupService.getTeamLeadForRound(roundId);
+        if (teamLeadSignup.isPresent()) {
+            Map<String, Object> teamLeadInfo = new HashMap<>();
+            Integer teamLeadId = teamLeadSignup.get().getUserId();
+            roundDetails.put("hasTeamLead", true);
+
+            try {
+                User teamLead = userRepository.findById(teamLeadId).orElse(null);
+                if (teamLead != null) {
+                    teamLeadInfo.put("userId", teamLead.getUserId());
+                    teamLeadInfo.put("username", teamLead.getUsername());
+                    teamLeadInfo.put("email", teamLead.getEmail());
+                    teamLeadInfo.put("phone", teamLead.getPhone());
+
+                    if (teamLead.getMetadata() != null) {
+                        teamLeadInfo.put("firstName", teamLead.getMetadata().getFirstName());
+                        teamLeadInfo.put("lastName", teamLead.getMetadata().getLastName());
+                    }
+
+                    roundDetails.put("teamLead", teamLeadInfo);
+                }
+            } catch (Exception e) {
+                logger.error("Error getting team lead details: {}", e.getMessage());
+                roundDetails.put("teamLeadId", teamLeadId);
+            }
+        } else {
+            roundDetails.put("hasTeamLead", false);
+        }
+
+        // Get clinician information
+        Optional<RoundSignup> clinicianSignup = roundSignupService.getClinicianForRound(roundId);
+        if (clinicianSignup.isPresent()) {
+            Map<String, Object> clinicianInfo = new HashMap<>();
+            Integer clinicianId = clinicianSignup.get().getUserId();
+            roundDetails.put("hasClinician", true);
+
+            try {
+                User clinician = userRepository.findById(clinicianId).orElse(null);
+                if (clinician != null) {
+                    clinicianInfo.put("userId", clinician.getUserId());
+                    clinicianInfo.put("username", clinician.getUsername());
+                    clinicianInfo.put("email", clinician.getEmail());
+                    clinicianInfo.put("phone", clinician.getPhone());
+
+                    if (clinician.getMetadata() != null) {
+                        clinicianInfo.put("firstName", clinician.getMetadata().getFirstName());
+                        clinicianInfo.put("lastName", clinician.getMetadata().getLastName());
+                    }
+
+                    roundDetails.put("clinician", clinicianInfo);
+                }
+            } catch (Exception e) {
+                logger.error("Error getting clinician details: {}", e.getMessage());
+                roundDetails.put("clinicianId", clinicianId);
+            }
+        } else {
+            roundDetails.put("hasClinician", false);
+        }
+
+        return roundDetails;
+    }
+
+    /**
+     * Get all signups with user details for a round
+     */
+    public List<Map<String, Object>> getRoundSignupsWithUserDetails(Integer roundId) {
+        List<RoundSignup> signups = roundSignupRepository.findByRoundId(roundId);
+        List<Map<String, Object>> signupsWithDetails = new java.util.ArrayList<>();
+
+        for (RoundSignup signup : signups) {
+            Map<String, Object> signupDetails = new HashMap<>();
+            signupDetails.put("signupId", signup.getSignupId());
+            signupDetails.put("userId", signup.getUserId());
+            signupDetails.put("status", signup.getStatus());
+            signupDetails.put("role", signup.getRole());
+            signupDetails.put("signupTime", signup.getSignupTime());
+
+            if ("WAITLISTED".equals(signup.getStatus()) && signup.getLotteryNumber() != null) {
+                signupDetails.put("lotteryNumber", signup.getLotteryNumber());
+            }
+
+            // Add user details
+            try {
+                roundSignupService.addUserDetailsToSignup(signupDetails, signup.getUserId());
+            } catch (Exception e) {
+                logger.error("Error adding user details for signup {}: {}", signup.getSignupId(), e.getMessage());
+            }
+
+            signupsWithDetails.add(signupDetails);
+        }
+
+        return signupsWithDetails;
     }
 }

@@ -15,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -85,19 +86,11 @@ public class AdminRoundsController {
                     throw new IllegalArgumentException("Start time and end time are required");
                 }
 
-                round.setStartTime(java.time.LocalDateTime.parse(startTimeStr));
-                round.setEndTime(java.time.LocalDateTime.parse(endTimeStr));
+                round.setStartTime(LocalDateTime.parse(startTimeStr));
+                round.setEndTime(LocalDateTime.parse(endTimeStr));
 
                 round.setLocation((String) requestData.get("location"));
                 round.setMaxParticipants((Integer) requestData.get("maxParticipants"));
-
-                // Optional fields
-                if (requestData.containsKey("teamLeadId")) {
-                    round.setTeamLeadId((Integer) requestData.get("teamLeadId"));
-                }
-                if (requestData.containsKey("clinicianId")) {
-                    round.setClinicianId((Integer) requestData.get("clinicianId"));
-                }
 
                 Rounds savedRound = roundsService.createRound(round);
 
@@ -163,22 +156,16 @@ public class AdminRoundsController {
                     existingRound.setDescription((String) requestData.get("description"));
                 }
                 if (requestData.containsKey("startTime")) {
-                    existingRound.setStartTime(java.time.LocalDateTime.parse((String) requestData.get("startTime")));
+                    existingRound.setStartTime(LocalDateTime.parse((String) requestData.get("startTime")));
                 }
                 if (requestData.containsKey("endTime")) {
-                    existingRound.setEndTime(java.time.LocalDateTime.parse((String) requestData.get("endTime")));
+                    existingRound.setEndTime(LocalDateTime.parse((String) requestData.get("endTime")));
                 }
                 if (requestData.containsKey("location")) {
                     existingRound.setLocation((String) requestData.get("location"));
                 }
                 if (requestData.containsKey("maxParticipants")) {
                     existingRound.setMaxParticipants((Integer) requestData.get("maxParticipants"));
-                }
-                if (requestData.containsKey("teamLeadId")) {
-                    existingRound.setTeamLeadId((Integer) requestData.get("teamLeadId"));
-                }
-                if (requestData.containsKey("clinicianId")) {
-                    existingRound.setClinicianId((Integer) requestData.get("clinicianId"));
                 }
                 if (requestData.containsKey("status")) {
                     existingRound.setStatus((String) requestData.get("status"));
@@ -277,7 +264,7 @@ public class AdminRoundsController {
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
                 }
 
-                List<Rounds> allRounds = roundsService.getAllScheduledRounds();
+                List<Rounds> allRounds = roundsService.getAllRounds();
 
                 Map<String, Object> response = new HashMap<>();
                 response.put("status", "success");
@@ -329,7 +316,7 @@ public class AdminRoundsController {
         }, asyncExecutor);
     }
 
-    @Operation(summary = "Get round details",
+    @Operation(summary = "Get round details with all participants",
             description = "Retrieves details for a specific round including all signups. Only accessible by administrators.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Round details retrieved successfully"),
@@ -351,13 +338,32 @@ public class AdminRoundsController {
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
                 }
 
+                // Get round details with proper service method
+                Map<String, Object> roundDetails = roundsService.getRoundWithDetails(roundId);
+
+                // Get all signups with user details
+                List<Map<String, Object>> signups = roundsService.getRoundSignupsWithUserDetails(roundId);
+
+                // Get participant counts
+                long confirmedVolunteers = roundSignupService.countConfirmedVolunteersForRound(roundId);
+                int waitlistedCount = roundSignupService.getWaitlistedSignups(roundId).size();
+
                 Rounds round = roundsService.getRound(roundId);
-                List<Map<String, Object>> signups = roundSignupService.getAllSignupsForRound(roundId);
+                int availableSlots = round.getMaxParticipants() - (int)confirmedVolunteers;
+
+                Map<String, Object> participantCounts = new HashMap<>();
+                participantCounts.put("maxParticipants", round.getMaxParticipants());
+                participantCounts.put("confirmedVolunteers", confirmedVolunteers);
+                participantCounts.put("availableSlots", availableSlots);
+                participantCounts.put("waitlistedCount", waitlistedCount);
+                participantCounts.put("hasTeamLead", roundSignupService.hasTeamLead(roundId));
+                participantCounts.put("hasClinician", roundSignupService.hasClinician(roundId));
 
                 Map<String, Object> response = new HashMap<>();
                 response.put("status", "success");
-                response.put("round", round);
+                response.put("round", roundDetails);
                 response.put("signups", signups);
+                response.put("participantCounts", participantCounts);
 
                 return ResponseEntity.ok(response);
             } catch (Exception e) {
@@ -425,7 +431,7 @@ public class AdminRoundsController {
         }, asyncExecutor);
     }
 
-    @Operation(summary = "Confirm a waitlisted volunteer",
+    @Operation(summary = "Manually confirm a waitlisted volunteer",
             description = "Manually confirms a waitlisted volunteer for a round. Only accessible by administrators.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Volunteer confirmed successfully"),
@@ -456,7 +462,20 @@ public class AdminRoundsController {
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
                 }
 
-                RoundSignup confirmedSignup = roundSignupService.adminConfirmSignup(signupId, adminId);
+                // Confirm the signup manually
+                RoundSignup signup = roundSignupService.findSignupById(signupId);
+
+                if (!"WAITLISTED".equals(signup.getStatus())) {
+                    Map<String, Object> errorResponse = new HashMap<>();
+                    errorResponse.put("status", "error");
+                    errorResponse.put("message", "Only waitlisted signups can be manually confirmed");
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+                }
+
+                // Update status to confirmed
+                signup.setStatus("CONFIRMED");
+                signup.setUpdatedAt(LocalDateTime.now());
+                RoundSignup confirmedSignup = roundSignupService.updateSignup(signup);
 
                 Map<String, Object> response = new HashMap<>();
                 response.put("status", "success");
@@ -479,16 +498,16 @@ public class AdminRoundsController {
         }, asyncExecutor);
     }
 
-    @Operation(summary = "Reject a volunteer signup",
-            description = "Rejects a volunteer signup for a round. Only accessible by administrators.")
+    @Operation(summary = "Remove a volunteer from a round",
+            description = "Removes a volunteer from a round. Only accessible by administrators.")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Volunteer rejected successfully"),
+            @ApiResponse(responseCode = "200", description = "Volunteer removed successfully"),
             @ApiResponse(responseCode = "401", description = "Not authenticated"),
             @ApiResponse(responseCode = "403", description = "Unauthorized - Admin access only"),
             @ApiResponse(responseCode = "404", description = "Signup not found")
     })
-    @PostMapping("/signup/{signupId}/reject")
-    public CompletableFuture<ResponseEntity<Map<String, Object>>> rejectSignup(
+    @PostMapping("/signup/{signupId}/remove")
+    public CompletableFuture<ResponseEntity<Map<String, Object>>> removeSignup(
             @PathVariable Integer signupId,
             @RequestBody @Schema(example = """
             {
@@ -510,13 +529,94 @@ public class AdminRoundsController {
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
                 }
 
-                RoundSignup rejectedSignup = roundSignupService.adminRejectSignup(signupId, adminId);
+                // Find the signup
+                RoundSignup signup = roundSignupService.findSignupById(signupId);
+                Integer roundId = signup.getRoundId();
+                Integer userId = signup.getUserId();
+
+                // Admin can remove any signup regardless of time restrictions
+                roundSignupService.adminCancelSignup(signupId, adminId);
 
                 Map<String, Object> response = new HashMap<>();
                 response.put("status", "success");
-                response.put("message", "Volunteer rejected successfully");
-                response.put("signupId", rejectedSignup.getSignupId());
-                response.put("status", rejectedSignup.getStatus());
+                response.put("message", "Volunteer removed successfully");
+                response.put("roundId", roundId);
+                response.put("userId", userId);
+
+                return ResponseEntity.ok(response);
+            } catch (Exception e) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("status", "error");
+                errorResponse.put("message", e.getMessage());
+
+                if (e.getMessage().contains("not found")) {
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+                }
+
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+            }
+        }, asyncExecutor);
+    }
+
+    @Operation(summary = "Get all waitlisted volunteers for a round",
+            description = "Retrieves all waitlisted volunteers for a round. Only accessible by administrators.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Waitlisted volunteers retrieved successfully"),
+            @ApiResponse(responseCode = "401", description = "Not authenticated"),
+            @ApiResponse(responseCode = "404", description = "Round not found")
+    })
+    @GetMapping("/{roundId}/waitlist")
+    public CompletableFuture<ResponseEntity<Map<String, Object>>> getWaitlistedVolunteers(
+            @PathVariable Integer roundId,
+            @RequestParam("authenticated") Boolean authenticated,
+            @RequestParam("adminUsername") String adminUsername) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                if (!Boolean.TRUE.equals(authenticated)) {
+                    Map<String, Object> errorResponse = new HashMap<>();
+                    errorResponse.put("status", "error");
+                    errorResponse.put("message", "Not authenticated");
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+                }
+
+                // Verify round exists
+                roundsService.getRound(roundId);
+
+                // Get waitlisted signups with user details
+                List<RoundSignup> waitlistedSignups = roundSignupService.getWaitlistedSignups(roundId);
+                List<Map<String, Object>> waitlistedWithDetails = new java.util.ArrayList<>();
+
+                for (RoundSignup signup : waitlistedSignups) {
+                    Map<String, Object> signupDetails = new HashMap<>();
+                    signupDetails.put("signupId", signup.getSignupId());
+                    signupDetails.put("userId", signup.getUserId());
+                    signupDetails.put("status", signup.getStatus());
+                    signupDetails.put("role", signup.getRole());
+                    signupDetails.put("signupTime", signup.getSignupTime());
+                    signupDetails.put("lotteryNumber", signup.getLotteryNumber());
+
+                    // Add user details (name, email, etc.)
+                    try {
+                        roundSignupService.addUserDetailsToSignup(signupDetails, signup.getUserId());
+                    } catch (Exception e) {
+                        // Continue even if user details can't be fetched
+                    }
+
+                    waitlistedWithDetails.add(signupDetails);
+                }
+
+                // Sort by lottery number
+                waitlistedWithDetails.sort((map1, map2) -> {
+                    Integer lottery1 = (Integer) map1.get("lotteryNumber");
+                    Integer lottery2 = (Integer) map2.get("lotteryNumber");
+                    return lottery1.compareTo(lottery2);
+                });
+
+                Map<String, Object> response = new HashMap<>();
+                response.put("status", "success");
+                response.put("roundId", roundId);
+                response.put("waitlistedCount", waitlistedSignups.size());
+                response.put("waitlistedVolunteers", waitlistedWithDetails);
 
                 return ResponseEntity.ok(response);
             } catch (Exception e) {

@@ -29,11 +29,8 @@ public class Rounds {
     @Column(name = "max_participants", nullable = false)
     private Integer maxParticipants;
 
-    @Column(name = "team_lead_id")
-    private Integer teamLeadId;
-
-    @Column(name = "clinician_id")
-    private Integer clinicianId;
+    // Removed teamLeadId and clinicianId fields to avoid redundancy
+    // These will now be managed through the RoundSignup entity
 
     @Column(name = "status", nullable = false)
     private String status; // SCHEDULED, CANCELED, COMPLETED
@@ -49,6 +46,15 @@ public class Rounds {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
         this.status = "SCHEDULED";
+    }
+
+    // Helper methods for determining availability
+    public boolean hasAvailableSlots(long confirmedCount) {
+        return confirmedCount < maxParticipants;
+    }
+
+    public int getAvailableSlots(long confirmedCount) {
+        return maxParticipants - (int)confirmedCount;
     }
 
     // Getters and Setters
@@ -106,22 +112,6 @@ public class Rounds {
 
     public void setMaxParticipants(Integer maxParticipants) {
         this.maxParticipants = maxParticipants;
-    }
-
-    public Integer getTeamLeadId() {
-        return teamLeadId;
-    }
-
-    public void setTeamLeadId(Integer teamLeadId) {
-        this.teamLeadId = teamLeadId;
-    }
-
-    public Integer getClinicianId() {
-        return clinicianId;
-    }
-
-    public void setClinicianId(Integer clinicianId) {
-        this.clinicianId = clinicianId;
     }
 
     public String getStatus() {
