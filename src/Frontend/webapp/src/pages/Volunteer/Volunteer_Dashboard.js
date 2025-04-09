@@ -11,11 +11,11 @@ const Volunteer_Dashboard = ({ userData }) => {
   const navigate = useNavigate();
 
   const [myUpcomingRounds, setMyUpcomingRounds] = useState([]);
-  //const [myPastRounds, setMyPastRounds] = useState([]);
+  const [myPastRounds, setMyPastRounds] = useState([]);
   const [myRoundsError, setMyRoundsError] = useState('');
 
   const [allUpcomingRounds, setAllUpcomingRounds] = useState([]);
-  //const [allRoundsError, setAllRoundsError] = useState('');
+  const [allRoundsError, setAllRoundsError] = useState('');
 
   const [assignedOrders, setAssignedOrders] = useState([]);
   const [ordersError, setOrdersError] = useState('');
@@ -232,6 +232,24 @@ const Volunteer_Dashboard = ({ userData }) => {
             </div>
           ))}
         </div>
+{/* ---------------------------------------------------------------------------- */}
+        <h2>My Past Rounds</h2>
+        <div className="rounds-cards">
+          {myPastRounds.length === 0 ? (
+            <p>No past rounds available.</p>
+          ) : (
+            myPastRounds.map((round) => (
+              <div key={round.roundId} className="round-card">
+                <h3>{round.title}</h3>
+                <p>{round.description}</p>
+                <p>Location: {round.location}</p>
+                <p>Start: {new Date(round.startTime).toLocaleString()}</p>
+                <p>End: {new Date(round.endTime).toLocaleString()}</p>
+              </div>
+            ))
+          )}
+        </div>
+{/* ---------------------------------------------------------------------------- */}
         <h2>Assigned Orders</h2>
         {ordersError && <p className="error-text">{ordersError}</p>}
         <div className="orders-cards">
@@ -247,6 +265,9 @@ const Volunteer_Dashboard = ({ userData }) => {
       </div>
       <div className="volunteer-right-panel">
         <h2>Select a date to see rounds</h2>
+        {/* ---------------------------------------------------------------------------- */}
+        {allRoundsError && <p className="error-text">{allRoundsError}</p>}
+        {/* ---------------------------------------------------------------------------- */}
         <Calendar
           onClickDay={handleDateClick}
           tileClassName={highlightDates}
