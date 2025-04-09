@@ -1,32 +1,64 @@
-version: '3.8'
+name: Backend CI/CD
 
-services:
-  backend:
-    build:
-      context: ./src/Backend
-      dockerfile: dockerfile
-    ports:
-      - "8080:8080"
-    environment:
-      - SPRING_PROFILES_ACTIVE=dev
-      # Add other environment variables as needed
-    networks:
-      - streetmed-network
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/Backend/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/Backend/**'
+  workflow_dispatch:
 
-  frontend:
-    build:
-      context: ./src/Frontend/webapp
-      dockerfile: dockerfile
-    ports:
-      - "3000:80"
-    depends_on:
-      - backend
-    environment:
-      - REACT_APP_API_URL=http://localhost:8080
-      # https://streetmed-backend-900663028964.us-central1.run.app
-    networks:
-      - streetmed-network
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  SERVICE_NAME: streetmed-backend
+  REGION: us-central1
 
-networks:
-  streetmed-network:
-    driver: bridge
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: maven
+    
+    - name: Build with Maven
+      run: cd src/Backend && mvn clean package -DskipTests
+    
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        project_id: ${{ env.PROJECT_ID }}
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        export_default_credentials: true
+    
+    - name: Authenticate Docker to Google Cloud
+      run: gcloud auth configure-docker
+    
+    - name: Build and Push Docker image
+      run: |
+        cd src/Backend
+        gcloud builds submit --tag gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}
+    
+    - name: Deploy to Cloud Run
+      id: deploy
+      uses: google-github-actions/deploy-cloudrun@v1
+      with:
+        service: ${{ env.SERVICE_NAME }}
+        image: gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}
+        region: ${{ env.REGION }}
+        flags: --allow-unauthenticated
+
+    - name: Show Output
+      run: echo ${{ steps.deploy.outputs.url }}
