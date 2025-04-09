@@ -23,7 +23,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
 @Tag(name = "Admin User Management", description = "APIs for administrators to manage users")
-@CrossOrigin(origins = "http://localhost:3000")
 @RestController
 @RequestMapping("/api/admin")
 public class AdminController {

@@ -24,7 +24,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
 @Tag(name = "Feedback Management", description = "APIs for submitting and managing feedback")
-@CrossOrigin(origins = "http://localhost:3000")
 @RestController
 @RequestMapping("/api/feedback")
 public class FeedbackController {

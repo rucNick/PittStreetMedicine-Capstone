@@ -23,7 +23,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
 @Tag(name = "Authentication", description = "APIs for user authentication and profile management")
-@CrossOrigin(origins = "http://localhost:3000")
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {

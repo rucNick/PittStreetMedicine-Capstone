@@ -24,7 +24,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
 @Tag(name = "Volunteer Rounds Management", description = "APIs for volunteers to view and sign up for street medicine rounds")
-@CrossOrigin(origins = "http://localhost:3000")
 @RestController
 @RequestMapping("/api/rounds")
 public class VolunteerRoundsController {

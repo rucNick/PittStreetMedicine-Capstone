@@ -19,7 +19,6 @@ import java.util.concurrent.Executor;
 @Tag(name = "Cargo Management", description = "APIs for managing cargo items and inventory")
 @RestController
 @RequestMapping("/api/cargo")
-@CrossOrigin(origins = "http://localhost:3000")
 public class CargoController {
     private final CargoItemService cargoItemService;
     private final Executor asyncExecutor;
