@@ -11,11 +11,11 @@ const Volunteer_Dashboard = ({ userData }) => {
   const navigate = useNavigate();
 
   const [myUpcomingRounds, setMyUpcomingRounds] = useState([]);
-  const [myPastRounds, setMyPastRounds] = useState([]);
+  //const [myPastRounds, setMyPastRounds] = useState([]);
   const [myRoundsError, setMyRoundsError] = useState('');
 
   const [allUpcomingRounds, setAllUpcomingRounds] = useState([]);
-  const [allRoundsError, setAllRoundsError] = useState('');
+  //const [allRoundsError, setAllRoundsError] = useState('');
 
   const [assignedOrders, setAssignedOrders] = useState([]);
   const [ordersError, setOrdersError] = useState('');
@@ -46,7 +46,7 @@ const Volunteer_Dashboard = ({ userData }) => {
     } catch (error) {
       setMyRoundsError(error.response?.data?.message || error.message);
     }
-  }, [userData]);
+  }, [userData, baseURL]);
 
   const loadAllUpcomingRounds = useCallback(async () => {
     if (!userData || !userData.userId) return;
@@ -67,7 +67,7 @@ const Volunteer_Dashboard = ({ userData }) => {
     } catch (error) {
       setAllRoundsError(error.response?.data?.message || error.message);
     }
-  }, [userData]);
+  }, [userData, baseURL]);
 
   const loadAssignedOrders = useCallback(async () => {
     if (!userData || !userData.userId) return;
@@ -84,7 +84,7 @@ const Volunteer_Dashboard = ({ userData }) => {
     } catch (error) {
       setOrdersError(error.response?.data?.message || error.message);
     }
-  }, [userData]);
+  }, [userData, baseURL]);
 
   const signupForRound = async (roundId, requestedRole = 'VOLUNTEER') => {
     try {
@@ -103,23 +103,23 @@ const Volunteer_Dashboard = ({ userData }) => {
     }
   };
 
-  const cancelSignup = async (signupId) => {
-    try {
-      const response = await axios.delete(`${baseURL}/api/rounds/signup/${signupId}`, {
-        data: {
-          authenticated: true,
-          userId: userData.userId,
-          userRole: 'VOLUNTEER'
-        }
-      });
-      alert(response.data.message);
-      loadMyRounds();
-      loadAllUpcomingRounds();
-      handleDateClick(selectedDate);
-    } catch (error) {
-      alert(error.response?.data?.message || error.message);
-    }
-  };
+  // const cancelSignup = async (signupId) => {
+  //   try {
+  //     const response = await axios.delete(`${baseURL}/api/rounds/signup/${signupId}`, {
+  //       data: {
+  //         authenticated: true,
+  //         userId: userData.userId,
+  //         userRole: 'VOLUNTEER'
+  //       }
+  //     });
+  //     alert(response.data.message);
+  //     loadMyRounds();
+  //     loadAllUpcomingRounds();
+  //     handleDateClick(selectedDate);
+  //   } catch (error) {
+  //     alert(error.response?.data?.message || error.message);
+  //   }
+  // };
 
   const handleDateClick = (date) => {
     setSelectedDate(date);

@@ -29,7 +29,7 @@ const Cargo_Admin = ({ userData }) => {
       console.log("fetchAllItems: Error occurred", error);
       setAllItemsError(error.response?.data?.message || error.message);
     }
-  }, []);
+  }, [baseURL]);
 
   // 1.2 Add items - Basic information + multiple size options
   const [newItemData, setNewItemData] = useState({

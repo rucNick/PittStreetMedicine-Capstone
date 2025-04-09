@@ -39,7 +39,7 @@ const Home_OrderHistory = ({ userId }) => {
     };
 
     fetchOrders();
-  }, [userId]);
+  }, [userId, baseURL]);
 
   const handleCancelOrder = async (orderId) => {
     try {

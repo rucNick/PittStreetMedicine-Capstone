@@ -43,7 +43,7 @@ const Admin = ({ onLogout, userData }) => {
     } catch (error) {
       setUsersError(error.response?.data?.message || error.message);
     }
-  }, [userData.username]);
+  }, [userData.username, baseURL]);
 
   const deleteUser = async (usernameToDelete) => {
     try {
@@ -200,7 +200,7 @@ const Admin = ({ onLogout, userData }) => {
     } catch (error) {
       setOrdersError(error.response?.data?.message || error.message);
     }
-  }, [userData.userId]);
+  }, [userData.userId, baseURL]);
 
   const cancelOrder = async (orderId) => {
     try {
@@ -231,7 +231,7 @@ const Admin = ({ onLogout, userData }) => {
     } catch (error) {
       setApplicationsError(error.response?.data?.message || error.message);
     }
-  }, [userData.username]);
+  }, [userData.username, baseURL]);
 
   const approveApplication = async (applicationId) => {
     try {
@@ -276,7 +276,7 @@ const Admin = ({ onLogout, userData }) => {
     } catch (error) {
       setFeedbackError(error.response?.data?.message || error.message);
     }
-  }, [userData.username]);
+  }, [userData.username, baseURL]);
 
   useEffect(() => {
     if (activeTab === "users") {

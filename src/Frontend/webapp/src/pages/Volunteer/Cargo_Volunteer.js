@@ -14,7 +14,7 @@ const Cargo_Volunteer = () => {
   // Fetch all items on component mount
   useEffect(() => {
     fetchAllItems();
-  }, []);
+  }, [fetchAllItems]);
 
   // Fetch cargo items from backend
   const fetchAllItems = async () => {
