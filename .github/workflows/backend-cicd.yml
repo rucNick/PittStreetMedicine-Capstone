@@ -14,17 +14,13 @@ on:
   workflow_dispatch:
 
 env:
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  PROJECT_ID: streetmedgo
   SERVICE_NAME: streetmed-backend
   REGION: us-central1
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    
-    permissions:
-      contents: 'read'
-      id-token: 'write'
     
     steps:
     - name: Checkout code
@@ -40,15 +36,15 @@ jobs:
     - name: Build with Maven
       run: cd src/Backend && mvn clean package -DskipTests
     
-    - name: Google Auth
-      id: auth
-      uses: google-github-actions/auth@v1
-      with:
-        workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
-        service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
-    
     - name: Set up Cloud SDK
       uses: google-github-actions/setup-gcloud@v1
+      with:
+        project_id: ${{ env.PROJECT_ID }}
+    
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
     
     - name: Build and Push Docker image
       run: |
