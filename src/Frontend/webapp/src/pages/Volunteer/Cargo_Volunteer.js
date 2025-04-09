@@ -11,13 +11,8 @@ const Cargo_Volunteer = () => {
   const [allItems, setAllItems] = useState([]);
   const [error, setError] = useState('');
 
-  // Fetch all items on component mount
-  useEffect(() => {
-    fetchAllItems();
-  }, [fetchAllItems]);
-
   // Fetch cargo items from backend
-  const fetchAllItems = async () => {
+  const fetchAllItems = useCallback(async () => {
     try {
       const response = await axios.get(`${baseURL}/api/cargo/items`);
       setAllItems(response.data);
@@ -25,7 +20,12 @@ const Cargo_Volunteer = () => {
     } catch (err) {
       setError(err.response?.data?.message || err.message);
     }
-  };
+  }, [baseURL]);
+
+  // Fetch all items on component mount
+  useEffect(() => {
+    fetchAllItems();
+  }, [fetchAllItems]);
 
   // Navigate back to volunteer page
   const handleBack = () => {
