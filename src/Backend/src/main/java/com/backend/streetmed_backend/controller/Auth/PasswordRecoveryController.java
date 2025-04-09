@@ -25,7 +25,6 @@ import java.util.concurrent.ConcurrentHashMap;
 @Tag(name = "Password Recovery", description = "APIs for password recovery and reset")
 @RestController
 @RequestMapping("/api/auth/password")
-@CrossOrigin(origins = "http://localhost:3000")
 public class PasswordRecoveryController {
 
     private final UserService userService;

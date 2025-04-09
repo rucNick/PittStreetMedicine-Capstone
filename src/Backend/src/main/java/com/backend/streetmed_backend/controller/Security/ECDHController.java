@@ -17,7 +17,6 @@ import java.util.UUID;
 @Tag(name = "Security", description = "APIs for security operations including key exchange")
 @RestController
 @RequestMapping("/api/security")
-@CrossOrigin(origins = "http://localhost:3000")
 public class ECDHController {
 
     private static final Logger logger = LoggerFactory.getLogger(ECDHController.class);

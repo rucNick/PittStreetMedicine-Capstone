@@ -27,7 +27,6 @@ import java.util.concurrent.Executor;
  * REST Controller for handling all order-related operations.
  */
 @Tag(name = "Order Management", description = "APIs for managing orders, including creation, updates, and cancellation")
-@CrossOrigin(origins = "http://localhost:3000")
 @RestController
 @RequestMapping("/api/orders")
 public class OrderController {
