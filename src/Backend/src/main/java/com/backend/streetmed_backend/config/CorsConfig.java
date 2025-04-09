@@ -16,6 +16,7 @@ public class CorsConfig {
         // Instead, explicitly list your allowed origins:
         config.addAllowedOrigin("http://localhost:3000");
         config.addAllowedOrigin("https://streetmed-backend-900663028964.us-central1.run.app");
+        config.addAllowedOrigin("*");
         // Add any other origins you need
 
         config.addAllowedHeader("*");
