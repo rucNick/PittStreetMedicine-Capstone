@@ -2,7 +2,7 @@
  * Simple ECDH client for key exchange with the backend
  */
 const crypto = window.crypto.subtle;
-
+const baseURL = process.env.REACT_APP_BASE_URL;
 // Utility functions for Base64 conversion
 export const arrayBufferToBase64 = (buffer) => {
   const bytes = new Uint8Array(buffer);
@@ -49,7 +49,7 @@ export const performKeyExchange = async () => {
     
     // Step 2: Initiate handshake with server
     console.log('Requesting server public key...');
-    const response = await fetch('http://localhost:8080/api/security/initiate-handshake');
+    const response = await fetch(`${baseURL}/api/security/initiate-handshake`);
     
     if (!response.ok) {
       throw new Error(`Server handshake failed: ${response.status}`);
@@ -81,7 +81,7 @@ export const performKeyExchange = async () => {
     
     // Step 5: Complete handshake with server
     console.log('Completing handshake with server...');
-    const completeResponse = await fetch('http://localhost:8080/api/security/complete-handshake', {
+    const completeResponse = await fetch(`${baseURL}/api/security/complete-handshake`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
