@@ -111,7 +111,7 @@ public class AuthController {
             try {
                 Map<String, String> userData = parseRequestBody(sessionId, body, "registration");
 
-                if (userData.get("username") == null || userData.get("email") == null ||
+                if (userData.get("username") == null ||
                         userData.get("password") == null) {
                     throw new RuntimeException("Missing required fields");
                 }
