@@ -27,6 +27,8 @@ const Home_Profile = ({
   const [profileError, setProfileError] = useState("");
   const [profileMessage, setProfileMessage] = useState("");
 
+  const baseURL = process.env.REACT_APP_BASE_URL;
+
   // Handle submission of profile update
   const handleSubmitProfile = async () => {
 
@@ -55,7 +57,7 @@ const Home_Profile = ({
     
         if (isInitialized() && getSessionId()) {
           const encryptedData = await encrypt(JSON.stringify(userData));
-          const response = await fetch("http://localhost:8080/api/auth/update/username", {
+          const response = await fetch(`${baseURL}/api/auth/update/username`, {
             method: "PUT",
             headers: {
               "Content-Type": "text/plain",
@@ -90,7 +92,7 @@ const Home_Profile = ({
         }
 
         else {
-          const response = await axios.put("http://localhost:8080/api/auth/update/username", userData);
+          const response = await axios.put(`${baseURL}/api/auth/update/username`, userData);
           if (response.data.status === "success") {
             setProfileMessage("Profile updated successfully.");
             if (onProfileUpdate) {
@@ -141,7 +143,7 @@ const Home_Profile = ({
 
         if (isInitialized() && getSessionId()) {
           const encryptedData = await encrypt(JSON.stringify(userData));
-          const response = await fetch("http://localhost:8080/api/auth/update/email", {
+          const response = await fetch(`${baseURL}/api/auth/update/email`, {
             method: "PUT",
             headers: {
               "Content-Type": "text/plain",
@@ -171,7 +173,7 @@ const Home_Profile = ({
             navigate("/");
           }, 1500);
         } else {
-          const response = await axios.put("http://localhost:8080/api/auth/update/email", userData);
+          const response = await axios.put(`${baseURL}/api/auth/update/email`, userData);
           if (response.data.status === "success") {
             setProfileMessage("Profile updated successfully.");
             if (onProfileUpdate) {
@@ -224,7 +226,7 @@ const Home_Profile = ({
 
         if (isInitialized() && getSessionId()) {
           const encryptedData = await encrypt(JSON.stringify(userData));
-          const response = await fetch("http://localhost:8080/api/auth/update/password", {
+          const response = await fetch(`${baseURL}/api/auth/update/password`, {
             method: "PUT",
             headers: {
               "Content-Type": "text/plain",
@@ -247,7 +249,7 @@ const Home_Profile = ({
             navigate("/");
           }, 1500);
         } else {
-          const response = await axios.put("http://localhost:8080/api/auth/update/password", userData);
+          const response = await axios.put(`${baseURL}/api/auth/update/password`, userData);
           if (response.data.status === "success") {
             setProfileMessage("Password updated successfully. Redirecting to login...");
             setTimeout(() => {
@@ -290,7 +292,7 @@ const Home_Profile = ({
 
         if (isInitialized() && getSessionId()) {
           const encryptedData = await encrypt(JSON.stringify(userData));
-          const response = await fetch("http://localhost:8080/api/auth/update/phone", {
+          const response = await fetch(`${baseURL}/api/auth/update/phone`, {
             method: "PUT",
             headers: {
               "Content-Type": "text/plain",
@@ -320,7 +322,7 @@ const Home_Profile = ({
             navigate("/");
           }, 1500);
         } else {
-          const response = await axios.put("http://localhost:8080/api/auth/update/phone", userData);
+          const response = await axios.put(`${baseURL}/api/auth/update/phone`, userData);
           if (response.data.status === "success") {
             setProfileMessage("Profile updated successfully.");
             if (onProfileUpdate) {

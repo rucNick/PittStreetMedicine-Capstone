@@ -4,6 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import '../../css/Round/Round_Admin.css';
 
 function Round_Admin() {
+
+  const baseURL = process.env.REACT_APP_BASE_URL;
+
   const navigate = useNavigate();
   const userData = JSON.parse(sessionStorage.getItem("auth_user")) || {};
 
@@ -41,7 +44,7 @@ function Round_Admin() {
   // 1. view rounds
   const fetchRounds = async () => {
     try {
-      const url = roundFilter === "all" ? "/api/admin/rounds/all" : "/api/admin/rounds/upcoming";
+      const url = roundFilter === "all" ? `${baseURL}/api/admin/rounds/all` : `${baseURL}/api/admin/rounds/upcoming`;
       const response = await axios.get(url, {
         params: {
           authenticated: true,
@@ -82,7 +85,7 @@ function Round_Admin() {
         if (!isNaN(cid)) payload.clinicianId = cid;
       }
 
-      const response = await axios.post("/api/admin/rounds/create", payload);
+      const response = await axios.post(`${baseURL}/api/admin/rounds/create`, payload);
       if (response.data.status === "success") {
         setMessage("Round created with ID: " + response.data.roundId);
       } else {
@@ -98,7 +101,7 @@ function Round_Admin() {
   const cancelRoundById = async (roundId, e) => {
     e.stopPropagation();
     try {
-      const response = await axios.put(`/api/admin/rounds/${roundId}/cancel`, {
+      const response = await axios.put(`${baseURL}/api/admin/rounds/${roundId}/cancel`, {
         authenticated: true,
         adminUsername: userData.username
       });
@@ -133,7 +136,7 @@ function Round_Admin() {
   // run lottery（in modal）
   const runLotteryForModal = async () => {
     try {
-      const response = await axios.post(`/api/admin/rounds/${selectedRound.roundId}/lottery`, {
+      const response = await axios.post(`${baseURL}/api/admin/rounds/${selectedRound.roundId}/lottery`, {
         authenticated: true,
         adminUsername: userData.username
       });
@@ -151,7 +154,7 @@ function Round_Admin() {
   // detail(in modal）
   const fetchModalSignups = async () => {
     try {
-      const response = await axios.get(`/api/admin/rounds/${selectedRound.roundId}`, {
+      const response = await axios.get(`${baseURL}/api/admin/rounds/${selectedRound.roundId}`, {
         params: {
           authenticated: true,
           adminUsername: userData.username
@@ -171,7 +174,7 @@ function Round_Admin() {
   // approve/reject signups（in modal）
   const confirmSignup = async (signupId) => {
     try {
-      const response = await axios.put(`/api/admin/rounds/signup/${signupId}/confirm`, {
+      const response = await axios.put(`${baseURL}/api/admin/rounds/signup/${signupId}/confirm`, {
         authenticated: true,
         adminUsername: userData.username,
         adminId: userData.userId
@@ -192,7 +195,7 @@ function Round_Admin() {
     try {
       const response = await axios.request({
         method: 'delete',
-        url: `/api/admin/rounds/signup/${signupId}`,
+        url: `${baseURL}/api/admin/rounds/signup/${signupId}`,
         data: {
           authenticated: true,
           adminUsername: userData.username,
@@ -213,7 +216,7 @@ function Round_Admin() {
 
   const fetchRoundForUpdate = async () => {
     try {
-      const response = await axios.get(`/api/admin/rounds/${roundIdToUpdate}`, {
+      const response = await axios.get(`${baseURL}/api/admin/rounds/${roundIdToUpdate}`, {
         params: {
           authenticated: true,
           adminUsername: userData.username
@@ -248,7 +251,7 @@ function Round_Admin() {
         maxParticipants: parseInt(updateRoundData.maxParticipants, 10),
         status: updateRoundData.status
       };
-      const response = await axios.put(`/api/admin/rounds/${updateRoundData.roundId}`, payload);
+      const response = await axios.put(`${baseURL}/api/admin/rounds/${updateRoundData.roundId}`, payload);
       if (response.data.status === "success") {
         setMessage("Round updated successfully with ID: " + response.data.roundId);
       } else {

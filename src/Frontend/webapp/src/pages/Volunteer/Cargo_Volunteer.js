@@ -5,6 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const Cargo_Volunteer = () => {
+  const baseURL = process.env.REACT_APP_BASE_URL;
+
   const navigate = useNavigate();
   const [allItems, setAllItems] = useState([]);
   const [error, setError] = useState('');
@@ -17,7 +19,7 @@ const Cargo_Volunteer = () => {
   // Fetch cargo items from backend
   const fetchAllItems = async () => {
     try {
-      const response = await axios.get('http://localhost:8080/api/cargo/items');
+      const response = await axios.get(`${baseURL}/api/cargo/items`);
       setAllItems(response.data);
       setError('');
     } catch (err) {

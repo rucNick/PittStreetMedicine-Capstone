@@ -11,6 +11,8 @@ const Home_Feedback = ({ username }) => {
   const [feedbackError, setFeedbackError] = useState("");
   const [feedbackMessage, setFeedbackMessage] = useState("");
 
+  const baseURL = process.env.REACT_APP_BASE_URL;
+
   // Handle submission of feedback
   const handleSubmitFeedback = async () => {
     if (!feedbackContent.trim()) {
@@ -28,7 +30,7 @@ const Home_Feedback = ({ username }) => {
         phoneNumber: feedbackPhoneNumber,
         content: feedbackContent,
       };
-      const response = await axios.post("http://localhost:8080/api/feedback/submit", payload);
+      const response = await axios.post(`${baseURL}/api/feedback/submit`, payload);
       if (response.data.status === "success") {
         setFeedbackMessage("Feedback submitted successfully!");
         setTimeout(() => {

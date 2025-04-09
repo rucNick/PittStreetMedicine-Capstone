@@ -6,6 +6,8 @@ import { useNavigate } from "react-router-dom";
 import "../../css/Guest/Guest.css";
 
 const Guest = ({ onLogout }) => {
+  const baseURL = process.env.REACT_APP_BASE_URL;
+
   const navigate = useNavigate();
 
   // ========== cart status ==========
@@ -47,7 +49,7 @@ const Guest = ({ onLogout }) => {
   // When user clicks "Make a New Order", fetch cargo items and show them
   const handleOpenNewOrder = async () => {
     try {
-      const response = await axios.get("http://localhost:8080/api/cargo/items");
+      const response = await axios.get(`${baseURL}/api/cargo/items`);
       setCargoItems(response.data);
       setShowCargoItems(true);
     } catch (error) {
@@ -211,7 +213,7 @@ const Guest = ({ onLogout }) => {
         payload.longitude = longitude;
       }
       const response = await axios.post(
-        "http://localhost:8080/api/orders/guest/create",
+        `${baseURL}/api/orders/guest/create`,
         payload
       );
       if (response.data.status === "success") {
@@ -298,7 +300,7 @@ const Guest = ({ onLogout }) => {
                   >
                     {item.imageId ? (
                       <img
-                        src={`http://localhost:8080/api/cargo/images/${item.imageId}`}
+                        src={`${baseURL}/api/cargo/images/${item.imageId}`}
                         alt={item.name}
                         className="itemImage"
                       />
@@ -328,7 +330,7 @@ const Guest = ({ onLogout }) => {
             <div style={{ textAlign: "center" }}>
               {selectedItem.imageId ? (
                 <img
-                  src={`http://localhost:8080/api/cargo/images/${selectedItem.id}`}
+                  src={`${baseURL}/api/cargo/images/${selectedItem.id}`}
                   alt={selectedItem.name}
                   style={{ width: "200px", marginBottom: "10px" }}
                 />

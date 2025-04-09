@@ -11,7 +11,7 @@ const Login = ({ onLoginSuccess }) => {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
 
-  const baseURL = process.env.REACT_APP_BASE_URL || 'http://localhost:8080';
+  const baseURL = process.env.REACT_APP_BASE_URL;
 
   // show login form
   const handleLoginClick = () => {

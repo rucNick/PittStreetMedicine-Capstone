@@ -6,6 +6,8 @@ import { useNavigate } from 'react-router-dom';
 import '../../css/Volunteer/Volunteer_Dashboard.css'; 
 
 const Volunteer_Dashboard = ({ userData }) => {
+  const baseURL = process.env.REACT_APP_BASE_URL;
+
   const navigate = useNavigate();
 
   const [myUpcomingRounds, setMyUpcomingRounds] = useState([]);
@@ -27,7 +29,7 @@ const Volunteer_Dashboard = ({ userData }) => {
   const loadMyRounds = useCallback(async () => {
     if (!userData || !userData.userId) return;
     try {
-      const response = await axios.get('http://localhost:8080/api/rounds/my-rounds', {
+      const response = await axios.get(`${baseURL}/api/rounds/my-rounds`, {
         params: {
           authenticated: true,
           userId: userData.userId,
@@ -49,7 +51,7 @@ const Volunteer_Dashboard = ({ userData }) => {
   const loadAllUpcomingRounds = useCallback(async () => {
     if (!userData || !userData.userId) return;
     try {
-      const response = await axios.get('http://localhost:8080/api/rounds/all', {
+      const response = await axios.get(`${baseURL}/api/rounds/all`, {
         params: {
           authenticated: true,
           userId: userData.userId,
@@ -70,7 +72,7 @@ const Volunteer_Dashboard = ({ userData }) => {
   const loadAssignedOrders = useCallback(async () => {
     if (!userData || !userData.userId) return;
     try {
-      const response = await axios.get('http://localhost:8080/api/orders/all', {
+      const response = await axios.get(`${baseURL}/api/orders/all`, {
         params: {
           authenticated: true,
           userId: userData.userId,
@@ -86,7 +88,7 @@ const Volunteer_Dashboard = ({ userData }) => {
 
   const signupForRound = async (roundId, requestedRole = 'VOLUNTEER') => {
     try {
-      const response = await axios.post(`http://localhost:8080/api/rounds/${roundId}/signup`, {
+      const response = await axios.post(`${baseURL}/api/rounds/${roundId}/signup`, {
         authenticated: true,
         userId: userData.userId,
         userRole: 'VOLUNTEER',
@@ -103,7 +105,7 @@ const Volunteer_Dashboard = ({ userData }) => {
 
   const cancelSignup = async (signupId) => {
     try {
-      const response = await axios.delete(`http://localhost:8080/api/rounds/signup/${signupId}`, {
+      const response = await axios.delete(`${baseURL}/api/rounds/signup/${signupId}`, {
         data: {
           authenticated: true,
           userId: userData.userId,
@@ -142,7 +144,7 @@ const Volunteer_Dashboard = ({ userData }) => {
 
   const openFullViewModal = async (roundId) => {
     try {
-      const response = await axios.get(`http://localhost:8080/api/rounds/${roundId}`, {
+      const response = await axios.get(`${baseURL}/api/rounds/${roundId}`, {
         params: {
           authenticated: true,
           userId: userData.userId,
@@ -173,7 +175,7 @@ const Volunteer_Dashboard = ({ userData }) => {
       return;
     }
     try {
-      const response = await axios.delete(`http://localhost:8080/api/rounds/signup/${signupId}`, {
+      const response = await axios.delete(`${baseURL}/api/rounds/signup/${signupId}`, {
         data: {
           authenticated: true,
           userId: userData.userId,
