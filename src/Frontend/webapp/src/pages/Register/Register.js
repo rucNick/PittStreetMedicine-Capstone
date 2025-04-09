@@ -237,7 +237,7 @@ const Register = () => {
           {confirmPasswordError && <p style={styles.errorText}>{confirmPasswordError}</p>}
         </div>
         <div style={styles.formGroup}>
-          <label>Email: <span style={styles.optionalField}>(Required*)</span></label>
+          <label>Email: <span style={styles.optionalField}>(Optional)</span></label>
           <input
             type="email"
             value={email}
