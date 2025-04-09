@@ -13,11 +13,10 @@ public class CorsConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration config = new CorsConfiguration();
 
-        // Instead, explicitly list your allowed origins:
+        // Explicitly allow specific origins
         config.addAllowedOrigin("http://localhost:3000");
         config.addAllowedOrigin("https://streetmed-backend-900663028964.us-central1.run.app");
-        config.addAllowedOrigin("*");
-        // Add any other origins you need
+        // Removed the wildcard origin because it's not allowed when credentials are true.
 
         config.addAllowedHeader("*");
         config.addAllowedMethod("*");
