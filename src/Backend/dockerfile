@@ -9,4 +9,6 @@ RUN mvn package -DskipTests
 FROM eclipse-temurin:17-jre-alpine
 VOLUME /tmp
 COPY --from=build /app/target/*.jar app.jar
+# Copy the SQLite database file - needs to be copied to the runtime stage
+COPY src/Backend/auth_db.sqlite /app/src/Backend/auth_db.sqlite
 ENTRYPOINT ["java","-jar","/app.jar"]
