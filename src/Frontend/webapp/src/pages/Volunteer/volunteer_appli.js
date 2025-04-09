@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const VolunteerAppli = () => {
+  const baseURL = process.env.REACT_APP_BASE_URL;
+
   const navigate = useNavigate();
 
   const [firstName, setFirstName] = useState('');
@@ -85,7 +87,7 @@ const VolunteerAppli = () => {
     };
 
     try {
-      const response = await axios.post('http://localhost:8080/api/volunteer/apply', payload);
+      const response = await axios.post(`${baseURL}/api/volunteer/apply`, payload);
       if (response.data.status === 'success') {
         setMessage('Application submitted successfully!');
         // clean form

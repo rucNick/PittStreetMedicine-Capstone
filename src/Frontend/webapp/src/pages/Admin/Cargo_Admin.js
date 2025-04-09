@@ -3,6 +3,8 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
 const Cargo_Admin = ({ userData }) => {
+  const baseURL = process.env.REACT_APP_BASE_URL;
+
   const navigate = useNavigate();
   console.log("Cargo_Admin: Component mounted");
 
@@ -19,7 +21,7 @@ const Cargo_Admin = ({ userData }) => {
   const fetchAllItems = useCallback(async () => {
     console.log("fetchAllItems: Fetching all items from backend");
     try {
-      const response = await axios.get('http://localhost:8080/api/cargo/items');
+      const response = await axios.get(`${baseURL}/api/cargo/items`);
       console.log("fetchAllItems: Received response", response);
       setAllItems(response.data);
       setAllItemsError('');
@@ -112,7 +114,7 @@ const Cargo_Admin = ({ userData }) => {
         formData.append('image', newItemImage);
       }
 
-      const response = await axios.post('http://localhost:8080/api/cargo/items', formData, {
+      const response = await axios.post(`${baseURL}/api/cargo/items`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'Admin-Username': userData.username,
@@ -160,7 +162,7 @@ const Cargo_Admin = ({ userData }) => {
       // First update the text data
       console.log("handleUpdateItem: Sending update request with data", updateItemData);
       const itemUpdateRes = await axios.put(
-        `http://localhost:8080/api/cargo/items/${updateItemId}`,
+        `${baseURL}/api/cargo/items/${updateItemId}`,
         updateItemData,
         {
           headers: {
@@ -177,7 +179,7 @@ const Cargo_Admin = ({ userData }) => {
         const formData = new FormData();
         formData.append('image', updateItemImage);
         await axios.put(
-          `http://localhost:8080/api/cargo/items/${updateItemId}?image`,
+          `${baseURL}/api/cargo/items/${updateItemId}?image`,
           formData,
           {
             headers: {
@@ -219,7 +221,7 @@ const Cargo_Admin = ({ userData }) => {
         formData.append('cargoItemId', uploadCargoItemId);
       }
 
-      const response = await axios.post('http://localhost:8080/api/cargo/images/upload', formData, {
+      const response = await axios.post(`${baseURL}/api/cargo/images/upload`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'Authentication-Status': 'true',
@@ -248,7 +250,7 @@ const Cargo_Admin = ({ userData }) => {
     }
     try {
       const response = await axios.delete(
-        `http://localhost:8080/api/cargo/images/${deleteImageId}`,
+        `${baseURL}/api/cargo/images/${deleteImageId}`,
         {
           headers: {
             'Authentication-Status': 'true',

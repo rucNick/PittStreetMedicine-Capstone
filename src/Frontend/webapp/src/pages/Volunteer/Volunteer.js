@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const Volunteer = ({ onLogout, userData }) => {
+  const baseURL = process.env.REACT_APP_BASE_URL;
+
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -16,7 +18,7 @@ const Volunteer = ({ onLogout, userData }) => {
     setLoading(true);
     setError('');
     try {
-      const response = await axios.get('http://localhost:8080/api/orders/all', {
+      const response = await axios.get(`${baseURL}:8080/api/orders/all`, {
         params: {
           authenticated: true,
           userId: userId,
@@ -54,7 +56,7 @@ const Volunteer = ({ onLogout, userData }) => {
     try {
       setLoading(true);
       // Call backend PUT API to update order status
-      await axios.put(`http://localhost:8080/api/orders/${orderId}/status`, {
+      await axios.put(`${baseURL}/api/orders/${orderId}/status`, {
         authenticated: true,
         userId: userId,
         userRole: role,

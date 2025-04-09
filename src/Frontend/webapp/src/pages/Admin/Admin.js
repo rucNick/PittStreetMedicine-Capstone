@@ -3,6 +3,8 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
 const Admin = ({ onLogout, userData }) => {
+  const baseURL = process.env.REACT_APP_BASE_URL;
+
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("users");
 
@@ -25,7 +27,7 @@ const Admin = ({ onLogout, userData }) => {
 
   const loadUsers = useCallback(async () => {
     try {
-      const response = await axios.get('http://localhost:8080/api/admin/users', {
+      const response = await axios.get(`${baseURL}/api/admin/users`, {
         headers: {
           "Admin-Username": userData.username,
           "Authentication-Status": "true"
@@ -45,7 +47,7 @@ const Admin = ({ onLogout, userData }) => {
 
   const deleteUser = async (usernameToDelete) => {
     try {
-      const response = await axios.delete('http://localhost:8080/api/admin/user/delete', {
+      const response = await axios.delete(`${baseURL}/api/admin/user/delete`, {
         data: {
           authenticated: "true",
           adminUsername: userData.username,
@@ -61,7 +63,7 @@ const Admin = ({ onLogout, userData }) => {
 
   const addUser = async () => {
     try {
-      const response = await axios.post('http://localhost:8080/api/admin/user/create', {
+      const response = await axios.post(`${baseURL}/api/admin/user/create`, {
         adminUsername: userData.username,
         authenticated: "true",
         username: newUser.username,
@@ -88,7 +90,7 @@ const Admin = ({ onLogout, userData }) => {
 
   const migratePasswords = async () => {
     try {
-      const response = await axios.post('http://localhost:8080/api/admin/migrate-passwords', {}, {
+      const response = await axios.post(`${baseURL}/api/admin/migrate-passwords`, {}, {
         headers: {
           "Admin-Username": userData.username,
           "Authentication-Status": "true"
@@ -102,7 +104,7 @@ const Admin = ({ onLogout, userData }) => {
 
   const updateUser = async () => {
     try {
-      const response = await axios.put(`http://localhost:8080/api/admin/user/update/${updateUserData.userId}`, {
+      const response = await axios.put(`${baseURL}/api/admin/user/update/${updateUserData.userId}`, {
         adminUsername: userData.username,
         authenticated: "true",
         username: updateUserData.username,
@@ -130,7 +132,7 @@ const Admin = ({ onLogout, userData }) => {
   
     try {
       const response = await axios.put(
-        `http://localhost:8080/api/admin/user/reset-password/${user.userId}`,
+        `${baseURL}/api/admin/user/reset-password/${user.userId}`,
         {
           adminUsername: userData.username,
           authenticated: "true",
@@ -161,7 +163,7 @@ const Admin = ({ onLogout, userData }) => {
       return;
     }
     try {
-      const response = await axios.put('http://localhost:8080/api/admin/volunteer/subrole', {
+      const response = await axios.put(`${baseURL}/api/admin/volunteer/subrole`, {
         adminUsername: userData.username,
         authenticated: "true",
         userId: updateSubroleUser.userId.toString(),
@@ -185,7 +187,7 @@ const Admin = ({ onLogout, userData }) => {
 
   const loadOrders = useCallback(async (status) => {
     try {
-      const response = await axios.get('http://localhost:8080/api/orders/all', {
+      const response = await axios.get(`${baseURL}/api/orders/all`, {
         params: {
           authenticated: true,
           userId: userData.userId,
@@ -202,7 +204,7 @@ const Admin = ({ onLogout, userData }) => {
 
   const cancelOrder = async (orderId) => {
     try {
-      const response = await axios.post(`http://localhost:8080/api/orders/${orderId}/cancel`, {
+      const response = await axios.post(`${baseURL}/api/orders/${orderId}/cancel`, {
         authenticated: true,
         userId: userData.userId,
         userRole: "VOLUNTEER"
@@ -219,7 +221,7 @@ const Admin = ({ onLogout, userData }) => {
 
   const loadApplications = useCallback(async () => {
     try {
-      const response = await axios.get('http://localhost:8080/api/volunteer/applications', {
+      const response = await axios.get(`${baseURL}/api/volunteer/applications`, {
         headers: {
           "Admin-Username": userData.username,
           "Authentication-Status": "true"
@@ -233,7 +235,7 @@ const Admin = ({ onLogout, userData }) => {
 
   const approveApplication = async (applicationId) => {
     try {
-      const response = await axios.post('http://localhost:8080/api/volunteer/approve', {
+      const response = await axios.post(`${baseURL}/api/volunteer/approve`, {
         adminUsername: userData.username,
         authenticated: "true",
         applicationId: applicationId.toString()
@@ -247,7 +249,7 @@ const Admin = ({ onLogout, userData }) => {
 
   const rejectApplication = async (applicationId) => {
     try {
-      const response = await axios.post('http://localhost:8080/api/volunteer/reject', {
+      const response = await axios.post(`${baseURL}/api/volunteer/reject`, {
         adminUsername: userData.username,
         authenticated: "true",
         applicationId: applicationId.toString()
@@ -264,7 +266,7 @@ const Admin = ({ onLogout, userData }) => {
 
   const loadFeedback = useCallback(async () => {
     try {
-      const response = await axios.get('http://localhost:8080/api/feedback/all', {
+      const response = await axios.get(`${baseURL}/api/feedback/all`, {
         headers: {
           "Admin-Username": userData.username,
           "Authentication-Status": "true"

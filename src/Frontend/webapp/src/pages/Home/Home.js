@@ -9,6 +9,9 @@ import { useNavigate } from "react-router-dom"; // for pages jump
 
 //const Home = ({ username, email, password, phone, userId, onLogout }) => {
 const Home = ({ username, email, phone, userId, onLogout }) => {
+
+  const baseURL = process.env.REACT_APP_BASE_URL;
+
   console.log("Home component initialized", { username, email, phone, userId });
 
   // ============== Cart States ==============
@@ -43,7 +46,7 @@ const Home = ({ username, email, phone, userId, onLogout }) => {
   const fetchCargoItems = async () => {
     console.log("fetchCargoItems: Fetching cargo items");
     try {
-      const response = await axios.get("http://localhost:8080/api/cargo/items");
+      const response = await axios.get(`${baseURL}/api/cargo/items`);
       console.log("fetchCargoItems: Received response", response);
       setCargoItems(response.data);
     } catch (error) {
@@ -196,7 +199,7 @@ const Home = ({ username, email, phone, userId, onLogout }) => {
         payload.longitude = longitude;
       }
       console.log("placeOrderWithLocation: Sending order payload", payload);
-      const response = await axios.post("http://localhost:8080/api/orders/create", payload);
+      const response = await axios.post(`${baseURL}/api/orders/create`, payload);
       console.log("placeOrderWithLocation: Received response", response);
       if (response.data.status !== "success") {
         setCartError(response.data.message || "Order creation failed");
@@ -281,7 +284,7 @@ const Home = ({ username, email, phone, userId, onLogout }) => {
                   <div key={item.id} className="itemCard" onClick={() => handleSelectItem(item)}>
                     {item.imageId ? (
                       <img
-                        src={`http://localhost:8080/api/cargo/images/${item.imageId}`}
+                        src={`${baseURL}/api/cargo/images/${item.imageId}`}
                         alt={item.name}
                         className="itemImage"
                       />
@@ -306,7 +309,7 @@ const Home = ({ username, email, phone, userId, onLogout }) => {
             <div style={{ textAlign: "center" }}>
               {selectedItem.imageId ? (
                 <img
-                  src={`http://localhost:8080/api/cargo/images/${selectedItem.imageId}`}
+                  src={`${baseURL}/api/cargo/images/${selectedItem.imageId}`}
                   alt={selectedItem.name}
                   style={{ width: "200px", marginBottom: "10px" }}
                 />

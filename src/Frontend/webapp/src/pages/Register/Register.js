@@ -14,7 +14,7 @@ const Register = () => {
   // Add state to track if security is initialized
   const [securityInitialized, setSecurityInitialized] = useState(false);
 
-  const baseURL = process.env.REACT_APP_BASE_URL || 'http://localhost:8080';
+  const baseURL = process.env.REACT_APP_BASE_URL;
 
   // Initialize security on component mount
   useEffect(() => {

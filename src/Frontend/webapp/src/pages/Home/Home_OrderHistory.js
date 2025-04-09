@@ -10,6 +10,8 @@ const Home_OrderHistory = ({ userId }) => {
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState("");
 
+  const baseURL = process.env.REACT_APP_BASE_URL;
+
   useEffect(() => {
     const fetchOrders = async () => {
       if (!userId || typeof userId !== "number") {
@@ -20,7 +22,7 @@ const Home_OrderHistory = ({ userId }) => {
         setOrdersLoading(true);
         setOrdersError("");
         const response = await axios.get(
-          `http://localhost:8080/api/orders/user/${userId}`,
+          `${baseURL}/api/orders/user/${userId}`,
           { params: { authenticated: true, userRole: "CLIENT", userId } }
         );
         if (response.data.status === "success") {
@@ -43,7 +45,7 @@ const Home_OrderHistory = ({ userId }) => {
     try {
       const payload = { authenticated: true, userId, userRole: "CLIENT" };
       const response = await axios.post(
-        `http://localhost:8080/api/orders/${orderId}/cancel`,
+        `${baseURL}/api/orders/${orderId}/cancel`,
         payload
       );
       if (response.data.status === "success") {
