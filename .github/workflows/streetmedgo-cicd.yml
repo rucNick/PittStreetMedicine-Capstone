@@ -90,13 +90,13 @@ jobs:
       
       # Upload artifacts for next job
       - name: Upload backend artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v2
         with:
           name: backend-artifact
           path: src/Backend/target/*.jar
       
       - name: Upload frontend artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v2
         with:
           name: frontend-artifact
           path: src/Frontend/webapp/build/
@@ -127,13 +127,13 @@ jobs:
       
       # Download artifacts from previous job
       - name: Download backend artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v2
         with:
           name: backend-artifact
           path: backend-artifact
       
       - name: Download frontend artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v2
         with:
           name: frontend-artifact
           path: frontend-artifact
