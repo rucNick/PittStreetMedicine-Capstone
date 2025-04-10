@@ -19,6 +19,7 @@ env:
   REGION: us-central1
   ARTIFACT_REGISTRY: us-central1-docker.pkg.dev
   REPOSITORY: streetmedgo-repo
+  FRONTEND_SERVICE_ACCOUNT: frontend-identity@streetmedgo.iam.gserviceaccount.com
 
 jobs:
   build-and-test:
@@ -91,14 +92,39 @@ jobs:
         docker push ${IMAGE_PATH}:${{ github.sha }}
         docker push ${IMAGE_PATH}:latest
     
-    - name: Deploy to Cloud Run
-      id: deploy
-      uses: google-github-actions/deploy-cloudrun@v1
-      with:
-        service: ${{ env.SERVICE_NAME }}
-        image: ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
-        region: ${{ env.REGION }}
-        flags: --allow-unauthenticated
+    # Create a service account for the backend if it doesn't exist
+    - name: Create or use backend service account
+      run: |
+        SERVICE_ACCOUNT=backend-identity
+        # Check if service account exists
+        if ! gcloud iam service-accounts describe ${SERVICE_ACCOUNT}@${{ env.PROJECT_ID }}.iam.gserviceaccount.com --quiet; then
+          echo "Creating service account $SERVICE_ACCOUNT"
+          gcloud iam service-accounts create $SERVICE_ACCOUNT \
+            --display-name "Service identity for Backend service"
+        else
+          echo "Service account $SERVICE_ACCOUNT already exists"
+        fi
     
-    - name: Show Output
-      run: echo ${{ steps.deploy.outputs.url }}
+    # Deploy to Cloud Run with no-allow-unauthenticated flag
+    - name: Deploy to Cloud Run (Private)
+      id: deploy
+      run: |
+        gcloud run deploy ${{ env.SERVICE_NAME }} \
+          --image ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+          --region ${{ env.REGION }} \
+          --service-account=backend-identity@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
+          --no-allow-unauthenticated
+    
+    # Grant the frontend service account permission to invoke the backend
+    - name: Grant frontend service account permission to invoke backend
+      run: |
+        gcloud run services add-iam-policy-binding ${{ env.SERVICE_NAME }} \
+          --region=${{ env.REGION }} \
+          --member=serviceAccount:${{ env.FRONTEND_SERVICE_ACCOUNT }} \
+          --role=roles/run.invoker
+    
+    - name: Show Backend URL
+      run: |
+        BACKEND_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --region ${{ env.REGION }} --format='value(status.url)')
+        echo "Backend URL: $BACKEND_URL"
+        echo "Important: The backend is now private and can only be accessed from authorized services like the frontend."

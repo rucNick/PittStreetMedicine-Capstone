@@ -39,8 +39,8 @@ jobs:
       run: |
         cd src/Frontend/webapp
         npm ci
+        npm install react-router-dom
       
-    # Skip tests for now since we're missing dependencies
     - name: Run tests (skip if failing)
       run: |
         cd src/Frontend/webapp
@@ -48,13 +48,13 @@ jobs:
         echo "ESLINT_NO_DEV_ERRORS=true" > .env
         echo "CI=false" >> .env
         echo "SKIP_PREFLIGHT_CHECK=true" >> .env
-        npm install react-router-dom
         npm test || true
       
     - name: Build
       run: |
         cd src/Frontend/webapp
         echo "REACT_APP_API_URL=${{ env.BACKEND_URL }}" >> .env
+        echo "REACT_APP_USE_AUTH=true" >> .env
         npm run build
 
   deploy:
@@ -72,17 +72,15 @@ jobs:
         cache: 'npm'
         cache-dependency-path: src/Frontend/webapp/package-lock.json
     
-    - name: Install dependencies
+    - name: Install dependencies and build
       run: |
         cd src/Frontend/webapp
         npm ci
-    
-    - name: Build
-      run: |
-        cd src/Frontend/webapp
+        npm install react-router-dom
         echo "ESLINT_NO_DEV_ERRORS=true" > .env
         echo "CI=false" >> .env
         echo "REACT_APP_API_URL=${{ env.BACKEND_URL }}" >> .env
+        echo "REACT_APP_USE_AUTH=true" >> .env
         npm run build
     
     - name: Set up Cloud SDK
@@ -98,29 +96,98 @@ jobs:
     - name: Configure Docker for Artifact Registry
       run: |
         gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY }}
+        
+    # Create a service account for the frontend if it doesn't exist
+    - name: Create or use frontend service account
+      run: |
+        SERVICE_ACCOUNT=frontend-identity
+        # Check if service account exists
+        if ! gcloud iam service-accounts describe ${SERVICE_ACCOUNT}@${{ env.PROJECT_ID }}.iam.gserviceaccount.com --quiet; then
+          echo "Creating service account $SERVICE_ACCOUNT"
+          gcloud iam service-accounts create $SERVICE_ACCOUNT \
+            --display-name "Service identity for Frontend service"
+        else
+          echo "Service account $SERVICE_ACCOUNT already exists"
+        fi
     
-    - name: Build and Push Docker image to Artifact Registry
+    - name: Create Dockerfile and nginx.conf
       run: |
         cd src/Frontend/webapp
         
-        # Create Dockerfile if it doesn't exist
-        if [ ! -f Dockerfile ]; then
-          echo "FROM nginx:stable-alpine" > Dockerfile
-          echo "COPY build/ /usr/share/nginx/html" >> Dockerfile
-          echo "COPY nginx.conf /etc/nginx/conf.d/default.conf" >> Dockerfile
-          echo "EXPOSE 80" >> Dockerfile
-          echo "CMD [\"nginx\", \"-g\", \"daemon off;\"]" >> Dockerfile
-          
-          # Create nginx.conf if it doesn't exist
-          echo "server {" > nginx.conf
-          echo "    listen 80;" >> nginx.conf
-          echo "    root /usr/share/nginx/html;" >> nginx.conf
-          echo "    index index.html;" >> nginx.conf
-          echo "    location / {" >> nginx.conf
-          echo "        try_files \$uri \$uri/ /index.html;" >> nginx.conf
-          echo "    }" >> nginx.conf
-          echo "}" >> nginx.conf
-        fi
+        # Create Dockerfile
+        echo "FROM nginx:stable-alpine" > Dockerfile
+        echo "" >> Dockerfile
+        echo "# Copy the build directory into nginx html directory" >> Dockerfile
+        echo "COPY build/ /usr/share/nginx/html" >> Dockerfile
+        echo "" >> Dockerfile
+        echo "# Install required packages" >> Dockerfile
+        echo "RUN apk add --no-cache curl ca-certificates" >> Dockerfile
+        echo "" >> Dockerfile
+        echo "# Create startup script" >> Dockerfile
+        echo "COPY get-token.sh /usr/local/bin/" >> Dockerfile
+        echo "RUN chmod +x /usr/local/bin/get-token.sh" >> Dockerfile
+        echo "" >> Dockerfile
+        echo "# Copy nginx config" >> Dockerfile
+        echo "COPY nginx.conf /etc/nginx/conf.d/default.conf" >> Dockerfile
+        echo "" >> Dockerfile
+        echo "# Expose port" >> Dockerfile
+        echo "EXPOSE 80" >> Dockerfile
+        echo "" >> Dockerfile
+        echo "# Set the command to get the token and start nginx" >> Dockerfile
+        echo "CMD [\"/bin/sh\", \"-c\", \"/usr/local/bin/get-token.sh && nginx -g 'daemon off;'\"]" >> Dockerfile
+        
+        # Create get-token.sh
+        echo "#!/bin/sh" > get-token.sh
+        echo "# Get the identity token from metadata service" >> get-token.sh
+        echo "TOKEN=\$(curl -s -H \"Metadata-Flavor: Google\" http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=\$BACKEND_URL)" >> get-token.sh
+        echo "" >> get-token.sh
+        echo "# Create a JavaScript file to inject auth token into the app" >> get-token.sh
+        echo "cat > /usr/share/nginx/html/env-config.js << EOF" >> get-token.sh
+        echo "window.BACKEND_URL = \"\$BACKEND_URL\";" >> get-token.sh
+        echo "window.AUTH_TOKEN = \"\$TOKEN\";" >> get-token.sh
+        echo "EOF" >> get-token.sh
+        echo "" >> get-token.sh
+        echo "# Create a JavaScript file to intercept API requests and add auth headers" >> get-token.sh
+        echo "cat > /usr/share/nginx/html/api-auth.js << EOF" >> get-token.sh
+        echo "console.log('API Auth script loaded');" >> get-token.sh
+        echo "// Override fetch to add auth headers to backend requests" >> get-token.sh
+        echo "const originalFetch = window.fetch;" >> get-token.sh
+        echo "window.fetch = function(url, options = {}) {" >> get-token.sh
+        echo "  if (url.startsWith(window.BACKEND_URL)) {" >> get-token.sh
+        echo "    const newOptions = { ...options };" >> get-token.sh
+        echo "    newOptions.headers = { ...newOptions.headers };" >> get-token.sh
+        echo "    if (window.AUTH_TOKEN) {" >> get-token.sh
+        echo "      newOptions.headers['Authorization'] = \`Bearer \${window.AUTH_TOKEN}\`;" >> get-token.sh
+        echo "    }" >> get-token.sh
+        echo "    return originalFetch(url, newOptions);" >> get-token.sh
+        echo "  }" >> get-token.sh
+        echo "  return originalFetch(url, options);" >> get-token.sh
+        echo "};" >> get-token.sh
+        echo "EOF" >> get-token.sh
+        echo "" >> get-token.sh
+        echo "# Inject script tags into index.html" >> get-token.sh
+        echo "sed -i 's/<head>/<head>\\n  <script src=\"\\/env-config.js\"><\\/script>\\n  <script src=\"\\/api-auth.js\"><\\/script>/' /usr/share/nginx/html/index.html" >> get-token.sh
+        
+        # Create nginx.conf
+        echo "server {" > nginx.conf
+        echo "    listen 80;" >> nginx.conf
+        echo "    root /usr/share/nginx/html;" >> nginx.conf
+        echo "    index index.html;" >> nginx.conf
+        echo "" >> nginx.conf
+        echo "    # For SPA routing" >> nginx.conf
+        echo "    location / {" >> nginx.conf
+        echo "        try_files \$uri \$uri/ /index.html;" >> nginx.conf
+        echo "    }" >> nginx.conf
+        echo "" >> nginx.conf
+        echo "    # CORS headers" >> nginx.conf
+        echo "    add_header 'Access-Control-Allow-Origin' '*';" >> nginx.conf
+        echo "    add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS, PUT, DELETE';" >> nginx.conf
+        echo "    add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization';" >> nginx.conf
+        echo "}" >> nginx.conf
+        
+    - name: Build and Push Docker image to Artifact Registry
+      run: |
+        cd src/Frontend/webapp
         
         # Build and push to Artifact Registry
         IMAGE_PATH="${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}"
@@ -128,14 +195,19 @@ jobs:
         docker push ${IMAGE_PATH}:${{ github.sha }}
         docker push ${IMAGE_PATH}:latest
     
-    - name: Deploy to Cloud Run
+    # Deploy to Cloud Run as public (unauthenticated)
+    - name: Deploy to Cloud Run (Public)
       id: deploy
-      uses: google-github-actions/deploy-cloudrun@v1
-      with:
-        service: ${{ env.SERVICE_NAME }}
-        image: ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
-        region: ${{ env.REGION }}
-        flags: --allow-unauthenticated
+      run: |
+        gcloud run deploy ${{ env.SERVICE_NAME }} \
+          --image ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+          --region ${{ env.REGION }} \
+          --service-account=frontend-identity@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
+          --set-env-vars=BACKEND_URL=${{ env.BACKEND_URL }} \
+          --allow-unauthenticated
     
-    - name: Show Output
-      run: echo ${{ steps.deploy.outputs.url }}
+    - name: Show Frontend URL
+      run: |
+        FRONTEND_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --region ${{ env.REGION }} --format='value(status.url)')
+        echo "Frontend URL: $FRONTEND_URL"
+        echo "Frontend is publicly accessible but can securely access the private backend."
