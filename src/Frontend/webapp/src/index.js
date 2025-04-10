@@ -14,8 +14,11 @@ const initializeSecurity = async () => {
   
   // Wait a short time for auth token to be fetched
   // This allows the auth-setup.js script to complete
-  if (window.location.hostname !== 'localhost' && 
-      !window.location.hostname.includes('127.0.0.1')) {
+  const isProduction = window.location.hostname !== 'localhost' && 
+                      !window.location.hostname.includes('127.0.0.1');
+  const useLocalAuth = process.env.REACT_APP_USE_LOCAL_AUTH === 'true';
+  
+  if (isProduction || useLocalAuth) {
     await new Promise(resolve => setTimeout(resolve, 300));
   }
   

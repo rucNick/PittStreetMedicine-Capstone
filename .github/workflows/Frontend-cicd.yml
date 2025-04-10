@@ -79,7 +79,7 @@ jobs:
         echo "REACT_APP_USE_AUTH=true" >> .env
         npm run build
     
-    # Create a simple Express server to serve the React app
+    # Create a simple Express server to serve the React app with improved authentication
     - name: Setup Express server
       run: |
         cd src/Frontend/webapp
@@ -100,14 +100,14 @@ jobs:
         }
         EOF
         
-        # Create server.js for serving the React app
+        # Create server.js for serving the React app with better token handling
         cat > server.js << 'EOF'
         const express = require('express');
         const path = require('path');
         const http = require('http');
         const app = express();
         const PORT = process.env.PORT || 8080;
-        const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
+        const BACKEND_URL = process.env.BACKEND_URL || 'https://streetmed-backend-900663028964.us-central1.run.app';
         
         // Serve static files
         app.use(express.static(path.join(__dirname, 'build')));
@@ -125,52 +125,72 @@ jobs:
         
         // Authentication script to get token
         app.get('/env-config.js', (req, res) => {
-          // In production, get token from metadata server
-          const metadataUrl = 'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=' + BACKEND_URL;
-          
-          const metadataReq = http.request(
-            metadataUrl,
-            { headers: { 'Metadata-Flavor': 'Google' } },
-            (metadataRes) => {
+          try {
+            // In production, get token from metadata server
+            const metadataOptions = {
+              hostname: 'metadata.google.internal',
+              path: '/computeMetadata/v1/instance/service-accounts/default/identity?audience=' + BACKEND_URL,
+              method: 'GET',
+              headers: {
+                'Metadata-Flavor': 'Google'
+              }
+            };
+            
+            const metadataReq = http.request(metadataOptions, (metadataRes) => {
               let token = '';
+              
               metadataRes.on('data', (chunk) => {
                 token += chunk;
               });
               
               metadataRes.on('end', () => {
+                console.log('Successfully obtained ID token from metadata server');
                 const js = `window.BACKEND_URL = "${BACKEND_URL}";
                          window.REACT_APP_BASE_URL = "${BACKEND_URL}";
-                         window.AUTH_TOKEN = "${token}";`;
+                         window.AUTH_TOKEN = "${token}";
+                         console.log("Auth token loaded from server");`;
                 res.type('application/javascript');
                 res.send(js);
               });
-            }
-          );
-          
-          metadataReq.on('error', (error) => {
-            console.error('Error getting token:', error);
-            const js = `window.BACKEND_URL = "${BACKEND_URL}";
+            });
+            
+            metadataReq.on('error', (error) => {
+              console.error('Error getting token:', error);
+              // Fallback to empty token but still provide the URLs
+              const js = `window.BACKEND_URL = "${BACKEND_URL}";
                        window.REACT_APP_BASE_URL = "${BACKEND_URL}";
                        window.AUTH_TOKEN = "";
-                       console.error("Failed to get authentication token");`;
+                       console.error("Failed to get authentication token: ${error.message}");`;
+              res.type('application/javascript');
+              res.send(js);
+            });
+            
+            metadataReq.end();
+          } catch (error) {
+            console.error('Uncaught error in token fetching:', error);
+            const js = `window.BACKEND_URL = "${BACKEND_URL}";
+                     window.REACT_APP_BASE_URL = "${BACKEND_URL}";
+                     window.AUTH_TOKEN = "";
+                     console.error("Uncaught error in token fetch: ${error.message}");`;
             res.type('application/javascript');
             res.send(js);
-          });
-          
-          metadataReq.end();
+          }
         });
         
-        // API auth injection script
+        // API auth injection script - improved error handling
         app.get('/api-auth.js', (req, res) => {
           const js = `console.log('API Auth script loaded');
                      // Override fetch to add auth headers to backend requests
                      const originalFetch = window.fetch;
                      window.fetch = function(url, options = {}) {
-                       if (url.startsWith(window.BACKEND_URL)) {
+                       if (url.toString().startsWith(window.BACKEND_URL)) {
                          const newOptions = { ...options };
-                         newOptions.headers = { ...newOptions.headers };
+                         newOptions.headers = { ...newOptions.headers || {} };
                          if (window.AUTH_TOKEN) {
                            newOptions.headers['Authorization'] = \`Bearer \${window.AUTH_TOKEN}\`;
+                           console.log('Adding auth header to request to ' + url);
+                         } else {
+                           console.warn('No AUTH_TOKEN available for request to ' + url);
                          }
                          return originalFetch(url, newOptions);
                        }
@@ -178,6 +198,15 @@ jobs:
                      };`;
           res.type('application/javascript');
           res.send(js);
+        });
+        
+        // Add a token status endpoint for debugging
+        app.get('/auth-status', (req, res) => {
+          res.json({
+            status: 'Server running',
+            backendUrl: BACKEND_URL,
+            environment: process.env.NODE_ENV || 'unknown'
+          });
         });
         
         // All other routes serve index.html for SPA routing

@@ -2,38 +2,56 @@
     // Function to fetch auth token from Google metadata server
     async function fetchAuthToken() {
       try {
-        // Only run in production environment (Cloud Run)
-        if (window.location.hostname === 'localhost' || 
-            window.location.hostname.includes('127.0.0.1')) {
+        // Check for local development mode
+        const isLocalDev = window.location.hostname === 'localhost' || 
+                           window.location.hostname.includes('127.0.0.1');
+        
+        // Check if we should use a local development token
+        const useLocalDevToken = isLocalDev && 
+                                 (window.REACT_APP_USE_LOCAL_AUTH === 'true' ||
+                                  '%REACT_APP_USE_LOCAL_AUTH%' === 'true');
+                                 
+        if (isLocalDev && !useLocalDevToken) {
           console.log('Running in development environment, skipping auth token fetch');
           return;
         }
         
-        console.log('Fetching authentication token from metadata server...');
-        
-        // Get backend URL from environment or fallback
-        const backendUrl = window.BACKEND_URL || 
-                           window.REACT_APP_BASE_URL || 
-                           'https://streetmed-backend-900663028964.us-central1.run.app';
-        
-        const metadataUrl = 'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=' + backendUrl;
-        
-        const response = await fetch(metadataUrl, {
-          headers: {
-            'Metadata-Flavor': 'Google'
-          }
-        });
-        
-        if (response.ok) {
-          const token = await response.text();
-          window.AUTH_TOKEN = token;
-          console.log('Authentication token fetched successfully');
-        } else {
-          console.warn('Failed to fetch authentication token, status:', response.status);
+        if (useLocalDevToken) {
+          // For local development with auth testing
+          console.log('Using local development auth token');
+          window.AUTH_TOKEN = window.REACT_APP_LOCAL_AUTH_TOKEN || 
+                             '%REACT_APP_LOCAL_AUTH_TOKEN%' || 
+                             'dev-token-for-testing';
+          return;
         }
+        
+        console.log('Initializing ID token for service-to-service auth...');
+        
+        // In production Cloud Run, we need to use the server-side proxy approach
+        // The server.js will handle this for us and provide the token via env-config.js
+        
+        // Wait for up to 2 seconds for the window.AUTH_TOKEN to be set by env-config.js
+        let attempts = 0;
+        const maxAttempts = 20;
+        
+        const checkToken = () => {
+          if (window.AUTH_TOKEN) {
+            console.log('Authentication token loaded successfully');
+            return;
+          }
+          
+          if (attempts >= maxAttempts) {
+            console.warn('Timed out waiting for authentication token');
+            return;
+          }
+          
+          attempts++;
+          setTimeout(checkToken, 100);
+        };
+        
+        checkToken();
       } catch (error) {
-        console.warn('Error fetching authentication token:', error);
-        // Don't throw - allow the app to continue without authentication in development
+        console.warn('Error setting up authentication:', error);
       }
     }
     

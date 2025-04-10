@@ -54,6 +54,9 @@ export const performKeyExchange = async () => {
     const headers = {};
     if (window.AUTH_TOKEN) {
       headers['Authorization'] = `Bearer ${window.AUTH_TOKEN}`;
+      console.log('Adding authorization header for ECDH handshake');
+    } else {
+      console.warn('No AUTH_TOKEN available for ECDH handshake');
     }
     
     const response = await fetch(`${baseURL}/api/security/initiate-handshake`, {
@@ -98,6 +101,7 @@ export const performKeyExchange = async () => {
     
     if (window.AUTH_TOKEN) {
       completeHeaders['Authorization'] = `Bearer ${window.AUTH_TOKEN}`;
+      console.log('Adding authorization header for complete-handshake request');
     }
     
     const completeResponse = await fetch(`${baseURL}/api/security/complete-handshake`, {
@@ -295,6 +299,9 @@ export const secureApiCall = async (url, method, data) => {
     // Add Authorization header if window.AUTH_TOKEN exists
     if (window.AUTH_TOKEN) {
       headers['Authorization'] = `Bearer ${window.AUTH_TOKEN}`;
+      console.log(`Adding authorization header for secure API call to ${url}`);
+    } else {
+      console.warn(`No AUTH_TOKEN available for secure API call to ${url}`);
     }
     
     // Make the request with the headers

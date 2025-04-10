@@ -110,10 +110,11 @@ jobs:
       id: deploy
       run: |
         gcloud run deploy ${{ env.SERVICE_NAME }} \
-          --image ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
-          --region ${{ env.REGION }} \
-          --service-account=backend-identity@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
-          --no-allow-unauthenticated
+        --image ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+        --region ${{ env.REGION }} \
+        --service-account=backend-identity@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
+        --no-allow-unauthenticated \
+        --set-env-vars=CORS_ALLOWED_ORIGINS=https://streetmed-frontend-l376e2l63q-uc.a.run.app
     
     # Grant the frontend service account permission to invoke the backend
     - name: Grant frontend service account permission to invoke backend
