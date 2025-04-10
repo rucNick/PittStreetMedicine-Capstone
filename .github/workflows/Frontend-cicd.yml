@@ -91,23 +91,23 @@ jobs:
     - name: Authenticate to Google Cloud
       uses: google-github-actions/auth@v1
       with:
-        credentials_json: ${{ secrets.GCP_SA_KEY }}
+        credentials_json: ${{ secrets.GCP_FRONT }}
     
     - name: Configure Docker for Artifact Registry
       run: |
         gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY }}
         
-    # Create a service account for the frontend if it doesn't exist
-    - name: Create or use frontend service account
+    # Instead of creating a service account, just check if it exists
+    - name: Check frontend service account
       run: |
         SERVICE_ACCOUNT=frontend-identity
         # Check if service account exists
         if ! gcloud iam service-accounts describe ${SERVICE_ACCOUNT}@${{ env.PROJECT_ID }}.iam.gserviceaccount.com --quiet; then
-          echo "Creating service account $SERVICE_ACCOUNT"
-          gcloud iam service-accounts create $SERVICE_ACCOUNT \
-            --display-name "Service identity for Frontend service"
+          echo "Warning: Service account $SERVICE_ACCOUNT doesn't exist. Please create it manually."
+          echo "Run: gcloud iam service-accounts create $SERVICE_ACCOUNT --display-name \"Service identity for Frontend service\""
+          exit 1
         else
-          echo "Service account $SERVICE_ACCOUNT already exists"
+          echo "Service account $SERVICE_ACCOUNT exists, proceeding with deployment"
         fi
     
     - name: Create Dockerfile and nginx.conf
