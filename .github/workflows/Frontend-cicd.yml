@@ -96,19 +96,8 @@ jobs:
     - name: Configure Docker for Artifact Registry
       run: |
         gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY }}
-        
-    # Instead of creating a service account, just check if it exists
-    - name: Check frontend service account
-      run: |
-        SERVICE_ACCOUNT=frontend-identity
-        # Check if service account exists
-        if ! gcloud iam service-accounts describe ${SERVICE_ACCOUNT}@${{ env.PROJECT_ID }}.iam.gserviceaccount.com --quiet; then
-          echo "Warning: Service account $SERVICE_ACCOUNT doesn't exist. Please create it manually."
-          echo "Run: gcloud iam service-accounts create $SERVICE_ACCOUNT --display-name \"Service identity for Frontend service\""
-          exit 1
-        else
-          echo "Service account $SERVICE_ACCOUNT exists, proceeding with deployment"
-        fi
+    
+    # Remove the service account check step entirely
     
     - name: Create Dockerfile and nginx.conf
       run: |
