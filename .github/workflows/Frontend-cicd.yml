@@ -130,8 +130,8 @@ jobs:
         echo "# Copy nginx config" >> Dockerfile
         echo "COPY nginx.conf /etc/nginx/conf.d/default.conf" >> Dockerfile
         echo "" >> Dockerfile
-        echo "# Expose port" >> Dockerfile
-        echo "EXPOSE 80" >> Dockerfile
+        echo "# Expose port - Cloud Run will use PORT env variable" >> Dockerfile
+        echo "EXPOSE 8080" >> Dockerfile
         echo "" >> Dockerfile
         echo "# Set the command to get the token and start nginx" >> Dockerfile
         echo "CMD [\"/bin/sh\", \"-c\", \"/usr/local/bin/get-token.sh && nginx -g 'daemon off;'\"]" >> Dockerfile
@@ -168,9 +168,9 @@ jobs:
         echo "# Inject script tags into index.html" >> get-token.sh
         echo "sed -i 's/<head>/<head>\\n  <script src=\"\\/env-config.js\"><\\/script>\\n  <script src=\"\\/api-auth.js\"><\\/script>/' /usr/share/nginx/html/index.html" >> get-token.sh
         
-        # Create nginx.conf
+        # Create nginx.conf with port 8080
         echo "server {" > nginx.conf
-        echo "    listen 80;" >> nginx.conf
+        echo "    listen 8080;" >> nginx.conf
         echo "    root /usr/share/nginx/html;" >> nginx.conf
         echo "    index index.html;" >> nginx.conf
         echo "" >> nginx.conf
