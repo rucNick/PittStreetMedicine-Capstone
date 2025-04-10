@@ -18,12 +18,11 @@ env:
   SERVICE_NAME: streetmed-frontend
   REGION: us-central1
   BACKEND_URL: https://streetmed-backend-900663028964.us-central1.run.app
-  ARTIFACT_REGISTRY: us-central1-docker.pkg.dev
-  REPOSITORY: streetmedgo-repo
 
 jobs:
-  build-and-test:
+  build-and-deploy:
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
@@ -56,32 +55,6 @@ jobs:
         echo "REACT_APP_API_URL=${{ env.BACKEND_URL }}" >> .env
         echo "REACT_APP_USE_AUTH=true" >> .env
         npm run build
-
-  deploy:
-    needs: build-and-test
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-    
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '20'
-        cache: 'npm'
-        cache-dependency-path: src/Frontend/webapp/package-lock.json
-    
-    - name: Install dependencies and build
-      run: |
-        cd src/Frontend/webapp
-        npm ci
-        npm install react-router-dom
-        echo "ESLINT_NO_DEV_ERRORS=true" > .env
-        echo "CI=false" >> .env
-        echo "REACT_APP_API_URL=${{ env.BACKEND_URL }}" >> .env
-        echo "REACT_APP_USE_AUTH=true" >> .env
-        npm run build
     
     - name: Set up Cloud SDK
       uses: google-github-actions/setup-gcloud@v1
@@ -93,95 +66,134 @@ jobs:
       with:
         credentials_json: ${{ secrets.GCP_FRONT }}
     
-    - name: Create Dockerfile and nginx.conf
+    # Create a simple Express server to serve the React app
+    - name: Setup Express server
       run: |
         cd src/Frontend/webapp
         
-        # Create Dockerfile
-        echo "FROM nginx:stable-alpine" > Dockerfile
-        echo "" >> Dockerfile
-        echo "# Copy the build directory into nginx html directory" >> Dockerfile
-        echo "COPY build/ /usr/share/nginx/html" >> Dockerfile
-        echo "" >> Dockerfile
-        echo "# Install required packages" >> Dockerfile
-        echo "RUN apk add --no-cache curl ca-certificates" >> Dockerfile
-        echo "" >> Dockerfile
-        echo "# Create startup script" >> Dockerfile
-        echo "COPY get-token.sh /usr/local/bin/" >> Dockerfile
-        echo "RUN chmod +x /usr/local/bin/get-token.sh" >> Dockerfile
-        echo "" >> Dockerfile
-        echo "# Copy nginx config" >> Dockerfile
-        echo "COPY nginx.conf /etc/nginx/conf.d/default.conf" >> Dockerfile
-        echo "" >> Dockerfile
-        echo "# Expose port - Cloud Run will use PORT env variable" >> Dockerfile
-        echo "EXPOSE 8080" >> Dockerfile
-        echo "" >> Dockerfile
-        echo "# Set the command to get the token and start nginx" >> Dockerfile
-        echo "CMD [\"/bin/sh\", \"-c\", \"/usr/local/bin/get-token.sh && nginx -g 'daemon off;'\"]" >> Dockerfile
+        # Create package.json for the server
+        cat > package.json << 'EOF'
+        {
+          "name": "streetmed-frontend",
+          "version": "1.0.0",
+          "description": "StreetMed Frontend",
+          "main": "server.js",
+          "scripts": {
+            "start": "node server.js"
+          },
+          "dependencies": {
+            "express": "^4.18.2"
+          }
+        }
+        EOF
         
-        # Create get-token.sh
-        echo "#!/bin/sh" > get-token.sh
-        echo "# Get the identity token from metadata service" >> get-token.sh
-        echo "TOKEN=\$(curl -s -H \"Metadata-Flavor: Google\" http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=\$BACKEND_URL)" >> get-token.sh
-        echo "" >> get-token.sh
-        echo "# Create a JavaScript file to inject auth token into the app" >> get-token.sh
-        echo "cat > /usr/share/nginx/html/env-config.js << EOF" >> get-token.sh
-        echo "window.BACKEND_URL = \"\$BACKEND_URL\";" >> get-token.sh
-        echo "window.AUTH_TOKEN = \"\$TOKEN\";" >> get-token.sh
-        echo "EOF" >> get-token.sh
-        echo "" >> get-token.sh
-        echo "# Create a JavaScript file to intercept API requests and add auth headers" >> get-token.sh
-        echo "cat > /usr/share/nginx/html/api-auth.js << EOF" >> get-token.sh
-        echo "console.log('API Auth script loaded');" >> get-token.sh
-        echo "// Override fetch to add auth headers to backend requests" >> get-token.sh
-        echo "const originalFetch = window.fetch;" >> get-token.sh
-        echo "window.fetch = function(url, options = {}) {" >> get-token.sh
-        echo "  if (url.startsWith(window.BACKEND_URL)) {" >> get-token.sh
-        echo "    const newOptions = { ...options };" >> get-token.sh
-        echo "    newOptions.headers = { ...newOptions.headers };" >> get-token.sh
-        echo "    if (window.AUTH_TOKEN) {" >> get-token.sh
-        echo "      newOptions.headers['Authorization'] = \`Bearer \${window.AUTH_TOKEN}\`;" >> get-token.sh
-        echo "    }" >> get-token.sh
-        echo "    return originalFetch(url, newOptions);" >> get-token.sh
-        echo "  }" >> get-token.sh
-        echo "  return originalFetch(url, options);" >> get-token.sh
-        echo "};" >> get-token.sh
-        echo "EOF" >> get-token.sh
-        echo "" >> get-token.sh
-        echo "# Inject script tags into index.html" >> get-token.sh
-        echo "sed -i 's/<head>/<head>\\n  <script src=\"\\/env-config.js\"><\\/script>\\n  <script src=\"\\/api-auth.js\"><\\/script>/' /usr/share/nginx/html/index.html" >> get-token.sh
+        # Create server.js for serving the React app
+        cat > server.js << 'EOF'
+        const express = require('express');
+        const path = require('path');
+        const https = require('https');
+        const app = express();
+        const PORT = process.env.PORT || 8080;
         
-        # Create nginx.conf with port 8080
-        echo "server {" > nginx.conf
-        echo "    listen 8080;" >> nginx.conf
-        echo "    root /usr/share/nginx/html;" >> nginx.conf
-        echo "    index index.html;" >> nginx.conf
-        echo "" >> nginx.conf
-        echo "    # For SPA routing" >> nginx.conf
-        echo "    location / {" >> nginx.conf
-        echo "        try_files \$uri \$uri/ /index.html;" >> nginx.conf
-        echo "    }" >> nginx.conf
-        echo "" >> nginx.conf
-        echo "    # CORS headers" >> nginx.conf
-        echo "    add_header 'Access-Control-Allow-Origin' '*';" >> nginx.conf
-        echo "    add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS, PUT, DELETE';" >> nginx.conf
-        echo "    add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization';" >> nginx.conf
-        echo "}" >> nginx.conf
+        // Serve static files
+        app.use(express.static(path.join(__dirname, 'build')));
+        
+        // CORS headers
+        app.use((req, res, next) => {
+          res.header('Access-Control-Allow-Origin', '*');
+          res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
+          res.header('Access-Control-Allow-Headers', 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization');
+          if (req.method === 'OPTIONS') {
+            return res.sendStatus(204);
+          }
+          next();
+        });
+        
+        // Authentication script to get token
+        app.get('/env-config.js', (req, res) => {
+          const backendUrl = process.env.BACKEND_URL || 'http://localhost:8080';
+          
+          // In production, get token from metadata server
+          const metadataUrl = 'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=' + backendUrl;
+          
+          const metadataReq = http.request(
+            metadataUrl,
+            { headers: { 'Metadata-Flavor': 'Google' } },
+            (metadataRes) => {
+              let token = '';
+              metadataRes.on('data', (chunk) => {
+                token += chunk;
+              });
+              
+              metadataRes.on('end', () => {
+                const js = `window.BACKEND_URL = "${backendUrl}";
+                         window.AUTH_TOKEN = "${token}";`;
+                res.type('application/javascript');
+                res.send(js);
+              });
+            }
+          );
+          
+          metadataReq.on('error', (error) => {
+            console.error('Error getting token:', error);
+            const js = `window.BACKEND_URL = "${backendUrl}";
+                       window.AUTH_TOKEN = "";
+                       console.error("Failed to get authentication token");`;
+            res.type('application/javascript');
+            res.send(js);
+          });
+          
+          metadataReq.end();
+        });
+        
+        // API auth injection script
+        app.get('/api-auth.js', (req, res) => {
+          const js = `console.log('API Auth script loaded');
+                     // Override fetch to add auth headers to backend requests
+                     const originalFetch = window.fetch;
+                     window.fetch = function(url, options = {}) {
+                       if (url.startsWith(window.BACKEND_URL)) {
+                         const newOptions = { ...options };
+                         newOptions.headers = { ...newOptions.headers };
+                         if (window.AUTH_TOKEN) {
+                           newOptions.headers['Authorization'] = \`Bearer \${window.AUTH_TOKEN}\`;
+                         }
+                         return originalFetch(url, newOptions);
+                       }
+                       return originalFetch(url, options);
+                     };`;
+          res.type('application/javascript');
+          res.send(js);
+        });
+        
+        // All other routes serve index.html for SPA routing
+        app.get('*', (req, res) => {
+          res.sendFile(path.join(__dirname, 'build', 'index.html'));
+        });
+        
+        // Modify index.html to include our scripts
+        const fs = require('fs');
+        const indexPath = path.join(__dirname, 'build', 'index.html');
+        let html = fs.readFileSync(indexPath, 'utf8');
+        if (!html.includes('env-config.js')) {
+          html = html.replace('<head>', '<head>\\n  <script src="/env-config.js"></script>\\n  <script src="/api-auth.js"></script>');
+          fs.writeFileSync(indexPath, html);
+        }
+        
+        app.listen(PORT, () => {
+          console.log(`Server running on port ${PORT}`);
+        });
+        EOF
     
-    # Use Cloud Build instead of local Docker
-    - name: Build and push using Cloud Build
-      run: |
-        cd src/Frontend/webapp
-        gcloud builds submit \
-          --tag ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
-          --tag ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:latest .
-    
-    # Deploy to Cloud Run as public (unauthenticated)
-    - name: Deploy to Cloud Run (Public)
+    # Deploy using gcloud run deploy with source
+    - name: Deploy to Cloud Run
       id: deploy
       run: |
+        cd src/Frontend/webapp
+        
+        # Deploy directly to Cloud Run
         gcloud run deploy ${{ env.SERVICE_NAME }} \
-          --image ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+          --source . \
           --region ${{ env.REGION }} \
           --service-account=frontend-identity@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
           --set-env-vars=BACKEND_URL=${{ env.BACKEND_URL }} \
