@@ -93,12 +93,6 @@ jobs:
       with:
         credentials_json: ${{ secrets.GCP_FRONT }}
     
-    - name: Configure Docker for Artifact Registry
-      run: |
-        gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY }}
-    
-    # Remove the service account check step entirely
-    
     - name: Create Dockerfile and nginx.conf
       run: |
         cd src/Frontend/webapp
@@ -173,16 +167,14 @@ jobs:
         echo "    add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS, PUT, DELETE';" >> nginx.conf
         echo "    add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization';" >> nginx.conf
         echo "}" >> nginx.conf
-        
-    - name: Build and Push Docker image to Artifact Registry
+    
+    # Use Cloud Build instead of local Docker
+    - name: Build and push using Cloud Build
       run: |
         cd src/Frontend/webapp
-        
-        # Build and push to Artifact Registry
-        IMAGE_PATH="${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}"
-        docker build -t ${IMAGE_PATH}:${{ github.sha }} -t ${IMAGE_PATH}:latest .
-        docker push ${IMAGE_PATH}:${{ github.sha }}
-        docker push ${IMAGE_PATH}:latest
+        gcloud builds submit \
+          --tag ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+          --tag ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:latest .
     
     # Deploy to Cloud Run as public (unauthenticated)
     - name: Deploy to Cloud Run (Public)
