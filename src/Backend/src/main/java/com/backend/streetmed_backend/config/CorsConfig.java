@@ -12,7 +12,9 @@ import java.util.Arrays;
 @Configuration
 public class CorsConfig {
 
-    @Value("${cors.allowed-origins:*}")
+    // In your application.properties, set:
+    // cors.allowed-origins=http://localhost:3000
+    @Value("${cors.allowed-origins}")
     private String allowedOrigins;
 
     @Bean
@@ -20,36 +22,24 @@ public class CorsConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration config = new CorsConfiguration();
 
-        // Add allowed origins from application properties
-        if (allowedOrigins.equals("*")) {
-            // For development, allow all origins
-            config.addAllowedOrigin("*");
-        } else {
-            // For production, add specific origins
-            String[] origins = allowedOrigins.split(",");
-            Arrays.stream(origins).forEach(config::addAllowedOrigin);
-        }
+        // Instead of using "*" for development when credentials are allowed,
+        // explicitly list allowed origins.
+        String[] origins = allowedOrigins.split(",");
+        Arrays.stream(origins)
+                .map(String::trim)
+                .forEach(config::addAllowedOrigin);
 
-        // Allow common headers
-        config.addAllowedHeader("Origin");
-        config.addAllowedHeader("Content-Type");
-        config.addAllowedHeader("Accept");
-        config.addAllowedHeader("Authorization");
-        config.addAllowedHeader("X-Session-ID");
+        // Alternatively, you can allow all headers/methods:
+        config.addAllowedHeader("*");
+        config.addAllowedMethod("*");
 
-        // Allow all methods
-        config.addAllowedMethod("GET");
-        config.addAllowedMethod("POST");
-        config.addAllowedMethod("PUT");
-        config.addAllowedMethod("DELETE");
-        config.addAllowedMethod("OPTIONS");
-
-        // Allow credentials (important for authentication)
+        // Allow credentials (cookies, authorization headers, etc.)
         config.setAllowCredentials(true);
 
-        // Max age for OPTION preflight requests
+        // Set the max age for the preflight request cache
         config.setMaxAge(3600L);
 
+        // Apply CORS config to all endpoints
         source.registerCorsConfiguration("/**", config);
         return new CorsFilter(source);
     }
