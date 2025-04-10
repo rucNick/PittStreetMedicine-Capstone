@@ -56,16 +56,6 @@ jobs:
         echo "REACT_APP_USE_AUTH=true" >> .env
         npm run build
     
-    - name: Set up Cloud SDK
-      uses: google-github-actions/setup-gcloud@v1
-      with:
-        project_id: ${{ env.PROJECT_ID }}
-    
-    - name: Authenticate to Google Cloud
-      uses: google-github-actions/auth@v1
-      with:
-        credentials_json: ${{ secrets.GCP_FRONT }}
-    
     # Create a simple Express server to serve the React app
     - name: Setup Express server
       run: |
@@ -91,7 +81,7 @@ jobs:
         cat > server.js << 'EOF'
         const express = require('express');
         const path = require('path');
-        const https = require('https');
+        const http = require('http');
         const app = express();
         const PORT = process.env.PORT || 8080;
         
@@ -176,7 +166,7 @@ jobs:
         const indexPath = path.join(__dirname, 'build', 'index.html');
         let html = fs.readFileSync(indexPath, 'utf8');
         if (!html.includes('env-config.js')) {
-          html = html.replace('<head>', '<head>\\n  <script src="/env-config.js"></script>\\n  <script src="/api-auth.js"></script>');
+          html = html.replace('<head>', '<head>\n  <script src="/env-config.js"></script>\n  <script src="/api-auth.js"></script>');
           fs.writeFileSync(indexPath, html);
         }
         
@@ -185,22 +175,27 @@ jobs:
         });
         EOF
     
-    # Deploy using gcloud run deploy with source
+    # Authenticate to Google Cloud with GitHub Actions credentials
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        project_id: ${{ env.PROJECT_ID }}
+    
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+    
+    # Use the GitHub Actions Cloud Run deployment action with correct parameters
     - name: Deploy to Cloud Run
       id: deploy
-      run: |
-        cd src/Frontend/webapp
-        
-        # Deploy directly to Cloud Run
-        gcloud run deploy ${{ env.SERVICE_NAME }} \
-          --source . \
-          --region ${{ env.REGION }} \
-          --service-account=frontend-identity@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
-          --set-env-vars=BACKEND_URL=${{ env.BACKEND_URL }} \
-          --allow-unauthenticated
+      uses: google-github-actions/deploy-cloudrun@v1
+      with:
+        service: ${{ env.SERVICE_NAME }}
+        source: ./src/Frontend/webapp
+        region: ${{ env.REGION }}
+        env_vars: BACKEND_URL=${{ env.BACKEND_URL }}
+        flags: --allow-unauthenticated --service-account=frontend-identity@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
     
-    - name: Show Frontend URL
-      run: |
-        FRONTEND_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --region ${{ env.REGION }} --format='value(status.url)')
-        echo "Frontend URL: $FRONTEND_URL"
-        echo "Frontend is publicly accessible but can securely access the private backend."
+    - name: Show Output
+      run: echo ${{ steps.deploy.outputs.url }}
