@@ -49,7 +49,16 @@ export const performKeyExchange = async () => {
     
     // Step 2: Initiate handshake with server
     console.log('Requesting server public key...');
-    const response = await fetch(`${baseURL}/api/security/initiate-handshake`);
+    
+    // Prepare headers with authorization if available
+    const headers = {};
+    if (window.AUTH_TOKEN) {
+      headers['Authorization'] = `Bearer ${window.AUTH_TOKEN}`;
+    }
+    
+    const response = await fetch(`${baseURL}/api/security/initiate-handshake`, {
+      headers: headers
+    });
     
     if (!response.ok) {
       throw new Error(`Server handshake failed: ${response.status}`);
@@ -81,11 +90,19 @@ export const performKeyExchange = async () => {
     
     // Step 5: Complete handshake with server
     console.log('Completing handshake with server...');
+    
+    // Include authorization in the complete-handshake request too
+    const completeHeaders = {
+      'Content-Type': 'application/json'
+    };
+    
+    if (window.AUTH_TOKEN) {
+      completeHeaders['Authorization'] = `Bearer ${window.AUTH_TOKEN}`;
+    }
+    
     const completeResponse = await fetch(`${baseURL}/api/security/complete-handshake`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: completeHeaders,
       body: JSON.stringify({
         sessionId,
         clientPublicKey: clientPublicKeyBase64,
@@ -269,14 +286,22 @@ export const secureApiCall = async (url, method, data) => {
     // Encrypt the request data
     const encryptedData = await encrypt(JSON.stringify(data));
     
-    // Make the request with the session ID header
+    // Prepare headers with session ID
+    const headers = {
+      'Content-Type': 'text/plain',
+      'X-Session-ID': getSessionId()
+    };
+    
+    // Add Authorization header if window.AUTH_TOKEN exists
+    if (window.AUTH_TOKEN) {
+      headers['Authorization'] = `Bearer ${window.AUTH_TOKEN}`;
+    }
+    
+    // Make the request with the headers
     const response = await fetch(url, {
       method: method,
-      headers: {
-        'Content-Type': 'text/plain',  // Keep text/plain for now
-        'X-Session-ID': getSessionId()
-      },
-      body: encryptedData  // Send the encrypted data directly without JSON.stringify
+      headers: headers,
+      body: encryptedData
     });
     
     if (!response.ok) {
