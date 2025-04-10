@@ -75,6 +75,7 @@ jobs:
       run: |
         cd src/Frontend/webapp
         echo "REACT_APP_API_URL=${{ env.BACKEND_URL }}" >> .env
+        echo "REACT_APP_BASE_URL=${{ env.BACKEND_URL }}" >> .env  # Add this line for the security module
         echo "REACT_APP_USE_AUTH=true" >> .env
         npm run build
     
@@ -106,6 +107,7 @@ jobs:
         const http = require('http');
         const app = express();
         const PORT = process.env.PORT || 8080;
+        const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
         
         // Serve static files
         app.use(express.static(path.join(__dirname, 'build')));
@@ -114,7 +116,7 @@ jobs:
         app.use((req, res, next) => {
           res.header('Access-Control-Allow-Origin', '*');
           res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
-          res.header('Access-Control-Allow-Headers', 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization');
+          res.header('Access-Control-Allow-Headers', 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization,X-Session-ID');
           if (req.method === 'OPTIONS') {
             return res.sendStatus(204);
           }
@@ -123,10 +125,8 @@ jobs:
         
         // Authentication script to get token
         app.get('/env-config.js', (req, res) => {
-          const backendUrl = process.env.BACKEND_URL || 'http://localhost:8080';
-          
           // In production, get token from metadata server
-          const metadataUrl = 'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=' + backendUrl;
+          const metadataUrl = 'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=' + BACKEND_URL;
           
           const metadataReq = http.request(
             metadataUrl,
@@ -138,7 +138,8 @@ jobs:
               });
               
               metadataRes.on('end', () => {
-                const js = `window.BACKEND_URL = "${backendUrl}";
+                const js = `window.BACKEND_URL = "${BACKEND_URL}";
+                         window.REACT_APP_BASE_URL = "${BACKEND_URL}";
                          window.AUTH_TOKEN = "${token}";`;
                 res.type('application/javascript');
                 res.send(js);
@@ -148,7 +149,8 @@ jobs:
           
           metadataReq.on('error', (error) => {
             console.error('Error getting token:', error);
-            const js = `window.BACKEND_URL = "${backendUrl}";
+            const js = `window.BACKEND_URL = "${BACKEND_URL}";
+                       window.REACT_APP_BASE_URL = "${BACKEND_URL}";
                        window.AUTH_TOKEN = "";
                        console.error("Failed to get authentication token");`;
             res.type('application/javascript');
@@ -194,6 +196,7 @@ jobs:
         
         app.listen(PORT, () => {
           console.log(`Server running on port ${PORT}`);
+          console.log(`Backend URL: ${BACKEND_URL}`);
         });
         EOF
         
@@ -210,6 +213,8 @@ jobs:
         COPY server.js ./
         
         ENV PORT=8080
+        ENV BACKEND_URL=https://streetmed-backend-900663028964.us-central1.run.app
+        
         EXPOSE 8080
         
         CMD ["node", "server.js"]
@@ -246,7 +251,8 @@ jobs:
           --image ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
           --region ${{ env.REGION }} \
           --service-account=frontend-identity@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
-          --allow-unauthenticated
+          --allow-unauthenticated \
+          --set-env-vars=BACKEND_URL=${{ env.BACKEND_URL }}
     
     - name: Show Frontend URL
       run: |
