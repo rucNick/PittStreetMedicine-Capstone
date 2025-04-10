@@ -12,11 +12,9 @@ public class CorsConfig {
     public CorsFilter corsFilter() {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration config = new CorsConfiguration();
-
-        // Explicitly allow specific origins
-        config.addAllowedOrigin("http://localhost:3000");
-        config.addAllowedOrigin("https://streetmed-backend-900663028964.us-central1.run.app");
-        config.addAllowedOrigin("https://streetmed-frontend-900663028964.us-central1.run.app");
+        
+        // Allow all origins for testing
+        config.addAllowedOrigin("*");
 
         config.addAllowedHeader("*");
         config.addAllowedMethod("*");
