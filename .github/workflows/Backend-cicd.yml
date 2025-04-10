@@ -73,7 +73,7 @@ jobs:
       run: |
         gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY }}
     
-    - name: Build and Push Docker image to Artifact Registry
+    - name: Build and Deploy using Cloud Build
       run: |
         cd src/Backend
         
@@ -86,13 +86,22 @@ jobs:
           echo "ENTRYPOINT [\"java\", \"-jar\", \"app.jar\"]" >> Dockerfile
         fi
         
-        # Build and push to Artifact Registry
-        IMAGE_PATH="${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}"
-        docker build -t ${IMAGE_PATH}:${{ github.sha }} -t ${IMAGE_PATH}:latest .
-        docker push ${IMAGE_PATH}:${{ github.sha }}
-        docker push ${IMAGE_PATH}:latest
+        # Create a Cloud Build config file
+        cat > cloudbuild.yaml << EOF
+        steps:
+        - name: 'gcr.io/cloud-builders/docker'
+          args: ['build', '-t', '${ARTIFACT_REGISTRY}/${PROJECT_ID}/${REPOSITORY}/${SERVICE_NAME}:${GITHUB_SHA}', '.']
+        - name: 'gcr.io/cloud-builders/docker'
+          args: ['tag', '${ARTIFACT_REGISTRY}/${PROJECT_ID}/${REPOSITORY}/${SERVICE_NAME}:${GITHUB_SHA}', '${ARTIFACT_REGISTRY}/${PROJECT_ID}/${REPOSITORY}/${SERVICE_NAME}:latest']
+        images:
+        - '${ARTIFACT_REGISTRY}/${PROJECT_ID}/${REPOSITORY}/${SERVICE_NAME}:${GITHUB_SHA}'
+        - '${ARTIFACT_REGISTRY}/${PROJECT_ID}/${REPOSITORY}/${SERVICE_NAME}:latest'
+        EOF
+        
+        # Submit the build to Cloud Build
+        gcloud builds submit --config=cloudbuild.yaml .
     
-    # Instead of creating a service account, just check if it exists
+    # Check if backend service account exists
     - name: Check backend service account
       run: |
         SERVICE_ACCOUNT=backend-identity
