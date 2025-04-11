@@ -1,4 +1,3 @@
-// index.js
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
@@ -12,6 +11,17 @@ const storedSessionId = localStorage.getItem('ecdh_session_id');
 
 const initializeSecurity = async () => {
   let result;
+  
+  // Wait a short time for auth token to be fetched
+  // This allows the auth-setup.js script to complete
+  const isProduction = window.location.hostname !== 'localhost' && 
+                      !window.location.hostname.includes('127.0.0.1');
+  const useLocalAuth = process.env.REACT_APP_USE_LOCAL_AUTH === 'true';
+  
+  if (isProduction || useLocalAuth) {
+    await new Promise(resolve => setTimeout(resolve, 300));
+  }
+  
   if (storedUser && storedSessionId) {
     console.log('Authenticated user found. Reinitializing encryption session...');
     // Re-perform the key exchange to generate new keys (cannot restore non-extractable keys)

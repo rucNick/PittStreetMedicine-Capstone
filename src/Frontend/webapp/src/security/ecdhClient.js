@@ -21,12 +21,26 @@ const securityContext = {
 };
 
 export const base64ToArrayBuffer = (base64) => {
-  const binaryString = atob(base64);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
+  try {
+    // Make sure the base64 string is properly padded
+    const paddedBase64 = base64.replace(/=+$/, '');
+    const paddingNeeded = paddedBase64.length % 4;
+    const correctlyPaddedBase64 = paddingNeeded > 0 
+      ? paddedBase64 + '='.repeat(4 - paddingNeeded) 
+      : paddedBase64;
+    
+    // Decode the base64 string
+    const binaryString = atob(correctlyPaddedBase64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+  } catch (error) {
+    console.error('Base64 decoding error:', error);
+    console.error('Problematic base64 string:', base64);
+    throw error;
   }
-  return bytes;
 };
 
 /**
@@ -49,7 +63,19 @@ export const performKeyExchange = async () => {
     
     // Step 2: Initiate handshake with server
     console.log('Requesting server public key...');
-    const response = await fetch(`${baseURL}/api/security/initiate-handshake`);
+    
+    // Prepare headers with authorization if available
+    const headers = {};
+    if (window.AUTH_TOKEN) {
+      headers['Authorization'] = `Bearer ${window.AUTH_TOKEN}`;
+      console.log('Adding authorization header for ECDH handshake');
+    } else {
+      console.warn('No AUTH_TOKEN available for ECDH handshake');
+    }
+    
+    const response = await fetch(`${baseURL}/api/security/initiate-handshake`, {
+      headers: headers
+    });
     
     if (!response.ok) {
       throw new Error(`Server handshake failed: ${response.status}`);
@@ -81,11 +107,20 @@ export const performKeyExchange = async () => {
     
     // Step 5: Complete handshake with server
     console.log('Completing handshake with server...');
+    
+    // Include authorization in the complete-handshake request too
+    const completeHeaders = {
+      'Content-Type': 'application/json'
+    };
+    
+    if (window.AUTH_TOKEN) {
+      completeHeaders['Authorization'] = `Bearer ${window.AUTH_TOKEN}`;
+      console.log('Adding authorization header for complete-handshake request');
+    }
+    
     const completeResponse = await fetch(`${baseURL}/api/security/complete-handshake`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: completeHeaders,
       body: JSON.stringify({
         sessionId,
         clientPublicKey: clientPublicKeyBase64,
@@ -269,14 +304,25 @@ export const secureApiCall = async (url, method, data) => {
     // Encrypt the request data
     const encryptedData = await encrypt(JSON.stringify(data));
     
-    // Make the request with the session ID header
+    // Prepare headers with session ID
+    const headers = {
+      'Content-Type': 'text/plain',
+      'X-Session-ID': getSessionId()
+    };
+    
+    // Add Authorization header if window.AUTH_TOKEN exists
+    if (window.AUTH_TOKEN) {
+      headers['Authorization'] = `Bearer ${window.AUTH_TOKEN}`;
+      console.log(`Adding authorization header for secure API call to ${url}`);
+    } else {
+      console.warn(`No AUTH_TOKEN available for secure API call to ${url}`);
+    }
+    
+    // Make the request with the headers
     const response = await fetch(url, {
       method: method,
-      headers: {
-        'Content-Type': 'text/plain',  // Keep text/plain for now
-        'X-Session-ID': getSessionId()
-      },
-      body: encryptedData  // Send the encrypted data directly without JSON.stringify
+      headers: headers,
+      body: encryptedData
     });
     
     if (!response.ok) {
