@@ -73,96 +73,37 @@ jobs:
       run: |
         gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY }}
     
-    # Setup Google Cloud Storage for database backup/restore
-    - name: Setup Cloud Storage for database
-      run: |
-        # Check if bucket exists and create it if needed
-        if ! gsutil ls -b gs://${{ env.PROJECT_ID }}-db-storage 2>/dev/null; then
-          gsutil mb -l ${{ env.REGION }} gs://${{ env.PROJECT_ID }}-db-storage
-          echo "Created storage bucket gs://${{ env.PROJECT_ID }}-db-storage"
-        fi
-        
-        # Check if database file exists in the bucket
-        if gsutil -q stat gs://${{ env.PROJECT_ID }}-db-storage/auth_db.sqlite; then
-          echo "Existing database found in Cloud Storage"
-          gsutil cp gs://${{ env.PROJECT_ID }}-db-storage/auth_db.sqlite src/Backend/
-        fi
-    
+    # Simpler approach - embedding SQLite directly in the container
     - name: Build and Push Docker image to Artifact Registry
       run: |
         cd src/Backend
         
-        # Create a script to handle SQLite database persistence
-        cat > db-manager.sh << 'EOF'
-        #!/bin/bash
-        
-        # Configuration
-        BUCKET="gs://$PROJECT_ID-db-storage"
-        DB_FILE="/data/auth_db.sqlite"
-        BACKUP_INTERVAL=300  # 5 minutes in seconds
-        
-        # Create data directory
-        mkdir -p /data
-        
-        # Download the latest database from GCS if it exists
-        if gsutil -q stat $BUCKET/auth_db.sqlite; then
-          echo "Downloading existing database from Cloud Storage..."
-          gsutil cp $BUCKET/auth_db.sqlite $DB_FILE
-        elif [ -f /app/auth_db.sqlite ]; then
-          # Use the included database file as initial
-          echo "Using bundled database file as initial database"
-          cp /app/auth_db.sqlite $DB_FILE
-        else
-          echo "No existing database found, will create new one"
-        fi
-        
-        # Set permissions
-        chmod 644 $DB_FILE
-        
-        # Background task to periodically back up the database
-        (
-          while true; do
-            sleep $BACKUP_INTERVAL
-            echo "Backing up database to Cloud Storage..."
-            gsutil cp $DB_FILE $BUCKET/auth_db.sqlite
-          done
-        ) &
-        
-        # Start the application
-        exec java -Dspring.datasource.url=jdbc:sqlite:$DB_FILE -jar /app/app.jar
-        EOF
-        
-        chmod +x db-manager.sh
-        
-        # Create Dockerfile with SQLite handling
+        # Create a simpler Dockerfile with database embedded
         cat > Dockerfile << 'EOF'
         FROM eclipse-temurin:17-jre
         
-        # Install gsutil for Cloud Storage operations
-        RUN apt-get update && apt-get install -y \
-            curl \
-            python3 \
-            python3-pip \
-            && pip3 install gsutil \
-            && apt-get clean \
-            && rm -rf /var/lib/apt/lists/*
-            
         WORKDIR /app
         
         # Copy the SQLite database file
-        COPY auth_db.sqlite /app/
+        COPY auth_db.sqlite /app/data/
         
         # Copy the application JAR
         COPY target/*.jar app.jar
         
-        # Copy the database manager script
-        COPY db-manager.sh /app/
-        
         EXPOSE 8080
         
-        # Use the database manager script as entrypoint
-        ENTRYPOINT ["/app/db-manager.sh"]
+        # Start the application with the database path
+        ENTRYPOINT ["java", "-Dspring.datasource.url=jdbc:sqlite:/app/data/auth_db.sqlite", "-jar", "app.jar"]
         EOF
+        
+        # Create data directory
+        mkdir -p data
+        
+        # Ensure database file exists
+        if [ ! -f auth_db.sqlite ]; then
+          touch auth_db.sqlite
+          echo "Created empty SQLite database file"
+        fi
         
         # Build and push to Artifact Registry
         IMAGE_PATH="${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}"
@@ -183,21 +124,17 @@ jobs:
           echo "Service account $SERVICE_ACCOUNT already exists"
         fi
     
-    # Grant Storage access to the service account
-    - name: Grant Storage permissions to service account
-      run: |
-        gsutil iam ch serviceAccount:backend-identity@${{ env.PROJECT_ID }}.iam.gserviceaccount.com:objectAdmin gs://${{ env.PROJECT_ID }}-db-storage
-    
-    # Deploy to Cloud Run with environment variables
+    # Deploy to Cloud Run with warning about persistence
     - name: Deploy to Cloud Run (Private)
       id: deploy
       run: |
+        echo "WARNING: Deploying with embedded SQLite database. Data will NOT persist between deployments."
         gcloud run deploy ${{ env.SERVICE_NAME }} \
           --image ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
           --region ${{ env.REGION }} \
           --service-account=backend-identity@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
           --no-allow-unauthenticated \
-          --set-env-vars=CORS_ALLOWED_ORIGINS=https://streetmed-frontend-l376e2l63q-uc.a.run.app,PROJECT_ID=${{ env.PROJECT_ID }}
+          --set-env-vars=CORS_ALLOWED_ORIGINS=https://streetmed-frontend-l376e2l63q-uc.a.run.app
     
     # Grant the frontend service account permission to invoke the backend
     - name: Grant frontend service account permission to invoke backend
@@ -207,8 +144,9 @@ jobs:
           --member=serviceAccount:${{ env.FRONTEND_SERVICE_ACCOUNT }} \
           --role=roles/run.invoker
     
-    - name: Show Backend URL
+    - name: Show Backend URL and Persistence Warning
       run: |
         BACKEND_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --region ${{ env.REGION }} --format='value(status.url)')
         echo "Backend URL: $BACKEND_URL"
-        echo "Important: The backend is now private and can only be accessed from authorized services like the frontend."
+        echo "IMPORTANT: This deployment embeds the SQLite database directly. Data changes will NOT persist between deployments."
+        echo "For production use, consider migrating to Cloud SQL or implementing a proper database backup/restore mechanism."
