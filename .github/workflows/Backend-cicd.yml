@@ -20,7 +20,6 @@ env:
   ARTIFACT_REGISTRY: us-central1-docker.pkg.dev
   REPOSITORY: streetmedgo-repo
   FRONTEND_SERVICE_ACCOUNT: frontend-identity@streetmedgo.iam.gserviceaccount.com
-  DB_VOLUME_NAME: sqlite-data
 
 jobs:
   build-and-test:
@@ -74,28 +73,95 @@ jobs:
       run: |
         gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY }}
     
+    # Setup Google Cloud Storage for database backup/restore
+    - name: Setup Cloud Storage for database
+      run: |
+        # Check if bucket exists and create it if needed
+        if ! gsutil ls -b gs://${{ env.PROJECT_ID }}-db-storage 2>/dev/null; then
+          gsutil mb -l ${{ env.REGION }} gs://${{ env.PROJECT_ID }}-db-storage
+          echo "Created storage bucket gs://${{ env.PROJECT_ID }}-db-storage"
+        fi
+        
+        # Check if database file exists in the bucket
+        if gsutil -q stat gs://${{ env.PROJECT_ID }}-db-storage/auth_db.sqlite; then
+          echo "Existing database found in Cloud Storage"
+          gsutil cp gs://${{ env.PROJECT_ID }}-db-storage/auth_db.sqlite src/Backend/
+        fi
+    
     - name: Build and Push Docker image to Artifact Registry
       run: |
         cd src/Backend
         
+        # Create a script to handle SQLite database persistence
+        cat > db-manager.sh << 'EOF'
+        #!/bin/bash
+        
+        # Configuration
+        BUCKET="gs://$PROJECT_ID-db-storage"
+        DB_FILE="/data/auth_db.sqlite"
+        BACKUP_INTERVAL=300  # 5 minutes in seconds
+        
+        # Create data directory
+        mkdir -p /data
+        
+        # Download the latest database from GCS if it exists
+        if gsutil -q stat $BUCKET/auth_db.sqlite; then
+          echo "Downloading existing database from Cloud Storage..."
+          gsutil cp $BUCKET/auth_db.sqlite $DB_FILE
+        elif [ -f /app/auth_db.sqlite ]; then
+          # Use the included database file as initial
+          echo "Using bundled database file as initial database"
+          cp /app/auth_db.sqlite $DB_FILE
+        else
+          echo "No existing database found, will create new one"
+        fi
+        
+        # Set permissions
+        chmod 644 $DB_FILE
+        
+        # Background task to periodically back up the database
+        (
+          while true; do
+            sleep $BACKUP_INTERVAL
+            echo "Backing up database to Cloud Storage..."
+            gsutil cp $DB_FILE $BUCKET/auth_db.sqlite
+          done
+        ) &
+        
+        # Start the application
+        exec java -Dspring.datasource.url=jdbc:sqlite:$DB_FILE -jar /app/app.jar
+        EOF
+        
+        chmod +x db-manager.sh
+        
         # Create Dockerfile with SQLite handling
         cat > Dockerfile << 'EOF'
         FROM eclipse-temurin:17-jre
+        
+        # Install gsutil for Cloud Storage operations
+        RUN apt-get update && apt-get install -y \
+            curl \
+            python3 \
+            python3-pip \
+            && pip3 install gsutil \
+            && apt-get clean \
+            && rm -rf /var/lib/apt/lists/*
+            
         WORKDIR /app
         
-        # Create data directory for SQLite databases
-        RUN mkdir -p /data
-        
         # Copy the SQLite database file
-        COPY auth_db.sqlite /data/
+        COPY auth_db.sqlite /app/
         
         # Copy the application JAR
         COPY target/*.jar app.jar
         
+        # Copy the database manager script
+        COPY db-manager.sh /app/
+        
         EXPOSE 8080
         
-        # Start the application with environment variables
-        ENTRYPOINT ["java", "-Dspring.datasource.url=jdbc:sqlite:/data/auth_db.sqlite", "-jar", "app.jar"]
+        # Use the database manager script as entrypoint
+        ENTRYPOINT ["/app/db-manager.sh"]
         EOF
         
         # Build and push to Artifact Registry
@@ -117,26 +183,21 @@ jobs:
           echo "Service account $SERVICE_ACCOUNT already exists"
         fi
     
-    # Deploy to Cloud Run with volume mount for SQLite persistence
+    # Grant Storage access to the service account
+    - name: Grant Storage permissions to service account
+      run: |
+        gsutil iam ch serviceAccount:backend-identity@${{ env.PROJECT_ID }}.iam.gserviceaccount.com:objectAdmin gs://${{ env.PROJECT_ID }}-db-storage
+    
+    # Deploy to Cloud Run with environment variables
     - name: Deploy to Cloud Run (Private)
       id: deploy
       run: |
-        # First check if the volume exists
-        VOLUME_EXISTS=$(gcloud alpha storage ls gs://${{ env.PROJECT_ID }}-sqlite-data 2>/dev/null || echo "")
-        
-        if [ -z "$VOLUME_EXISTS" ]; then
-          echo "Creating Cloud Storage bucket for SQLite data..."
-          gcloud storage buckets create gs://${{ env.PROJECT_ID }}-sqlite-data --location=${{ env.REGION }}
-        fi
-        
-        # Deploy with volume mount
         gcloud run deploy ${{ env.SERVICE_NAME }} \
           --image ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
           --region ${{ env.REGION }} \
           --service-account=backend-identity@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
           --no-allow-unauthenticated \
-          --set-env-vars=CORS_ALLOWED_ORIGINS=https://streetmed-frontend-l376e2l63q-uc.a.run.app,SQLITE_DB_PATH=/mnt/sqlite/auth_db.sqlite \
-          --mount type=volume,source=sqlite-data,destination=/data
+          --set-env-vars=CORS_ALLOWED_ORIGINS=https://streetmed-frontend-l376e2l63q-uc.a.run.app,PROJECT_ID=${{ env.PROJECT_ID }}
     
     # Grant the frontend service account permission to invoke the backend
     - name: Grant frontend service account permission to invoke backend
