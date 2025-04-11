@@ -21,12 +21,26 @@ const securityContext = {
 };
 
 export const base64ToArrayBuffer = (base64) => {
-  const binaryString = atob(base64);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
+  try {
+    // Make sure the base64 string is properly padded
+    const paddedBase64 = base64.replace(/=+$/, '');
+    const paddingNeeded = paddedBase64.length % 4;
+    const correctlyPaddedBase64 = paddingNeeded > 0 
+      ? paddedBase64 + '='.repeat(4 - paddingNeeded) 
+      : paddedBase64;
+    
+    // Decode the base64 string
+    const binaryString = atob(correctlyPaddedBase64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+  } catch (error) {
+    console.error('Base64 decoding error:', error);
+    console.error('Problematic base64 string:', base64);
+    throw error;
   }
-  return bytes;
 };
 
 /**
