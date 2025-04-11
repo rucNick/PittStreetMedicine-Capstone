@@ -20,6 +20,7 @@ env:
   ARTIFACT_REGISTRY: us-central1-docker.pkg.dev
   REPOSITORY: streetmedgo-repo
   FRONTEND_SERVICE_ACCOUNT: frontend-identity@streetmedgo.iam.gserviceaccount.com
+  DB_VOLUME_NAME: sqlite-data
 
 jobs:
   build-and-test:
@@ -77,14 +78,25 @@ jobs:
       run: |
         cd src/Backend
         
-        # Create Dockerfile if it doesn't exist
-        if [ ! -f Dockerfile ]; then
-          echo "FROM eclipse-temurin:17-jre" > Dockerfile
-          echo "WORKDIR /app" >> Dockerfile
-          echo "COPY target/*.jar app.jar" >> Dockerfile
-          echo "EXPOSE 8080" >> Dockerfile
-          echo "ENTRYPOINT [\"java\", \"-jar\", \"app.jar\"]" >> Dockerfile
-        fi
+        # Create Dockerfile with SQLite handling
+        cat > Dockerfile << 'EOF'
+        FROM eclipse-temurin:17-jre
+        WORKDIR /app
+        
+        # Create data directory for SQLite databases
+        RUN mkdir -p /data
+        
+        # Copy the SQLite database file
+        COPY auth_db.sqlite /data/
+        
+        # Copy the application JAR
+        COPY target/*.jar app.jar
+        
+        EXPOSE 8080
+        
+        # Start the application with environment variables
+        ENTRYPOINT ["java", "-Dspring.datasource.url=jdbc:sqlite:/data/auth_db.sqlite", "-jar", "app.jar"]
+        EOF
         
         # Build and push to Artifact Registry
         IMAGE_PATH="${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}"
@@ -105,16 +117,26 @@ jobs:
           echo "Service account $SERVICE_ACCOUNT already exists"
         fi
     
-    # Deploy to Cloud Run with no-allow-unauthenticated flag
+    # Deploy to Cloud Run with volume mount for SQLite persistence
     - name: Deploy to Cloud Run (Private)
       id: deploy
       run: |
+        # First check if the volume exists
+        VOLUME_EXISTS=$(gcloud alpha storage ls gs://${{ env.PROJECT_ID }}-sqlite-data 2>/dev/null || echo "")
+        
+        if [ -z "$VOLUME_EXISTS" ]; then
+          echo "Creating Cloud Storage bucket for SQLite data..."
+          gcloud storage buckets create gs://${{ env.PROJECT_ID }}-sqlite-data --location=${{ env.REGION }}
+        fi
+        
+        # Deploy with volume mount
         gcloud run deploy ${{ env.SERVICE_NAME }} \
-        --image ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
-        --region ${{ env.REGION }} \
-        --service-account=backend-identity@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
-        --no-allow-unauthenticated \
-        --set-env-vars=CORS_ALLOWED_ORIGINS=https://streetmed-frontend-l376e2l63q-uc.a.run.app
+          --image ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+          --region ${{ env.REGION }} \
+          --service-account=backend-identity@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
+          --no-allow-unauthenticated \
+          --set-env-vars=CORS_ALLOWED_ORIGINS=https://streetmed-frontend-l376e2l63q-uc.a.run.app,SQLITE_DB_PATH=/mnt/sqlite/auth_db.sqlite \
+          --mount type=volume,source=sqlite-data,destination=/data
     
     # Grant the frontend service account permission to invoke the backend
     - name: Grant frontend service account permission to invoke backend
