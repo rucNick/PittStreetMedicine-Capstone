@@ -13,7 +13,7 @@ import Volunteer from "../Volunteer/Volunteer";
 import Admin from "../Admin/Admin";
 import CargoAdmin from "../Admin/Cargo_Admin";
 import CargoVolunteer from "../Volunteer/Cargo_Volunteer";
-import ResetPassword from "../../ResetPassword";
+import ResetPassword from "../Login/ResetPassword";
 import RoundAdmin from "../Round/Round_Admin";
 import VolunteerDashboard from "../Volunteer/Volunteer_Dashboard";
 

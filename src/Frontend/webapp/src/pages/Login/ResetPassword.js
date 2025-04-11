@@ -34,7 +34,7 @@ const Reset_Password = () => {
       return;
     }
     try {
-      const response = await axios.post("http://localhost:8080/api/auth/password/request-reset", {
+      const response = await axios.post(`${baseURL}/api/auth/password/request-reset`, {
         email: email.trim()
       });
       console.log("handleRequestReset response:", response.data);
@@ -62,7 +62,7 @@ const Reset_Password = () => {
       return;
     }
     try {
-      const response = await axios.post("http://localhost:8080/api/auth/password/verify-reset", {
+      const response = await axios.post(`${baseURL}/api/auth/password/verify-reset`, {
         email: email.trim(),
         otp: otp.trim(),
         newPassword: newPassword.trim()
