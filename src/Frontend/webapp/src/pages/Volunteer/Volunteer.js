@@ -18,7 +18,7 @@ const Volunteer = ({ onLogout, userData }) => {
     setLoading(true);
     setError('');
     try {
-      const response = await axios.get(`${baseURL}:8080/api/orders/all`, {
+      const response = await axios.get(`${baseURL}/api/orders/all`, {
         params: {
           authenticated: true,
           userId: userId,
