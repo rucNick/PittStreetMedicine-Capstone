@@ -20,6 +20,8 @@ env:
   ARTIFACT_REGISTRY: us-central1-docker.pkg.dev
   REPOSITORY: streetmedgo-repo
   FRONTEND_SERVICE_ACCOUNT: frontend-identity@streetmedgo.iam.gserviceaccount.com
+  MYSQL_INSTANCE: streetmedgo:us-central1:streetmed
+  MYSQL_HOST: 130.211.230.52
 
 jobs:
   build-and-test:
@@ -73,43 +75,45 @@ jobs:
       run: |
         gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY }}
     
-    # Simpler approach - embedding SQLite directly in the container
-    - name: Build and Push Docker image to Artifact Registry
+    # Create Dockerfile for MySQL deployment
+    - name: Create Dockerfile for MySQL
       run: |
         cd src/Backend
         
-        # Create a simpler Dockerfile with database embedded
+        # Create Dockerfile for MySQL connection
         cat > Dockerfile << 'EOF'
         FROM eclipse-temurin:17-jre
         
         WORKDIR /app
-        
-        # Copy the SQLite database file
-        COPY auth_db.sqlite /app/data/
         
         # Copy the application JAR
         COPY target/*.jar app.jar
         
         EXPOSE 8080
         
-        # Start the application with the database path
-        ENTRYPOINT ["java", "-Dspring.datasource.url=jdbc:sqlite:/app/data/auth_db.sqlite", "-jar", "app.jar"]
+        # Start the application with MySQL connection and production profile
+        ENTRYPOINT ["java", "-Dspring.profiles.active=prod", "-jar", "app.jar"]
         EOF
-        
-        # Create data directory
-        mkdir -p data
-        
-        # Ensure database file exists
-        if [ ! -f auth_db.sqlite ]; then
-          touch auth_db.sqlite
-          echo "Created empty SQLite database file"
-        fi
         
         # Build and push to Artifact Registry
         IMAGE_PATH="${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}"
         docker build -t ${IMAGE_PATH}:${{ github.sha }} -t ${IMAGE_PATH}:latest .
         docker push ${IMAGE_PATH}:${{ github.sha }}
         docker push ${IMAGE_PATH}:latest
+    
+    # Create or update secrets for database access
+    - name: Setup MySQL credentials as secrets
+      run: |
+        # Create secrets for MySQL credentials if they don't exist yet
+        if ! gcloud secrets describe mysql-username 2>/dev/null; then
+          echo "Creating MySQL username secret"
+          echo "${{ secrets.MYSQL_USERNAME }}" | gcloud secrets create mysql-username --data-file=-
+        fi
+        
+        if ! gcloud secrets describe mysql-password 2>/dev/null; then
+          echo "Creating MySQL password secret"
+          echo "${{ secrets.MYSQL_PASSWORD }}" | gcloud secrets create mysql-password --data-file=-
+        fi
     
     # Create a service account for the backend if it doesn't exist
     - name: Create or use backend service account
@@ -124,29 +128,22 @@ jobs:
           echo "Service account $SERVICE_ACCOUNT already exists"
         fi
     
-    # Deploy to Cloud Run with warning about persistence
-    - name: Deploy to Cloud Run (Private)
+    # Deploy to Cloud Run with MySQL connection
+    - name: Deploy to Cloud Run (No auth required)
       id: deploy
       run: |
-        echo "WARNING: Deploying with embedded SQLite database. Data will NOT persist between deployments."
         gcloud run deploy ${{ env.SERVICE_NAME }} \
           --image ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
           --region ${{ env.REGION }} \
           --service-account=backend-identity@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
-          --no-allow-unauthenticated \
-          --set-env-vars=CORS_ALLOWED_ORIGINS=https://streetmed-frontend-l376e2l63q-uc.a.run.app
+          --allow-unauthenticated \
+          --set-env-vars="CORS_ALLOWED_ORIGINS=https://streetmed-frontend-l376e2l63q-uc.a.run.app" \
+          --set-secrets="MYSQL_USERNAME=mysql-username:latest" \
+          --set-secrets="MYSQL_PASSWORD=mysql-password:latest" \
+          --set-env-vars="SPRING_PROFILES_ACTIVE=prod"
     
-    # Grant the frontend service account permission to invoke the backend
-    - name: Grant frontend service account permission to invoke backend
-      run: |
-        gcloud run services add-iam-policy-binding ${{ env.SERVICE_NAME }} \
-          --region=${{ env.REGION }} \
-          --member=serviceAccount:${{ env.FRONTEND_SERVICE_ACCOUNT }} \
-          --role=roles/run.invoker
-    
-    - name: Show Backend URL and Persistence Warning
+    - name: Show Backend URL
       run: |
         BACKEND_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --region ${{ env.REGION }} --format='value(status.url)')
         echo "Backend URL: $BACKEND_URL"
-        echo "IMPORTANT: This deployment embeds the SQLite database directly. Data changes will NOT persist between deployments."
-        echo "For production use, consider migrating to Cloud SQL or implementing a proper database backup/restore mechanism."
+        echo "IMPORTANT: Your backend is now connected to the MySQL database at ${{ env.MYSQL_HOST }}."

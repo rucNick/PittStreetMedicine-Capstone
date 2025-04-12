@@ -103,37 +103,37 @@ public class AdminController {
         }, authExecutor);
     }
 
-    @Operation(summary = "Migrate all passwords to hashed format")
-    @PostMapping("/migrate-passwords")
-    public CompletableFuture<ResponseEntity<Map<String, Object>>> migratePasswords(
-            @Schema(example = "admin") @RequestHeader("Admin-Username") String adminUsername,
-            @Schema(example = "true") @RequestHeader("Authentication-Status") String authStatus) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                if (!"true".equals(authStatus)) {
-                    throw new RuntimeException("Not authenticated");
-                }
-
-                User admin = userService.findByUsername(adminUsername);
-                if (admin == null || !"ADMIN".equals(admin.getRole())) {
-                    throw new RuntimeException("Unauthorized access");
-                }
-
-                userService.migrateAllPasswordsToHashed();
-
-                Map<String, Object> response = new HashMap<>();
-                response.put("status", "success");
-                response.put("message", "All passwords have been migrated to hashed format");
-                return ResponseEntity.ok(response);
-
-            } catch (Exception e) {
-                Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put("status", "error");
-                errorResponse.put("message", e.getMessage());
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
-            }
-        }, authExecutor);
-    }
+//    @Operation(summary = "Migrate all passwords to hashed format")
+//    @PostMapping("/migrate-passwords")
+//    public CompletableFuture<ResponseEntity<Map<String, Object>>> migratePasswords(
+//            @Schema(example = "admin") @RequestHeader("Admin-Username") String adminUsername,
+//            @Schema(example = "true") @RequestHeader("Authentication-Status") String authStatus) {
+//        return CompletableFuture.supplyAsync(() -> {
+//            try {
+//                if (!"true".equals(authStatus)) {
+//                    throw new RuntimeException("Not authenticated");
+//                }
+//
+//                User admin = userService.findByUsername(adminUsername);
+//                if (admin == null || !"ADMIN".equals(admin.getRole())) {
+//                    throw new RuntimeException("Unauthorized access");
+//                }
+//
+//                userService.migrateAllPasswordsToHashed();
+//
+//                Map<String, Object> response = new HashMap<>();
+//                response.put("status", "success");
+//                response.put("message", "All passwords have been migrated to hashed format");
+//                return ResponseEntity.ok(response);
+//
+//            } catch (Exception e) {
+//                Map<String, Object> errorResponse = new HashMap<>();
+//                errorResponse.put("status", "error");
+//                errorResponse.put("message", e.getMessage());
+//                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+//            }
+//        }, authExecutor);
+//    }
 
     @Operation(summary = "Get all users (Admin only)")
     @GetMapping("/users")

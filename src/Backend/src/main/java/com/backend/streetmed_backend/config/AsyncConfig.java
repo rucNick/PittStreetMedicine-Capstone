@@ -13,10 +13,9 @@ public class AsyncConfig {
     @Bean(name = "authExecutor")
     public Executor authExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        // Keep thread count low due to SQLite's limitations
-        executor.setCorePoolSize(2);      // Minimum number of threads
-        executor.setMaxPoolSize(6);       // Maximum number of threads
-        executor.setQueueCapacity(50);    // Queue capacity before rejection
+        executor.setCorePoolSize(5);      // Increased from 2
+        executor.setMaxPoolSize(10);      // Increased from 6
+        executor.setQueueCapacity(100);   // Increased from 50
         executor.setThreadNamePrefix("Auth-");
 
         // Configure rejection policy
@@ -35,10 +34,10 @@ public class AsyncConfig {
     @Bean(name = "readOnlyExecutor")
     public Executor readOnlyExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        // More threads for read operations since SQLite allows multiple readers
-        executor.setCorePoolSize(3);
-        executor.setMaxPoolSize(6);
-        executor.setQueueCapacity(100);
+        // More threads for read operations since MySQL handles concurrent readers well
+        executor.setCorePoolSize(8);      // Increased from 3
+        executor.setMaxPoolSize(15);      // Increased from 6
+        executor.setQueueCapacity(200);   // Increased from 100
         executor.setThreadNamePrefix("ReadOnly-");
 
         executor.setRejectedExecutionHandler((r, e) -> {
@@ -56,9 +55,9 @@ public class AsyncConfig {
     public Executor emailExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         // Dedicated thread pool for email operations
-        executor.setCorePoolSize(2);       // Start with 2 threads
-        executor.setMaxPoolSize(4);        // Max 4 threads
-        executor.setQueueCapacity(50);     // Queue up to 50 email tasks
+        executor.setCorePoolSize(3);       // Increased from 2
+        executor.setMaxPoolSize(6);        // Increased from 4
+        executor.setQueueCapacity(100);    // Increased from 50
         executor.setThreadNamePrefix("Email-");
 
         // Use a more lenient rejection policy for emails
