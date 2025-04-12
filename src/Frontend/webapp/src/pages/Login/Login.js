@@ -11,7 +11,9 @@ const Login = ({ onLoginSuccess }) => {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
 
-  const baseURL = process.env.REACT_APP_BASE_URL;
+const baseURL = process.env.REACT_APP_BASE_URL || 'https://streetmedgo.uc.r.appspot.com/';
+
+// Then use it in your code
 
   // show login form
   const handleLoginClick = () => {
