@@ -23,15 +23,10 @@ import java.util.UUID;
 public class ECDHController {
 
     @RequestMapping(method = RequestMethod.OPTIONS, path = "/**")
-    public ResponseEntity<?> handleOptions() {
-        return ResponseEntity.ok().build();
-    }
-
-    @RequestMapping(method = RequestMethod.OPTIONS, path = "/**")
     public ResponseEntity<?> handleOptionsRequest() {
         return ResponseEntity.ok().build();
     }
-    
+
     private static final Logger logger = LoggerFactory.getLogger(ECDHController.class);
 
     private final ECDHService ecdhService;
