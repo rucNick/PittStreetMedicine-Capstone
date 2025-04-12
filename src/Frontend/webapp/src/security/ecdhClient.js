@@ -1,5 +1,6 @@
 /**
  * Enhanced ECDH client for secure key exchange with the backend
+ * Updated with proper CORS and comprehensive error handling
  */
 const crypto = window.crypto.subtle;
 const baseURL = process.env.REACT_APP_BASE_URL;
@@ -112,7 +113,8 @@ export const performKeyExchange = async () => {
     // Prepare headers with client authentication
     const headers = {
       'X-Client-ID': clientId,
-      'X-Timestamp': timestamp
+      'X-Timestamp': timestamp,
+      'Origin': window.location.origin
     };
     
     // Add signature if available
@@ -123,108 +125,132 @@ export const performKeyExchange = async () => {
       console.warn('Client authentication signature unavailable');
     }
     
-    const response = await fetch(`${baseURL}/api/security/initiate-handshake`, {
-      headers: headers,
-      credentials: 'include',
-      mode: 'cors'
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Server handshake failed: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    const sessionId = data.sessionId;
-    const serverPublicKeyBase64 = data.serverPublicKey;
-    
-    console.log(`Received session ID: ${sessionId}`);
-    console.log('Received server public key');
-    
-    // Step 4: Import server's public key
-    const serverPublicKeyBytes = base64ToArrayBuffer(serverPublicKeyBase64);
-    const serverPublicKey = await crypto.importKey(
-      'spki',
-      serverPublicKeyBytes,
-      {
-        name: 'ECDH',
-        namedCurve: 'P-256',
-      },
-      true,
-      []
-    );
-    
-    // Step 5: Export client's public key
-    const clientPublicKeyBytes = await crypto.exportKey('spki', keyPair.publicKey);
-    const clientPublicKeyBase64 = arrayBufferToBase64(clientPublicKeyBytes);
-    
-    // Step 6: Complete handshake with server
-    console.log('Completing handshake with server...');
-    
-    // Generate new timestamp and signature for this request
-    const completeTimestamp = Date.now().toString();
-    const completeSignature = await createClientSignature(completeTimestamp);
-    
-    // Include client authentication in the complete-handshake request
-    const completeHeaders = {
-      'Content-Type': 'application/json',
-      'X-Client-ID': clientId,
-      'X-Timestamp': completeTimestamp
-    };
-    
-    if (completeSignature) {
-      completeHeaders['X-Signature'] = completeSignature;
-    }
-    
-    const completeResponse = await fetch(`${baseURL}/api/security/complete-handshake`, {
-      method: 'POST',
-      headers: completeHeaders,
-      body: JSON.stringify({
+    try {
+      const response = await fetch(`${baseURL}/api/security/initiate-handshake`, {
+        method: 'GET',
+        headers: headers,
+        credentials: 'include',
+        mode: 'cors'
+      });
+      
+      console.log('Handshake response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`Server handshake failed: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      if (!data || !data.sessionId || !data.serverPublicKey) {
+        throw new Error('Invalid response format from server');
+      }
+      
+      const sessionId = data.sessionId;
+      const serverPublicKeyBase64 = data.serverPublicKey;
+      
+      console.log(`Received session ID: ${sessionId}`);
+      console.log('Received server public key');
+      
+      // Step 4: Import server's public key
+      const serverPublicKeyBytes = base64ToArrayBuffer(serverPublicKeyBase64);
+      const serverPublicKey = await crypto.importKey(
+        'spki',
+        serverPublicKeyBytes,
+        {
+          name: 'ECDH',
+          namedCurve: 'P-256',
+        },
+        true,
+        []
+      );
+      
+      // Step 5: Export client's public key
+      const clientPublicKeyBytes = await crypto.exportKey('spki', keyPair.publicKey);
+      const clientPublicKeyBase64 = arrayBufferToBase64(clientPublicKeyBytes);
+      
+      // Step 6: Complete handshake with server
+      console.log('Completing handshake with server...');
+      
+      // Generate new timestamp and signature for this request
+      const completeTimestamp = Date.now().toString();
+      const completeSignature = await createClientSignature(completeTimestamp);
+      
+      // Include client authentication in the complete-handshake request
+      const completeHeaders = {
+        'Content-Type': 'application/json',
+        'X-Client-ID': clientId,
+        'X-Timestamp': completeTimestamp,
+        'Origin': window.location.origin
+      };
+      
+      if (completeSignature) {
+        completeHeaders['X-Signature'] = completeSignature;
+      }
+      
+      const completeResponse = await fetch(`${baseURL}/api/security/complete-handshake`, {
+        method: 'POST',
+        headers: completeHeaders,
+        body: JSON.stringify({
+          sessionId,
+          clientPublicKey: clientPublicKeyBase64,
+        }),
+        credentials: 'include',
+        mode: 'cors'
+      });
+      
+      if (!completeResponse.ok) {
+        throw new Error(`Handshake completion failed: ${completeResponse.status}`);
+      }
+      
+      // Step 7: Derive shared secret
+      console.log('Deriving shared secret...');
+      const sharedSecret = await crypto.deriveBits(
+        {
+          name: 'ECDH',
+          public: serverPublicKey,
+        },
+        keyPair.privateKey,
+        256
+      );
+      
+      // Convert shared secret to hex for logging
+      const bytes = new Uint8Array(sharedSecret);
+      const hexSharedSecret = Array.from(bytes)
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+      
+      console.log('ECDH key exchange completed successfully!');
+      console.log(`Session ID: ${sessionId}`);
+      console.log(`Shared Secret (hex): ${hexSharedSecret.substring(0, 10)}...`); // Only show part for security
+      
+      // Initialize the AES key for encryption/decryption
+      const aesKey = await initializeAESKey(sharedSecret);
+      
+      // Set up the security context
+      securityContext.sessionId = sessionId;
+      securityContext.sharedSecret = sharedSecret;
+      securityContext.aesKey = aesKey;
+      securityContext.initialized = true;
+      
+      return {
+        success: true,
         sessionId,
-        clientPublicKey: clientPublicKeyBase64,
-      }),
-      credentials: 'include',
-      mode: 'cors'
-    });
-    
-    if (!completeResponse.ok) {
-      throw new Error(`Handshake completion failed: ${completeResponse.status}`);
+        sharedSecret
+      };
+    } catch (error) {
+      console.error('Fetch error during key exchange:', error);
+      // Attempt fallback - try fetch with fewer CORS restrictions
+      console.log('Attempting fallback request...');
+      
+      const fallbackResponse = await fetch(`${baseURL}/api/security/initiate-handshake`, {
+        method: 'GET',
+        headers: headers,
+        mode: 'no-cors' // This will result in an "opaque" response that cannot be read
+      });
+      
+      // Since we can't read the response with no-cors mode, we just log the attempt
+      console.log('Fallback request completed with status:', fallbackResponse.type);
+      throw new Error(`Server communication failed: ${error.message} (fallback attempted)`);
     }
-    
-    // Step 7: Derive shared secret
-    console.log('Deriving shared secret...');
-    const sharedSecret = await crypto.deriveBits(
-      {
-        name: 'ECDH',
-        public: serverPublicKey,
-      },
-      keyPair.privateKey,
-      256
-    );
-    
-    // Convert shared secret to hex for logging
-    const bytes = new Uint8Array(sharedSecret);
-    const hexSharedSecret = Array.from(bytes)
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
-    
-    console.log('ECDH key exchange completed successfully!');
-    console.log(`Session ID: ${sessionId}`);
-    console.log(`Shared Secret (hex): ${hexSharedSecret}`);
-    
-    // Initialize the AES key for encryption/decryption
-    const aesKey = await initializeAESKey(sharedSecret);
-    
-    // Set up the security context
-    securityContext.sessionId = sessionId;
-    securityContext.sharedSecret = sharedSecret;
-    securityContext.aesKey = aesKey;
-    securityContext.initialized = true;
-    
-    return {
-      success: true,
-      sessionId,
-      sharedSecret
-    };
   } catch (error) {
     console.error('ECDH key exchange failed:', error);
     return {
@@ -347,6 +373,21 @@ export const isInitialized = () => {
 };
 
 /**
+ * Alternative initialization that bypasses ECDH (for development only)
+ */
+export const bypassKeyExchangeForDevelopment = () => {
+  if (process.env.NODE_ENV !== 'development') {
+    console.error('Bypass method should only be used in development!');
+    return false;
+  }
+  
+  console.warn('BYPASSING SECURITY - DO NOT USE IN PRODUCTION');
+  securityContext.sessionId = 'dev-session-' + Date.now();
+  securityContext.initialized = true;
+  return true;
+};
+
+/**
  * Performs an encrypted API call with client authentication
  */
 export const secureApiCall = async (url, method, data) => {
@@ -360,15 +401,24 @@ export const secureApiCall = async (url, method, data) => {
     const clientId = window.CLIENT_ID || 'default-client-id';
     const signature = await createClientSignature(timestamp);
     
-    // Encrypt the request data
-    const encryptedData = await encrypt(JSON.stringify(data));
+    // Encrypt the request data if we have data and an encryption key
+    let payload;
+    if (data) {
+      if (securityContext.aesKey) {
+        payload = await encrypt(JSON.stringify(data));
+      } else {
+        // Fallback for development bypass
+        payload = JSON.stringify(data);
+      }
+    }
     
     // Prepare headers with client authentication and session ID
     const headers = {
-      'Content-Type': 'text/plain',
+      'Content-Type': securityContext.aesKey ? 'text/plain' : 'application/json',
       'X-Session-ID': getSessionId(),
       'X-Client-ID': clientId,
-      'X-Timestamp': timestamp
+      'X-Timestamp': timestamp,
+      'Origin': window.location.origin
     };
     
     if (signature) {
@@ -379,23 +429,57 @@ export const secureApiCall = async (url, method, data) => {
     const response = await fetch(url, {
       method: method,
       headers: headers,
-      body: encryptedData
+      body: payload,
+      credentials: 'include',
+      mode: 'cors'
     });
     
     if (!response.ok) {
       throw new Error(`API call failed with status: ${response.status}`);
     }
     
-    // Get the encrypted response
-    const encryptedResponse = await response.text();
+    // Get the response
+    const responseText = await response.text();
     
-    // Decrypt the response
-    const decryptedResponse = await decrypt(encryptedResponse);
-    
-    // Parse and return the response
-    return JSON.parse(decryptedResponse);
+    // If we have an encryption key, decrypt the response
+    if (securityContext.aesKey && responseText) {
+      try {
+        const decryptedResponse = await decrypt(responseText);
+        return JSON.parse(decryptedResponse);
+      } catch (decryptError) {
+        console.warn('Failed to decrypt response, trying to parse as plain JSON:', decryptError);
+        return JSON.parse(responseText);
+      }
+    } else {
+      // For development bypass or empty responses
+      if (!responseText) return {};
+      return JSON.parse(responseText);
+    }
   } catch (error) {
     console.error('Secure API call failed:', error);
     throw error;
+  }
+};
+
+/**
+ * handle potential CORS errors, falling back to no-cors mode if needed
+ * Note: no-cors mode will not allow reading the response
+ */
+export const fetchWithCorsHandling = async (url, options = {}) => {
+  try {
+    // First try with standard CORS settings
+    return await fetch(url, {
+      ...options,
+      credentials: 'include',
+      mode: 'cors'
+    });
+  } catch (error) {
+    console.warn('CORS fetch failed, attempting fallback:', error);
+    
+    // Fall back to no-cors mode (won't be able to read response)
+    return await fetch(url, {
+      ...options,
+      mode: 'no-cors'
+    });
   }
 };
