@@ -46,10 +46,15 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- SQLite Dialect -->
         <dependency>
             <groupId>org.hibernate.orm</groupId>
             <artifactId>hibernate-community-dialects</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.google.cloud.sql</groupId>
+            <artifactId>mysql-socket-factory-connector-j-8</artifactId>
+            <version>1.14.1</version>
         </dependency>
 
         <!-- Optional: DevTools for live reload -->
