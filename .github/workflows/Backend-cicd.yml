@@ -1,4 +1,4 @@
-name: Backend CI/CD
+name: Backend CI/CD for App Engine
 
 on:
   push:
@@ -15,10 +15,7 @@ on:
 
 env:
   PROJECT_ID: streetmedgo
-  SERVICE_NAME: streetmed-backend
   REGION: us-central1
-  ARTIFACT_REGISTRY: us-central1-docker.pkg.dev
-  REPOSITORY: streetmedgo-repo
   MYSQL_INSTANCE: streetmedgo:us-central1:streetmed
 
 jobs:
@@ -68,81 +65,48 @@ jobs:
     
     - name: Enable required APIs
       run: |
-        # Enable required APIs silently without error if already enabled
-        gcloud services enable cloudresourcemanager.googleapis.com --quiet || true
+        # Enable required APIs
+        gcloud services enable appengine.googleapis.com --quiet || true
         gcloud services enable cloudbuild.googleapis.com --quiet || true
-        gcloud services enable run.googleapis.com --quiet || true
-        gcloud services enable artifactregistry.googleapis.com --quiet || true
         gcloud services enable sqladmin.googleapis.com --quiet || true
     
-    - name: Configure Docker for Artifact Registry
-      run: |
-        gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY }}
-    
-    - name: Create Dockerfile and production config
+    - name: Create app.yaml
       run: |
         cd src/Backend
+        mkdir -p src/main/appengine
+        cat > src/main/appengine/app.yaml << 'EOF'
+        runtime: java17
+        instance_class: F2
+        env_variables:
+          SPRING_PROFILES_ACTIVE: 'prod'
+          CORS_ALLOWED_ORIGINS: 'https://streetmed-frontend-l376e2l63q-uc.a.run.app'
         
-        # Create production properties file
-        mkdir -p src/main/resources
-        cat > src/main/resources/application-prod.properties << 'EOF'
-        # Production profile settings
-        spring.datasource.url=jdbc:mysql:///streetmed?socketFactory=com.google.cloud.sql.mysql.SocketFactory&cloudSqlInstance=streetmedgo:us-central1:streetmed
-        spring.datasource.username=streetmed
-        spring.datasource.password=StreetMed@Pitt
-        spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+        handlers:
+          - url: /.*
+            script: auto
+            secure: always
         
-        # Connection pooling settings
-        spring.datasource.hikari.maximum-pool-size=5
-        spring.datasource.hikari.minimum-idle=2
-        spring.datasource.hikari.connection-timeout=20000
+        automatic_scaling:
+          min_instances: 1
+          max_instances: 10
+          min_idle_instances: 1
+          max_idle_instances: 3
+          target_cpu_utilization: 0.65
+          target_throughput_utilization: 0.65
+          max_concurrent_requests: 50
         
-        # MongoDB Atlas Configuration
-        spring.data.mongodb.uri=mongodb+srv://nickCao:Cr20020429-+@cluster0.2cvmqju.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
-        spring.data.mongodb.database=streetmed
-        
-        # CORS settings
-        cors.allowed-origins=${CORS_ALLOWED_ORIGINS:https://streetmed-frontend-l376e2l63q-uc.a.run.app}
+        # Add Cloud SQL instance connection
+        beta_settings:
+          cloud_sql_instances: ${{ env.MYSQL_INSTANCE }}
         EOF
-        
-        # Create Dockerfile
-        cat > Dockerfile << 'EOF'
-        FROM eclipse-temurin:17-jre
-        
-        WORKDIR /app
-        
-        # Copy the application JAR
-        COPY target/*.jar app.jar
-        
-        EXPOSE 8080
-        
-        # Start the application with production profile
-        ENTRYPOINT ["java", "-Dspring.profiles.active=prod", "-jar", "app.jar"]
-        EOF
-        
-        # Build and push to Artifact Registry
-        IMAGE_PATH="${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}"
-        docker build -t ${IMAGE_PATH}:${{ github.sha }} -t ${IMAGE_PATH}:latest .
-        docker push ${IMAGE_PATH}:${{ github.sha }}
-        docker push ${IMAGE_PATH}:latest
     
-    # Deploy to Cloud Run with Cloud SQL connectivity
-    - name: Deploy to Cloud Run with Cloud SQL
-      id: deploy
+    - name: Deploy to App Engine
       run: |
-        gcloud run deploy ${{ env.SERVICE_NAME }} \
-          --image ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
-          --region ${{ env.REGION }} \
-          --service-account=backend-identity@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
-          --allow-unauthenticated \
-          --no-use-http2 \
-          --set-env-vars="CORS_ALLOWED_ORIGINS=https://streetmed-frontend-l376e2l63q-uc.a.run.app" \
-          --set-env-vars="SPRING_PROFILES_ACTIVE=prod" \
-          --add-cloudsql-instances=${{ env.MYSQL_INSTANCE }}
+        cd src/Backend
+        mvn package appengine:deploy -DskipTests
     
     - name: Show Backend URL
       run: |
-        BACKEND_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --region ${{ env.REGION }} --format='value(status.url)')
-        echo "Backend URL: $BACKEND_URL"
-        echo "Backend successfully deployed with Cloud SQL connectivity"
+        echo "Backend URL: https://${{ env.PROJECT_ID }}.uc.r.appspot.com"
+        echo "Backend successfully deployed to App Engine with Cloud SQL connectivity"
         echo "Cloud SQL Instance: ${{ env.MYSQL_INSTANCE }}"
