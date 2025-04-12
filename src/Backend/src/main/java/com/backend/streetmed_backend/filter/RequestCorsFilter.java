@@ -39,16 +39,16 @@ public class RequestCorsFilter implements Filter {
         String method = request.getMethod();
         String path = request.getRequestURI();
 
-        logger.info("Processing request: Origin={}, Method={}, Path={}", origin, method, path);
+        logger.debug("Processing request: Origin={}, Method={}, Path={}", origin, method, path);
 
-        // Skip OPTIONS requests, they're handled by OptionsRequestFilter
+        // Skip OPTIONS requests
         if (!"OPTIONS".equalsIgnoreCase(method)) {
             // For other requests, set CORS headers if origin is allowed
             if (origin != null && isAllowedOrigin(origin)) {
-                logger.info("Setting CORS headers for origin: {}", origin);
+                logger.debug("Setting CORS headers for origin: {} on path: {}", origin, path);
                 setCorsHeaders(response, origin);
-            } else {
-                logger.warn("Request from non-allowed origin: {}", origin);
+            } else if (origin != null) {
+                logger.warn("Request from non-allowed origin: {} to path: {}", origin, path);
             }
         }
 
@@ -63,7 +63,12 @@ public class RequestCorsFilter implements Filter {
     private void setCorsHeaders(HttpServletResponse response, String origin) {
         response.setHeader("Access-Control-Allow-Origin", origin);
         response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-        response.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Session-ID, X-Client-ID, X-Timestamp, X-Signature");
+
+        // Include ALL custom headers in the Allow-Headers
+        response.setHeader("Access-Control-Allow-Headers",
+                "Content-Type, Authorization, X-Session-ID, X-Client-ID, X-Timestamp, X-Signature, " +
+                        "Admin-Username, Authentication-Status, X-Requested-With, Origin, Accept");
+
         response.setHeader("Access-Control-Expose-Headers", "X-Session-ID");
         response.setHeader("Access-Control-Max-Age", "3600");
         response.setHeader("Access-Control-Allow-Credentials", "true");
