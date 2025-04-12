@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Storefront</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <div class="page-container">
+    <header class="store-header">
+      <img src="logo.png" alt="Logo" class="store-logo" />
+      <div class="header-right-group">
+        <nav class="store-tabs">
+          <a href="#">Order</a>
+          <a href="#">Other</a>
+          <a href="#">Other</a>
+        </nav>
+        <img src="profile.png" alt="Profile" class="profile-icon" />
+      </div>
+    </header>
+
+    <main class="store-main">
+      <aside class="filter-panel">
+        <h2>Filters</h2>
+        <div class="filter-buttons">
+          <button>Label</button><button>Label</button>
+          <button>Label</button><button>Label</button>
+          <button>Label</button><button>Label</button>
+          <button>Label</button><button>Label</button>
+        </div>
+      </aside>
+
+      <section class="product-section">
+        <div class="store-topbar">
+          <h1>Add items to order</h1>
+          <div class="search-bar">
+            <span class="menu-icon">&#9776;</span>
+            <input type="text" placeholder="Search..." />
+            <button><span>&#128269;</span></button>
+          </div>
+        </div>
+
+        <div class="product-grid">
+          <!-- 7 sample items -->
+          <div class="product-card">
+            <div class="product-image"></div>
+            <p class="product-name">Item name</p>
+            <button>Add to cart</button>
+            <button class="open-full-view">Open full view</button>
+          </div>
+          <div class="product-card"><div class="product-image"></div><p class="product-name">Item name</p><button>Add to cart</button><button class="open-full-view">Open full view</button></div>
+          <div class="product-card"><div class="product-image"></div><p class="product-name">Item name</p><button>Add to cart</button><button class="open-full-view">Open full view</button></div>
+          <div class="product-card"><div class="product-image"></div><p class="product-name">Item name</p><button>Add to cart</button><button class="open-full-view">Open full view</button></div>
+          <div class="product-card"><div class="product-image"></div><p class="product-name">Item name</p><button>Add to cart</button><button class="open-full-view">Open full view</button></div>
+          <div class="product-card"><div class="product-image"></div><p class="product-name">Item name</p><button>Add to cart</button><button class="open-full-view">Open full view</button></div>
+          <div class="product-card"><div class="product-image"></div><p class="product-name">Item name</p><button>Add to cart</button><button class="open-full-view">Open full view</button></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Full Item View Modal (outside .page-container to overlay cleanly) -->
+  <div class="item-modal-overlay hidden">
+    <div class="item-modal">
+      <h2 class="modal-title">Item name</h2>
+      <div class="modal-body">
+        <div class="modal-image">
+          <img src="placeholder.png" alt="Item preview" />
+        </div>
+        <div class="modal-description">
+          <p>
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. 
+            Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure 
+            dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non 
+            proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. 
+            Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure 
+            dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non 
+            proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. 
+            Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure 
+            dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non 
+            proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+          </p>
+        </div>
+      </div>
+      <div class="modal-buttons">
+        <button class="modal-add">Add to cart</button>
+        <button class="modal-close">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const openButtons = document.querySelectorAll('.open-full-view');
+    const modal = document.querySelector('.item-modal-overlay');
+    const closeModal = document.querySelector('.modal-close');
+    const storeMain = document.querySelector('.store-main');
+
+    openButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        modal.classList.remove('hidden');
+        storeMain.classList.add('blur');
+      });
+    });
+
+    closeModal.addEventListener('click', () => {
+      modal.classList.add('hidden');
+      storeMain.classList.remove('blur');
+    });
+  </script>
+</body>
+</html>
