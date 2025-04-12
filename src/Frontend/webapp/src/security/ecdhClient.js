@@ -1,8 +1,9 @@
 /**
- * Simple ECDH client for key exchange with the backend
+ * Enhanced ECDH client for secure key exchange with the backend
  */
 const crypto = window.crypto.subtle;
 const baseURL = process.env.REACT_APP_BASE_URL;
+
 // Utility functions for Base64 conversion
 export const arrayBufferToBase64 = (buffer) => {
   const bytes = new Uint8Array(buffer);
@@ -44,6 +45,43 @@ export const base64ToArrayBuffer = (base64) => {
 };
 
 /**
+ * Creates a client signature for authentication
+ * Uses HMAC-SHA256 to sign a timestamp with the client secret
+ */
+const createClientSignature = async (timestamp) => {
+  try {
+    // Get the client ID and secret from window (set by auth-setup.js)
+    const clientId = window.CLIENT_ID || 'default-client-id';
+    
+    // Generate a signature using the current timestamp
+    const encoder = new TextEncoder();
+    const data = encoder.encode(`${clientId}:${timestamp}`);
+    
+    // Use a static key for development purposes
+    // In production, this should be securely managed
+    const devKey = encoder.encode('street-med-client-authentication-key');
+    
+    // Import the key for HMAC signing
+    const key = await crypto.importKey(
+      'raw',
+      devKey,
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+    
+    // Create the signature
+    const signature = await crypto.sign('HMAC', key, data);
+    
+    // Return as Base64
+    return arrayBufferToBase64(signature);
+  } catch (error) {
+    console.error('Error creating client signature:', error);
+    return null;
+  }
+};
+
+/**
  * Performs the ECDH key exchange with the backend
  */
 export const performKeyExchange = async () => {
@@ -61,16 +99,28 @@ export const performKeyExchange = async () => {
       ['deriveKey', 'deriveBits']
     );
     
-    // Step 2: Initiate handshake with server
+    // Step 2: Prepare client authentication
+    const timestamp = Date.now().toString();
+    const clientId = window.CLIENT_ID || 'default-client-id';
+    const signature = await createClientSignature(timestamp);
+    
+    console.log('Prepared client authentication');
+    
+    // Step 3: Initiate handshake with server
     console.log('Requesting server public key...');
     
-    // Prepare headers with authorization if available
-    const headers = {};
-    if (window.AUTH_TOKEN) {
-      headers['Authorization'] = `Bearer ${window.AUTH_TOKEN}`;
-      console.log('Adding authorization header for ECDH handshake');
+    // Prepare headers with client authentication
+    const headers = {
+      'X-Client-ID': clientId,
+      'X-Timestamp': timestamp
+    };
+    
+    // Add signature if available
+    if (signature) {
+      headers['X-Signature'] = signature;
+      console.log('Added client authentication signature');
     } else {
-      console.warn('No AUTH_TOKEN available for ECDH handshake');
+      console.warn('Client authentication signature unavailable');
     }
     
     const response = await fetch(`${baseURL}/api/security/initiate-handshake`, {
@@ -88,7 +138,7 @@ export const performKeyExchange = async () => {
     console.log(`Received session ID: ${sessionId}`);
     console.log('Received server public key');
     
-    // Step 3: Import server's public key
+    // Step 4: Import server's public key
     const serverPublicKeyBytes = base64ToArrayBuffer(serverPublicKeyBase64);
     const serverPublicKey = await crypto.importKey(
       'spki',
@@ -101,21 +151,26 @@ export const performKeyExchange = async () => {
       []
     );
     
-    // Step 4: Export client's public key
+    // Step 5: Export client's public key
     const clientPublicKeyBytes = await crypto.exportKey('spki', keyPair.publicKey);
     const clientPublicKeyBase64 = arrayBufferToBase64(clientPublicKeyBytes);
     
-    // Step 5: Complete handshake with server
+    // Step 6: Complete handshake with server
     console.log('Completing handshake with server...');
     
-    // Include authorization in the complete-handshake request too
+    // Generate new timestamp and signature for this request
+    const completeTimestamp = Date.now().toString();
+    const completeSignature = await createClientSignature(completeTimestamp);
+    
+    // Include client authentication in the complete-handshake request
     const completeHeaders = {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'X-Client-ID': clientId,
+      'X-Timestamp': completeTimestamp
     };
     
-    if (window.AUTH_TOKEN) {
-      completeHeaders['Authorization'] = `Bearer ${window.AUTH_TOKEN}`;
-      console.log('Adding authorization header for complete-handshake request');
+    if (completeSignature) {
+      completeHeaders['X-Signature'] = completeSignature;
     }
     
     const completeResponse = await fetch(`${baseURL}/api/security/complete-handshake`, {
@@ -131,7 +186,7 @@ export const performKeyExchange = async () => {
       throw new Error(`Handshake completion failed: ${completeResponse.status}`);
     }
     
-    // Step 6: Derive shared secret
+    // Step 7: Derive shared secret
     console.log('Deriving shared secret...');
     const sharedSecret = await crypto.deriveBits(
       {
@@ -174,6 +229,7 @@ export const performKeyExchange = async () => {
     };
   }
 };
+
 /**
  * Initialize AES key from the shared secret
  */
@@ -199,7 +255,6 @@ export const initializeAESKey = async (sharedSecret) => {
   
   return aesKey;
 };
-
 
 /**
  * Encrypt data using AES-GCM
@@ -287,35 +342,33 @@ export const isInitialized = () => {
   return securityContext.initialized;
 };
 
-
 /**
- * Performs an encrypted API call
- * @param {string} url - The API endpoint URL
- * @param {string} method - HTTP method (GET, POST, PUT, DELETE)
- * @param {object} data - The request data
- * @returns {Promise<any>} - The decrypted response data
+ * Performs an encrypted API call with client authentication
  */
 export const secureApiCall = async (url, method, data) => {
   if (!isInitialized()) {
-    throw new Error('Security not initialized. Cannot make secure API call.');
+    throw new Error('Security context not initialized. Cannot make secure API call.');
   }
   
   try {
+    // Add client authentication
+    const timestamp = Date.now().toString();
+    const clientId = window.CLIENT_ID || 'default-client-id';
+    const signature = await createClientSignature(timestamp);
+    
     // Encrypt the request data
     const encryptedData = await encrypt(JSON.stringify(data));
     
-    // Prepare headers with session ID
+    // Prepare headers with client authentication and session ID
     const headers = {
       'Content-Type': 'text/plain',
-      'X-Session-ID': getSessionId()
+      'X-Session-ID': getSessionId(),
+      'X-Client-ID': clientId,
+      'X-Timestamp': timestamp
     };
     
-    // Add Authorization header if window.AUTH_TOKEN exists
-    if (window.AUTH_TOKEN) {
-      headers['Authorization'] = `Bearer ${window.AUTH_TOKEN}`;
-      console.log(`Adding authorization header for secure API call to ${url}`);
-    } else {
-      console.warn(`No AUTH_TOKEN available for secure API call to ${url}`);
+    if (signature) {
+      headers['X-Signature'] = signature;
     }
     
     // Make the request with the headers
