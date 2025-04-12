@@ -23,7 +23,7 @@ public class EmailService {
     private final Executor emailExecutor;
     private final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("MMMM d, yyyy 'at' h:mm a");
 
-    private boolean emailServiceEnabled = false;
+    private boolean emailServiceEnabled = true;
 
     // Store OTP codes with expiration timestamps
     private final Map<String, OtpData> otpMap = new HashMap<>();

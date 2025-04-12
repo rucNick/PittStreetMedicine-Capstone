@@ -19,28 +19,6 @@
         </library>
       </libraries>
     </data-source>
-    <data-source source="LOCAL" name="@localhost" uuid="29a91e59-133d-4a1c-bb49-d8888ad78a56">
-      <driver-ref>mongo</driver-ref>
-      <synchronize>true</synchronize>
-      <jdbc-driver>com.dbschema.MongoJdbcDriver</jdbc-driver>
-      <jdbc-url>mongodb://localhost:27017</jdbc-url>
-      <jdbc-additional-properties>
-        <property name="com.intellij.clouds.kubernetes.db.host.port" />
-        <property name="com.intellij.clouds.kubernetes.db.enabled" value="false" />
-        <property name="com.intellij.clouds.kubernetes.db.resource.type" value="Deployment" />
-        <property name="com.intellij.clouds.kubernetes.db.container.port" />
-      </jdbc-additional-properties>
-      <working-dir>$ProjectFileDir$</working-dir>
-    </data-source>
-    <data-source source="LOCAL" name="streetmed@localhost" uuid="18afef9a-775a-4472-88e9-f6bee366b229">
-      <driver-ref>mongo</driver-ref>
-      <synchronize>true</synchronize>
-      <imported>true</imported>
-      <remarks>$PROJECT_DIR$/src/main/resources/application.properties</remarks>
-      <jdbc-driver>com.dbschema.MongoJdbcDriver</jdbc-driver>
-      <jdbc-url>mongodb://localhost:27017/streetmed</jdbc-url>
-      <working-dir>$ProjectFileDir$</working-dir>
-    </data-source>
     <data-source source="LOCAL" name="auth_db.sqlite" uuid="590c0a21-cd7c-41ba-914d-60c413dd2ab8">
       <driver-ref>sqlite.xerial</driver-ref>
       <synchronize>true</synchronize>
@@ -50,6 +28,31 @@
       <jdbc-url>jdbc:sqlite:auth_db.sqlite</jdbc-url>
       <jdbc-additional-properties>
         <property name="com.intellij.clouds.kubernetes.db.enabled" value="false" />
+      </jdbc-additional-properties>
+      <working-dir>$ProjectFileDir$</working-dir>
+    </data-source>
+    <data-source source="LOCAL" name="@130.211.230.52" uuid="0cfd269a-91f0-4340-bcb3-28307e81e1b1">
+      <driver-ref>mysql.8</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>com.mysql.cj.jdbc.Driver</jdbc-driver>
+      <jdbc-url>jdbc:mysql://130.211.230.52:3306</jdbc-url>
+      <jdbc-additional-properties>
+        <property name="com.intellij.clouds.kubernetes.db.host.port" />
+        <property name="com.intellij.clouds.kubernetes.db.enabled" value="false" />
+        <property name="com.intellij.clouds.kubernetes.db.resource.type" value="Deployment" />
+        <property name="com.intellij.clouds.kubernetes.db.container.port" />
+      </jdbc-additional-properties>
+      <working-dir>$ProjectFileDir$</working-dir>
+    </data-source>
+    <data-source source="LOCAL" name="streetmed@localhost" uuid="9cef24d4-6279-42df-9b5d-5eaa4f8b1390">
+      <driver-ref>mysql.8</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>com.mysql.cj.jdbc.Driver</jdbc-driver>
+      <jdbc-url>jdbc:mysql://localhost:3306/streetmed</jdbc-url>
+      <jdbc-additional-properties>
+        <property name="com.intellij.clouds.kubernetes.db.host.port" />
+        <property name="com.intellij.clouds.kubernetes.db.enabled" value="false" />
+        <property name="com.intellij.clouds.kubernetes.db.container.port" />
       </jdbc-additional-properties>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>

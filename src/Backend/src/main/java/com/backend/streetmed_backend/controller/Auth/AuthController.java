@@ -118,7 +118,9 @@ public class AuthController {
 
                 User newUser = new User();
                 newUser.setUsername(userData.get("username"));
-                newUser.setEmail(userData.get("email"));
+                if (userData.containsKey("email") &&userData.get("email")!=null) {
+                    newUser.setEmail(userData.get("email"));
+                }
                 newUser.setPassword(userData.get("password"));
                 if (userData.containsKey("phone") && userData.get("phone") != null &&
                         !userData.get("phone").trim().isEmpty()) {

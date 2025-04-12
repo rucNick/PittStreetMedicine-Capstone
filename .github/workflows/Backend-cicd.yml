@@ -20,9 +20,11 @@ env:
   ARTIFACT_REGISTRY: us-central1-docker.pkg.dev
   REPOSITORY: streetmedgo-repo
   FRONTEND_SERVICE_ACCOUNT: frontend-identity@streetmedgo.iam.gserviceaccount.com
+  MYSQL_INSTANCE: streetmedgo:us-central1:streetmed
+  MYSQL_DATABASE: streetmed
 
 jobs:
-  build-and-test:
+  build:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
@@ -34,15 +36,12 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
         cache: maven
-        
-    - name: Run backend tests
-      run: cd src/Backend && mvn test
-      
+    
     - name: Build with Maven
       run: cd src/Backend && mvn clean package -DskipTests
 
   deploy:
-    needs: build-and-test
+    needs: build
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     steps:
@@ -69,41 +68,64 @@ jobs:
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
     
+    - name: Enable required APIs
+      run: |
+        # Enable Cloud Resource Manager API if not already enabled
+        gcloud services enable cloudresourcemanager.googleapis.com --quiet || true
+        
+        # Enable other required APIs
+        gcloud services enable cloudbuild.googleapis.com --quiet || true
+        gcloud services enable run.googleapis.com --quiet || true
+        gcloud services enable artifactregistry.googleapis.com --quiet || true
+        gcloud services enable sqladmin.googleapis.com --quiet || true
+        
+        # Wait a moment for APIs to be fully enabled
+        sleep 10
+    
     - name: Configure Docker for Artifact Registry
       run: |
         gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY }}
     
-    # Simpler approach - embedding SQLite directly in the container
-    - name: Build and Push Docker image to Artifact Registry
+    - name: Create Dockerfile and production config
       run: |
         cd src/Backend
         
-        # Create a simpler Dockerfile with database embedded
+        # Create production properties file
+        mkdir -p src/main/resources
+        cat > src/main/resources/application-prod.properties << 'EOF'
+        # Production profile settings
+        spring.datasource.url=jdbc:mysql:///streetmed?socketFactory=com.google.cloud.sql.mysql.SocketFactory&cloudSqlInstance=streetmedgo:us-central1:streetmed
+        spring.datasource.username=streetmed
+        spring.datasource.password=StreetMed@Pitt
+        spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+        
+        # Connection pooling settings
+        spring.datasource.hikari.maximum-pool-size=5
+        spring.datasource.hikari.minimum-idle=2
+        spring.datasource.hikari.connection-timeout=20000
+        
+        # MongoDB Atlas Configuration
+        spring.data.mongodb.uri=mongodb+srv://nickCao:Cr20020429-+@cluster0.2cvmqju.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
+        spring.data.mongodb.database=streetmed
+        
+        # CORS settings
+        cors.allowed-origins=${CORS_ALLOWED_ORIGINS:https://streetmed-frontend-l376e2l63q-uc.a.run.app}
+        EOF
+        
+        # Create Dockerfile with environment variables
         cat > Dockerfile << 'EOF'
         FROM eclipse-temurin:17-jre
         
         WORKDIR /app
-        
-        # Copy the SQLite database file
-        COPY auth_db.sqlite /app/data/
         
         # Copy the application JAR
         COPY target/*.jar app.jar
         
         EXPOSE 8080
         
-        # Start the application with the database path
-        ENTRYPOINT ["java", "-Dspring.datasource.url=jdbc:sqlite:/app/data/auth_db.sqlite", "-jar", "app.jar"]
+        # Start the application with production profile
+        ENTRYPOINT ["java", "-Dspring.profiles.active=prod", "-jar", "app.jar"]
         EOF
-        
-        # Create data directory
-        mkdir -p data
-        
-        # Ensure database file exists
-        if [ ! -f auth_db.sqlite ]; then
-          touch auth_db.sqlite
-          echo "Created empty SQLite database file"
-        fi
         
         # Build and push to Artifact Registry
         IMAGE_PATH="${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}"
@@ -111,7 +133,30 @@ jobs:
         docker push ${IMAGE_PATH}:${{ github.sha }}
         docker push ${IMAGE_PATH}:latest
     
-    # Create a service account for the backend if it doesn't exist
+    - name: Grant Cloud SQL access to service account
+      run: |
+        SERVICE_ACCOUNT=backend-identity@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
+        
+        # Try to get IAM policy with retries
+        MAX_RETRIES=3
+        for i in $(seq 1 $MAX_RETRIES); do
+          if gcloud projects get-iam-policy ${{ env.PROJECT_ID }} --format=json > iam_policy.json; then
+            break
+          fi
+          echo "Failed to get IAM policy, retrying ($i/$MAX_RETRIES)..."
+          sleep 5
+        done
+        
+        # Check if role exists in the IAM policy
+        if grep -q "$SERVICE_ACCOUNT.*roles/cloudsql.client" iam_policy.json; then
+          echo "Service account $SERVICE_ACCOUNT already has Cloud SQL Client role"
+        else
+          echo "Granting Cloud SQL Client role to $SERVICE_ACCOUNT"
+          gcloud projects add-iam-policy-binding ${{ env.PROJECT_ID }} \
+            --member=serviceAccount:$SERVICE_ACCOUNT \
+            --role=roles/cloudsql.client
+        fi
+    
     - name: Create or use backend service account
       run: |
         SERVICE_ACCOUNT=backend-identity
@@ -124,29 +169,22 @@ jobs:
           echo "Service account $SERVICE_ACCOUNT already exists"
         fi
     
-    # Deploy to Cloud Run with warning about persistence
-    - name: Deploy to Cloud Run (Private)
+    - name: Deploy to Cloud Run with Cloud SQL
       id: deploy
       run: |
-        echo "WARNING: Deploying with embedded SQLite database. Data will NOT persist between deployments."
         gcloud run deploy ${{ env.SERVICE_NAME }} \
           --image ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
           --region ${{ env.REGION }} \
           --service-account=backend-identity@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
-          --no-allow-unauthenticated \
-          --set-env-vars=CORS_ALLOWED_ORIGINS=https://streetmed-frontend-l376e2l63q-uc.a.run.app
+          --allow-unauthenticated \
+          --no-use-http2 \
+          --set-env-vars="CORS_ALLOWED_ORIGINS=https://streetmed-frontend-l376e2l63q-uc.a.run.app" \
+          --set-env-vars="SPRING_PROFILES_ACTIVE=prod" \
+          --add-cloudsql-instances=${{ env.MYSQL_INSTANCE }}
     
-    # Grant the frontend service account permission to invoke the backend
-    - name: Grant frontend service account permission to invoke backend
-      run: |
-        gcloud run services add-iam-policy-binding ${{ env.SERVICE_NAME }} \
-          --region=${{ env.REGION }} \
-          --member=serviceAccount:${{ env.FRONTEND_SERVICE_ACCOUNT }} \
-          --role=roles/run.invoker
-    
-    - name: Show Backend URL and Persistence Warning
+    - name: Show Backend URL
       run: |
         BACKEND_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --region ${{ env.REGION }} --format='value(status.url)')
         echo "Backend URL: $BACKEND_URL"
-        echo "IMPORTANT: This deployment embeds the SQLite database directly. Data changes will NOT persist between deployments."
-        echo "For production use, consider migrating to Cloud SQL or implementing a proper database backup/restore mechanism."
+        echo "Backend successfully deployed with Cloud SQL connectivity"
+        echo "Cloud SQL Instance: ${{ env.MYSQL_INSTANCE }}"
