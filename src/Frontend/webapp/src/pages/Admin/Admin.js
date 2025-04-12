@@ -28,11 +28,15 @@ const Admin = ({ onLogout, userData }) => {
   const loadUsers = useCallback(async () => {
     try {
       const response = await axios.get(`${baseURL}/api/admin/users`, {
+        method: 'GET',
         headers: {
           "Admin-Username": userData.username,
           "Authentication-Status": "true"
-        }
+        },
+        credentials: 'include',
+        mode: 'cors'
       });
+      
       const data = response.data.data;
       const allUsers = [
         ...(data.clients || []),
