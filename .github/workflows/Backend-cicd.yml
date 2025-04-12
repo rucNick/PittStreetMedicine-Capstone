@@ -19,9 +19,7 @@ env:
   REGION: us-central1
   ARTIFACT_REGISTRY: us-central1-docker.pkg.dev
   REPOSITORY: streetmedgo-repo
-  FRONTEND_SERVICE_ACCOUNT: frontend-identity@streetmedgo.iam.gserviceaccount.com
   MYSQL_INSTANCE: streetmedgo:us-central1:streetmed
-  MYSQL_DATABASE: streetmed
 
 jobs:
   build:
@@ -70,17 +68,12 @@ jobs:
     
     - name: Enable required APIs
       run: |
-        # Enable Cloud Resource Manager API if not already enabled
+        # Enable required APIs silently without error if already enabled
         gcloud services enable cloudresourcemanager.googleapis.com --quiet || true
-        
-        # Enable other required APIs
         gcloud services enable cloudbuild.googleapis.com --quiet || true
         gcloud services enable run.googleapis.com --quiet || true
         gcloud services enable artifactregistry.googleapis.com --quiet || true
         gcloud services enable sqladmin.googleapis.com --quiet || true
-        
-        # Wait a moment for APIs to be fully enabled
-        sleep 10
     
     - name: Configure Docker for Artifact Registry
       run: |
@@ -112,7 +105,7 @@ jobs:
         cors.allowed-origins=${CORS_ALLOWED_ORIGINS:https://streetmed-frontend-l376e2l63q-uc.a.run.app}
         EOF
         
-        # Create Dockerfile with environment variables
+        # Create Dockerfile
         cat > Dockerfile << 'EOF'
         FROM eclipse-temurin:17-jre
         
@@ -133,42 +126,7 @@ jobs:
         docker push ${IMAGE_PATH}:${{ github.sha }}
         docker push ${IMAGE_PATH}:latest
     
-    - name: Grant Cloud SQL access to service account
-      run: |
-        SERVICE_ACCOUNT=backend-identity@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
-        
-        # Try to get IAM policy with retries
-        MAX_RETRIES=3
-        for i in $(seq 1 $MAX_RETRIES); do
-          if gcloud projects get-iam-policy ${{ env.PROJECT_ID }} --format=json > iam_policy.json; then
-            break
-          fi
-          echo "Failed to get IAM policy, retrying ($i/$MAX_RETRIES)..."
-          sleep 5
-        done
-        
-        # Check if role exists in the IAM policy
-        if grep -q "$SERVICE_ACCOUNT.*roles/cloudsql.client" iam_policy.json; then
-          echo "Service account $SERVICE_ACCOUNT already has Cloud SQL Client role"
-        else
-          echo "Granting Cloud SQL Client role to $SERVICE_ACCOUNT"
-          gcloud projects add-iam-policy-binding ${{ env.PROJECT_ID }} \
-            --member=serviceAccount:$SERVICE_ACCOUNT \
-            --role=roles/cloudsql.client
-        fi
-    
-    - name: Create or use backend service account
-      run: |
-        SERVICE_ACCOUNT=backend-identity
-        # Check if service account exists
-        if ! gcloud iam service-accounts describe ${SERVICE_ACCOUNT}@${{ env.PROJECT_ID }}.iam.gserviceaccount.com --quiet; then
-          echo "Creating service account $SERVICE_ACCOUNT"
-          gcloud iam service-accounts create $SERVICE_ACCOUNT \
-            --display-name "Service identity for Backend service"
-        else
-          echo "Service account $SERVICE_ACCOUNT already exists"
-        fi
-    
+    # Deploy to Cloud Run with Cloud SQL connectivity
     - name: Deploy to Cloud Run with Cloud SQL
       id: deploy
       run: |
