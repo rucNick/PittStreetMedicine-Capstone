@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Volunteer Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="store-header">
+    <img src="logo.png" alt="Logo" class="store-logo" />
+    <div class="header-right-group">
+      <nav class="store-tabs">
+        <a href="#">Order</a>
+        <a href="#">Other</a>
+        <a href="#">Other</a>
+      </nav>
+      <img src="profile.png" alt="Profile" class="profile-icon" />
+    </div>
+  </header>
+
+  <main class="volunteer-dashboard">
+    <section class="orders-section">
+      <div class="orders-header">
+        <h2>Assigned Orders <a href="#" class="view-all-btn">View all</a></h2>
+      </div>
+
+      <div class="order-cards horizontal-stack">
+        <div class="order-card">
+          <h3 class="order-name">John Doe</h3>
+          <hr />
+          <p class="order-location">📍 123 Liberty Ave</p>
+          <p class="order-items">5 items: Item 1, Item 2, Item 3...</p>
+          <button class="open-full-view">Open full view</button>
+        </div>
+        <div class="order-card">
+          <h3 class="order-name">Jane Smith</h3>
+          <hr />
+          <p class="order-location">📍 456 Smithfield St</p>
+          <p class="order-items">4 items: Gloves, Socks, Water...</p>
+          <button class="open-full-view">Open full view</button>
+        </div>
+        <div class="order-card">
+            <h3 class="order-name">Jane Smith</h3>
+            <hr />
+            <p class="order-location">📍 456 Smithfield St</p>
+            <p class="order-items">4 items: Gloves, Socks, Water...</p>
+            <button class="open-full-view">Open full view</button>
+          </div>
+          <div class="order-card">
+            <h3 class="order-name">Jane Smith</h3>
+            <hr />
+            <p class="order-location">📍 456 Smithfield St</p>
+            <p class="order-items">4 items: Gloves, Socks, Water...</p>
+            <button class="open-full-view">Open full view</button>
+          </div>
+          <div class="order-card">
+            <h3 class="order-name">Jane Smith</h3>
+            <hr />
+            <p class="order-location">📍 456 Smithfield St</p>
+            <p class="order-items">4 items: Gloves, Socks, Water...</p>
+            <button class="open-full-view">Open full view</button>
+          </div>
+      </div>
+    </section>
+
+    <div class="divider-vertical"></div>
+
+    <section class="calendar-section">
+      <h2>You are next scheduled for:</h2>
+      <div class="calendar">
+        <table class="calendar-table">
+          <thead>
+            <tr><th colspan="7" class="calendar-month">April 2025</th></tr>
+            <tr class="calendar-days">
+              <th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td></td><td></td><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td></tr>
+            <tr><td>6</td><td>7</td><td>8</td><td>9</td><td>10</td><td>11</td><td>12</td></tr>
+            <tr><td>13</td><td>14</td><td>15</td><td>16</td><td>17</td><td>18</td><td>19</td></tr>
+            <tr><td>20</td><td>21</td><td>22</td><td>23</td><td>24</td><td>25</td><td>26</td></tr>
+            <tr><td>27</td><td>28</td><td>29</td><td>30</td><td></td><td></td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <button class="rounds-signup-btn">Sign up for rounds</button>
+    </section>
+  </main>
+
+  <div class="modal-overlay" id="orderModal">
+    <div class="order-modal-card">
+      <h2>Tom Jones</h2>
+      <hr />
+      <div class="order-details">
+        <p><span class="icon">📍</span> 456 Center Ave., Town, PA 12345</p>
+        <p><span class="icon">📅</span> May 1, 2025</p>
+        <p><span class="icon">⏰</span> 5:00 pm</p>
+      </div>
+      <div class="items-box">
+        <p><strong>8 items:</strong></p>
+        <ul class="items-list">
+          <li><span>• Item 1</span><span>x1</span></li>
+          <li><span>• Item 2</span><span>x1</span></li>
+          <li><span>• Item 3</span><span>x1</span></li>
+          <li><span>• Item 4</span><span>x1</span></li>
+          <li><span>• Item 5</span><span>x1</span></li>
+          <li><span>• Item 6</span><span>x1</span></li>
+          <li><span>• Item 7</span><span>x1</span></li>
+          <li><span>• Item 8</span><span>x1</span></li>
+        </ul>
+      </div>
+      <button class="close-modal-btn" onclick="closeModal()">Close</button>
+    </div>
+  </div>
+
+  <script>
+    function openModal() {
+      document.getElementById('orderModal').style.display = 'flex';
+    }
+
+    function closeModal() {
+      document.getElementById('orderModal').style.display = 'none';
+    }
+
+    document.querySelectorAll('.open-full-view').forEach(btn => {
+      btn.addEventListener('click', openModal);
+    });
+  </script>
+</body>
+</html>
