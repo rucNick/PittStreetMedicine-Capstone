@@ -19,7 +19,13 @@ import java.util.UUID;
 @Tag(name = "Security", description = "APIs for security operations including key exchange")
 @RestController
 @RequestMapping("/api/security")
+@CrossOrigin
 public class ECDHController {
+
+    @RequestMapping(method = RequestMethod.OPTIONS, path = "/**")
+    public ResponseEntity<?> handleOptions() {
+        return ResponseEntity.ok().build();
+    }
 
     private static final Logger logger = LoggerFactory.getLogger(ECDHController.class);
 

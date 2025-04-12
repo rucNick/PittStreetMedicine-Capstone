@@ -6,11 +6,14 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 
 @Configuration
 public class CorsConfig {
+    private static final Logger logger = LoggerFactory.getLogger(CorsConfig.class);
 
     @Value("${cors.allowed-origins}")
     private String allowedOrigins;
@@ -20,24 +23,37 @@ public class CorsConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration config = new CorsConfiguration();
 
-        // Instead of using "*" for development when credentials are allowed,
-        // explicitly list allowed origins.
+        // Log the configured allowed origins for debugging
+        logger.info("Configured CORS allowed origins: {}", allowedOrigins);
+
+        // Split and add allowed origins
         String[] origins = allowedOrigins.split(",");
-        Arrays.stream(origins)
-                .map(String::trim)
-                .forEach(config::addAllowedOrigin);
+        for (String origin : origins) {
+            origin = origin.trim();
+            logger.info("Adding allowed origin: {}", origin);
+            config.addAllowedOrigin(origin);
+        }
 
-        // Alternatively, you can allow all headers/methods:
+        // Allow common HTTP methods
+        config.addAllowedMethod("GET");
+        config.addAllowedMethod("POST");
+        config.addAllowedMethod("PUT");
+        config.addAllowedMethod("DELETE");
+        config.addAllowedMethod("OPTIONS");
+
+        // Allow all headers
         config.addAllowedHeader("*");
-        config.addAllowedMethod("*");
 
-        // Allow credentials (cookies, authorization headers, etc.)
+        // Important: Allow authentication
         config.setAllowCredentials(true);
 
-        // Set the max age for the preflight request cache
+        // Allow specific headers needed for your security implementation
+        config.addExposedHeader("X-Session-ID");
+
+        // Set the max age for the preflight request cache (in seconds)
         config.setMaxAge(3600L);
 
-        // Apply CORS config to all endpoints
+        // Apply CORS config to all endpoints including your security endpoints
         source.registerCorsConfiguration("/**", config);
         return new CorsFilter(source);
     }
