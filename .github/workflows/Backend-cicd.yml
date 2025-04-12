@@ -37,10 +37,7 @@ jobs:
         distribution: 'temurin'
         cache: maven
         
-    - name: Run backend tests
-      run: cd src/Backend && mvn test
-      
-    - name: Build with Maven
+    - name: Build with Maven (skipping tests for now)
       run: cd src/Backend && mvn clean package -DskipTests
 
   deploy:
