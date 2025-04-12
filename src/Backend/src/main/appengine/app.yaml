@@ -2,9 +2,19 @@ runtime: java17
 instance_class: F2
 env_variables:
   SPRING_PROFILES_ACTIVE: 'prod'
-  CORS_ALLOWED_ORIGINS: 'https://streetmed-frontend-l376e2l63q-uc.a.run.app'
+  CORS_ALLOWED_ORIGINS: 'https://streetmed-frontend-900663028964.us-central1.run.app,https://streetmed-frontend-l376e2l63q-uc.a.run.app,http://localhost:3000'
 
 handlers:
+  - url: /api/.*
+    script: auto
+    secure: always
+    http_headers:
+      Access-Control-Allow-Origin: '*'
+      Access-Control-Allow-Methods: 'GET, POST, PUT, DELETE, OPTIONS'
+      Access-Control-Allow-Headers: 'Content-Type, Authorization, X-Session-ID, X-Client-ID, X-Timestamp, X-Signature'
+      Access-Control-Allow-Credentials: 'true'
+      Access-Control-Max-Age: '3600'
+
   - url: /.*
     script: auto
     secure: always
@@ -17,3 +27,6 @@ automatic_scaling:
   target_cpu_utilization: 0.65
   target_throughput_utilization: 0.65
   max_concurrent_requests: 50
+
+beta_settings:
+  cloud_sql_instances: streetmedgo:us-central1:streetmed

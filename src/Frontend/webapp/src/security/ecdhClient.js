@@ -124,7 +124,9 @@ export const performKeyExchange = async () => {
     }
     
     const response = await fetch(`${baseURL}/api/security/initiate-handshake`, {
-      headers: headers
+      headers: headers,
+      credentials: 'include',
+      mode: 'cors'
     });
     
     if (!response.ok) {
@@ -180,6 +182,8 @@ export const performKeyExchange = async () => {
         sessionId,
         clientPublicKey: clientPublicKeyBase64,
       }),
+      credentials: 'include',
+      mode: 'cors'
     });
     
     if (!completeResponse.ok) {

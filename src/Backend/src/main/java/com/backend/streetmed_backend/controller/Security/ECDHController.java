@@ -27,6 +27,11 @@ public class ECDHController {
         return ResponseEntity.ok().build();
     }
 
+    @RequestMapping(method = RequestMethod.OPTIONS, path = "/**")
+    public ResponseEntity<?> handleOptionsRequest() {
+        return ResponseEntity.ok().build();
+    }
+    
     private static final Logger logger = LoggerFactory.getLogger(ECDHController.class);
 
     private final ECDHService ecdhService;
