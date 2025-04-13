@@ -16,7 +16,7 @@ import CargoVolunteer from "../Volunteer/Cargo_Volunteer";
 import ResetPassword from "../Login/ResetPassword";
 import RoundAdmin from "../Round/Round_Admin";
 import VolunteerDashboard from "../Volunteer/Volunteer_Dashboard";
-import Before_Login from "../Login/Before_Login";
+import BeforeLogin from "../Login/Before_Login";
 
 function App({ securityInitialized = false }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -88,7 +88,7 @@ function App({ securityInitialized = false }) {
                 />
               )
             ) : (
-              <Before_Login/>
+              <BeforeLogin/>
               //<Login onLoginSuccess={handleLoginSuccess}/>
             )
           }

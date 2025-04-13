@@ -47,37 +47,49 @@ function Before_Login() {
             <nav className="main-nav">
               <ul className="nav-list">
                 <li className="nav-item">
-                  <a
-                    href="#"
+                  <button
+                    type="button"
                     className="nav-link"
                     onClick={handleForgetPasswordClick}
                   >
                     Forget Password
-                  </a>
+                  </button>
                 </li>
                 <li className="nav-item">
-                  <a
-                    href="#"
+                  <button
+                    type="button"
                     className="nav-link"
                     onClick={handleVolunteerApplicationClick}
                   >
                     Volunteer Application
-                  </a>
+                  </button>
                 </li>
                 <li className="nav-item">
-                  <a href="#" className="nav-link" onClick={handleGuestClick}>
+                  <button
+                    type="button"
+                    className="nav-link"
+                    onClick={handleGuestClick}
+                  >
                     Guest
-                  </a>
+                  </button>
                 </li>
                 <li className="nav-item">
-                  <a href="#" className="nav-link" onClick={handleLoginClick}>
+                  <button
+                    type="button"
+                    className="nav-link"
+                    onClick={handleLoginClick}
+                  >
                     Login
-                  </a>
+                  </button>
                 </li>
                 <li className="nav-item">
-                  <a href="#" className="nav-link" onClick={handleSignUpClick}>
+                  <button
+                    type="button"
+                    className="nav-link"
+                    onClick={handleSignUpClick}
+                  >
                     Sign up
-                  </a>
+                  </button>
                 </li>
               </ul>
               {/* mobile navbar */}
