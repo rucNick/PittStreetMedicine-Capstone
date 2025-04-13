@@ -114,7 +114,7 @@ const VolunteerAppli = () => {
       {/* top nav bar */}
       <div style={styles.navbar}>
         <button style={styles.backButton} onClick={handleGoBack}>
-          go back to login
+          go back
         </button>
       </div>
 

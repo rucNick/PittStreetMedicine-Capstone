@@ -1,22 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-// Import the security functions from your ecdhClient.js file
-import { 
-  performKeyExchange, 
-  encrypt, 
-  decrypt, 
-  getSessionId, 
-  isInitialized 
+import {
+  performKeyExchange,
+  encrypt,
+  decrypt,
+  getSessionId,
+  isInitialized
 } from '../../security/ecdhClient';
+
+import '../../css/Login/Register.css';
 
 const Register = () => {
   const navigate = useNavigate();
-  // Add state to track if security is initialized
   const [securityInitialized, setSecurityInitialized] = useState(false);
-
   const baseURL = process.env.REACT_APP_BASE_URL;
 
-  // Initialize security on component mount
   useEffect(() => {
     const initSecurity = async () => {
       try {
@@ -32,17 +30,18 @@ const Register = () => {
         console.error("Error during security initialization:", error);
       }
     };
-
     initSecurity();
   }, []);
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
 
-  // Error status
   const [usernameError, setUsernameError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [confirmPasswordError, setConfirmPasswordError] = useState('');
@@ -50,7 +49,6 @@ const Register = () => {
   const [phoneError, setPhoneError] = useState('');
   const [message, setMessage] = useState('');
 
-  // Check the format
   const validateUsername = () => {
     const usernameRegex = /^[A-Za-z]+$/;
     if (!usernameRegex.test(username)) {
@@ -81,12 +79,10 @@ const Register = () => {
   };
 
   const validateEmail = () => {
-    // If email is empty, consider it valid since it's optional
     if (!email.trim()) {
-      setEmailError('');
-      return true;
+      setEmailError('Email is required');
+      return false;
     }
-    
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       setEmailError('The email is not formatted correctly');
@@ -97,13 +93,10 @@ const Register = () => {
   };
 
   const validatePhone = () => {
-    // If phone is empty, consider it valid since it's optional
     if (!phone.trim()) {
       setPhoneError('');
       return true;
     }
-    
-    // Mobile phone numbers are assumed to be 10 to 11 digits long
     const phoneRegex = /^\d{10,11}$/;
     if (!phoneRegex.test(phone)) {
       setPhoneError('The format of the phone number is incorrect');
@@ -113,30 +106,53 @@ const Register = () => {
     return true;
   };
 
-  // Modified submit handler for encrypted registration
+  const [step, setStep] = useState(1);
+
+  const handleContinue = (e) => {
+    e.preventDefault();
+
+    const combinedName = firstName.trim() + lastName.trim();
+
+    if (!combinedName) {
+      setUsernameError('Please fill in first name and last name');
+      return;
+    }
+
+    const usernameRegex = /^[A-Za-z]+$/;
+    if (!usernameRegex.test(combinedName)) {
+      setUsernameError('Usernames can only contain English letters');
+      return;
+    }
+    setUsernameError('');
+
+    if (!validateEmail() || !validatePhone()) {
+      return;
+    }
+
+    setUsername(combinedName);
+
+    setStep(2);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Check in turn
+
     const isUsernameValid = validateUsername();
     const isPasswordValid = validatePassword();
     const isConfirmPasswordValid = validateConfirmPassword();
     const isEmailValid = validateEmail();
     const isPhoneValid = validatePhone();
 
-    if (!isUsernameValid || !isPasswordValid || !isConfirmPasswordValid || 
-        !isEmailValid || !isPhoneValid) {
+    if (!isUsernameValid || !isPasswordValid || !isConfirmPasswordValid ||
+      !isEmailValid || !isPhoneValid) {
       return;
     }
 
-    // Prepare user data
     const userData = {
       username,
       password,
       role: "CLIENT"
     };
-    
-    // Only add email and phone if they're provided
     if (email.trim()) {
       userData.email = email;
     }
@@ -145,14 +161,9 @@ const Register = () => {
     }
 
     try {
-      // Use secure registration if security is initialized
       if (securityInitialized && isInitialized()) {
         console.log("Using secure encrypted registration");
-        
-        // Encrypt the user data
         const encryptedData = await encrypt(JSON.stringify(userData));
-        
-        // Send the encrypted registration request
         const response = await fetch(`${baseURL}/api/auth/register`, {
           method: 'POST',
           headers: {
@@ -161,18 +172,15 @@ const Register = () => {
           },
           body: encryptedData
         });
-        
+
         if (!response.ok) {
           throw new Error(`Registration failed: ${response.status}`);
         }
-        
-        // Get and decrypt the response
+
         const encryptedResponse = await response.text();
         const decryptedResponse = await decrypt(encryptedResponse);
-        
-        // Parse the JSON response
         const data = JSON.parse(decryptedResponse);
-        
+
         if (data.status === 'success') {
           setMessage('Successful registration!');
           setTimeout(() => {
@@ -188,164 +196,121 @@ const Register = () => {
     }
   };
 
-  // "go back" button
   const handleGoBack = () => {
     navigate('/');
   };
 
   return (
-    <div style={styles.container}>
-      <button style={styles.goBackButton} onClick={handleGoBack}>
-        go back
-      </button>
-      <h2>New Account</h2>
-      <form style={styles.form} onSubmit={handleSubmit}>
-        <div style={styles.formGroup}>
-          <label>Username: <span style={styles.requiredField}>*</span></label>
-          <input
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            onBlur={validateUsername}
-            style={styles.input}
-            required
-          />
-          {usernameError && <p style={styles.errorText}>{usernameError}</p>}
+    <div className="signup-page-container">
+      <header className="site-header">
+        <div className="logo-container">
+          <img src="/Untitled.png" alt="Site Logo" className="logo" />
+          <h2 className="site-title">Street Med Go</h2>
         </div>
-        <div style={styles.formGroup}>
-          <label>Password: <span style={styles.requiredField}>*</span></label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            onBlur={validatePassword}
-            style={styles.input}
-            required
-          />
-          {passwordError && <p style={styles.errorText}>{passwordError}</p>}
-        </div>
-        <div style={styles.formGroup}>
-          <label>Confirm Password: <span style={styles.requiredField}>*</span></label>
-          <input
-            type="password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            onBlur={validateConfirmPassword}
-            style={styles.input}
-            required
-          />
-          {confirmPasswordError && <p style={styles.errorText}>{confirmPasswordError}</p>}
-        </div>
-        <div style={styles.formGroup}>
-          <label>Email: <span style={styles.optionalField}>(Optional)</span></label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            onBlur={validateEmail}
-            style={styles.input}
-          />
-          {emailError && <p style={styles.errorText}>{emailError}</p>}
-        </div>
-        <div style={styles.formGroup}>
-          <label>Phone Number: <span style={styles.optionalField}>(Optional)</span></label>
-          <input
-            type="text"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            onBlur={validatePhone}
-            style={styles.input}
-          />
-          {phoneError && <p style={styles.errorText}>{phoneError}</p>}
-        </div>
-        <button type="submit" style={styles.button}>
-          Register
+        <button className="go-back-btn" onClick={handleGoBack}>
+          Go Back
         </button>
-        {message && <p style={styles.message}>{message}</p>}
-      </form>
-      
-      {/* Display security status indicator (optional) */}
-      {securityInitialized ? (
-        <p style={{ color: 'green', fontSize: '12px', marginTop: '10px' }}>
-          Secure connection established
-        </p>
-      ) : (
-        <p style={{ color: 'red', fontSize: '12px', marginTop: '10px' }}>
-          Establishing secure connection...
-        </p>
+      </header>
+
+      <button className="go-back-btn" onClick={handleGoBack}>
+        Go back
+      </button>
+
+      {/* step 1 */}
+      {step === 1 && (
+        <div className="signup-container">
+          <div className="signup-card">
+            <h2 className="signup-title">Sign Up</h2>
+            <form onSubmit={handleContinue}>
+              <div className="input-row">
+                <input
+                  type="text"
+                  placeholder="First Name"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  required
+                />
+                <input
+                  type="text"
+                  placeholder="Last Name"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  required
+                />
+              </div>
+
+              <input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+
+              <div className="divider"><span>Or</span></div>
+
+              <input
+                type="tel"
+                placeholder="Phone Number (Optional)"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+              />
+
+              {usernameError && <p className="error-text">{usernameError}</p>}
+              {emailError && <p className="error-text">{emailError}</p>}
+              {phoneError && <p className="error-text">{phoneError}</p>}
+
+              <button type="submit" className="signup-btn">
+                Continue
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* step 2 */}
+      {step === 2 && (
+        <div className="signup-container">
+          <div className="signup-card">
+            <h2 className="signup-title">Welcome, {firstName}</h2>
+            <form onSubmit={handleSubmit}>
+              <input
+                type="password"
+                placeholder="Create a password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              {passwordError && <p className="error-text">{passwordError}</p>}
+
+              <input
+                type="password"
+                placeholder="Re-enter password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+              />
+              {confirmPasswordError && (
+                <p className="error-text">{confirmPasswordError}</p>
+              )}
+
+              <button type="submit" className="signup-btn">
+                Sign up
+              </button>
+
+              {message && <p className="success-text">{message}</p>}
+
+              {securityInitialized ? (
+                <p className="security-indicator success">Secure connection established</p>
+              ) : (
+                <p className="security-indicator fail">Establishing secure connection...</p>
+              )}
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );
-};
-
-//=========================================== CSS part ==============================================
-
-const styles = {
-  container: {
-    position: 'relative',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    minHeight: '100vh',
-    backgroundColor: '#f0f2f5',
-    paddingTop: '50px'
-  },
-  goBackButton: {
-    position: 'absolute',
-    top: '20px',
-    left: '20px',
-    padding: '10px 20px',
-    backgroundColor: '#1890ff',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-  },
-  form: {
-    width: '350px',
-    backgroundColor: 'white',
-    padding: '2rem',
-    borderRadius: '8px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-  },
-  formGroup: {
-    marginBottom: '1rem',
-  },
-  input: {
-    width: '100%',
-    padding: '8px',
-    marginTop: '4px',
-    border: '1px solid #ddd',
-    borderRadius: '4px',
-  },
-  button: {
-    width: '100%',
-    padding: '10px',
-    backgroundColor: '#1890ff',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    marginTop: '1rem',
-  },
-  errorText: {
-    color: 'red',
-    fontSize: '12px',
-    marginTop: '4px',
-  },
-  message: {
-    marginTop: '1rem',
-    textAlign: 'center',
-  },
-  requiredField: {
-    color: 'red',
-    fontSize: '14px',
-  },
-  optionalField: {
-    color: '#999',
-    fontSize: '12px',
-    fontStyle: 'italic',
-  }
 };
 
 export default Register;
