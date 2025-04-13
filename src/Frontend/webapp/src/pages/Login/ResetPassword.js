@@ -85,7 +85,7 @@ const Reset_Password = () => {
       {/* back to login */}
       <div style={styles.topBar}>
         <button style={styles.goBackButton} onClick={handleGoBack}>
-          Go Back to Login
+          Go Back
         </button>
       </div>
 
