@@ -1,8 +1,9 @@
 runtime: java17
 instance_class: F2
 env_variables:
-  SPRING_PROFILES_ACTIVE: 'prod'
-  CORS_ALLOWED_ORIGINS: 'https://streetmed-frontend-900663028964.us-central1.run.app,https://streetmed-frontend-l376e2l63q-uc.a.run.app,http://localhost:3000'
+  env_variables:
+    SPRING_PROFILES_ACTIVE: 'prod'
+    CORS_ALLOWED_ORIGINS: 'https://streetmed-frontend-900663028964.us-central1.run.app,https://streetmed-frontend-l376e2l63q-uc.a.run.app,http://localhost:3000,https://app.streetmedatpitt.org,https://app.ruicao.info'
 
 handlers:
   - url: /api/.*
