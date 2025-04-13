@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../../css/Login/Before_Login.css";
 
@@ -29,6 +29,25 @@ function Before_Login() {
     e.preventDefault();
     navigate("/register");
   };
+
+  // useEffect hook to handle the mobile menu toggle
+  useEffect(() => {
+    const menuToggle = document.querySelector(".mobile-menu-toggle");
+    const navList = document.querySelector(".nav-list");
+    
+    if (menuToggle && navList) {
+      const handleToggle = () => {
+        navList.classList.toggle("nav-active");
+      };
+      
+      menuToggle.addEventListener("click", handleToggle);
+      
+      // Clean up the event listener when component unmounts
+      return () => {
+        menuToggle.removeEventListener("click", handleToggle);
+      };
+    }
+  }, []);
 
   return (
     <div className="page-container">
@@ -173,8 +192,8 @@ function Before_Login() {
         dangerouslySetInnerHTML={{
           __html: `
             document.querySelector(".mobile-menu-toggle").addEventListener("click", function () {
-              document.querySelector(".nav-list").classList.toggle("nav-active");
-            });
+            document.querySelector(".nav-list").classList.toggle("nav-active");
+          });
           `,
         }}
       />
