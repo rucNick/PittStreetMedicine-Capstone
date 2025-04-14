@@ -1419,7 +1419,7 @@ body {
   border: 1px solid #aaa;
   border-radius: 12px;
   padding: 18px;
-  height: 180px; /* fixed height */
+  height: 180px;
   overflow-y: auto;
 }
 
@@ -1469,3 +1469,66 @@ body {
   width: 100%;
 }
 
+/* User Dashboard Styles */
+.user-dashboard {
+  background-color: #c8c9c7;
+  min-height: calc(100vh - 83px);
+  padding: 60px 40px;
+}
+
+.dashboard-greeting {
+  font-size: 32px;
+  font-weight: bold;
+  margin-bottom: 40px;
+  color: #333;
+}
+
+.dashboard-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  max-width: 700px;
+}
+
+.dashboard-card {
+  display: flex;
+  align-items: center;
+  padding: 20px 30px;
+  border-radius: 20px;
+  box-shadow: 2px 3px 6px rgba(0, 0, 0, 0.15);
+  font-size: 18px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.light-blue {
+  background-color: #d1dae2;
+  color: #333;
+}
+
+.light-yellow {
+  background-color: #decda7;
+  color: #333;
+}
+
+.card-icon {
+  font-size: 20px;
+  margin-right: 12px;
+}
+
+@media (max-width: 600px) {
+  .dashboard-greeting {
+    font-size: 24px;
+    margin-bottom: 30px;
+  }
+
+  .dashboard-card {
+    padding: 18px 24px;
+    font-size: 16px;
+  }
+
+  .card-icon {
+    font-size: 18px;
+    margin-right: 10px;
+  }
+}
