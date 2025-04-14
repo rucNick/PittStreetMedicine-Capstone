@@ -1532,3 +1532,168 @@ body {
     margin-right: 10px;
   }
 }
+
+/* Volunteer Application Styles */
+.volunteer-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: #c8c9c7;
+  padding: 20px;
+}
+
+.volunteer-card {
+  background-color: #d1dae2;
+  border-radius: 20px;
+  padding: 50px 40px;
+  width: 100%;
+  max-width: 700px;
+  box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.1);
+  min-height: 500px;
+  display: flex;
+  flex-direction: column;
+}
+
+.volunteer-title {
+  font-size: 28px;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 40px;
+  color: #333;
+}
+
+.volunteer-form {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+
+.input-pair {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.input-pair input {
+  flex: 1;
+  min-width: 260px;
+  padding: 14px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  background-color: #ffffff;
+  border-radius: 6px;
+  box-shadow: none;
+}
+
+.checkbox-group {
+  display: flex;
+  justify-content: flex-start;
+  gap: 40px;
+  flex-wrap: wrap;
+  padding-left: 2px;
+}
+
+.checkbox-wrapper {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  color: #333;
+  width: calc(50% - 20px);
+}
+
+.checkbox-wrapper input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin-top: 3px;
+  accent-color: #003594;
+}
+
+.terms-link {
+  color: #666;
+  text-decoration: underline;
+  font-size: 12px;
+  display: block;
+  margin-top: 5px;
+  line-height: 1.4;
+}
+
+.volunteer-submit {
+  background-color: #003594;
+  color: white;
+  border: none;
+  padding: 14px;
+  width: 200px;
+  margin: 0 auto;
+  border-radius: 999px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.volunteer-submit:hover {
+  background-color: #002d73;
+}
+
+@media (max-width: 600px) {
+  .input-pair input {
+    min-width: 100%;
+  }
+
+  .checkbox-group {
+    flex-direction: column;
+  }
+}
+
+.thank-you-card {
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.thank-you-text {
+  font-size: 16px;
+  text-align: center;
+  color: #333;
+  margin-bottom: auto;
+}
+
+.thank-you-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: auto;
+  padding-top: 40px;
+}
+
+.thank-you-btn {
+  padding: 14px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+  border: none;
+  width: 100%;
+  max-width: 300px;
+  margin: 0 auto;
+}
+
+.golden-btn {
+  background-color: #f78702;
+  color: #fff;
+}
+
+.navy-btn {
+  background-color: #003594;
+  color: white;
+}
+
+.navy-btn:hover {
+  background-color: #002d73;
+}
+
+.hidden {
+  display: none;
+}
