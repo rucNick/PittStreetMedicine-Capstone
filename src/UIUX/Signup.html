@@ -12,23 +12,46 @@
   </header>
 
   <div class="signup-container">
-    <div class="signup-card">
-      <h2 class="signup-title">Sign Up</h2>
-      <form>
-        <div class="input-row">
-          <input type="text" placeholder="First Name" required />
-          <input type="text" placeholder="Last Name" required />
-        </div>
+    <div class="signup-card" id="signupCard">
+      <h2 class="signup-title" id="signupTitle">Sign Up</h2>
+      <div class="form-wrapper">
+        <form id="initialForm" class="form-section">
+          <div class="input-row">
+            <input type="text" placeholder="First Name" required />
+            <input type="text" placeholder="Last Name" required />
+          </div>
+          <input type="email" placeholder="Email" required />
+          <div class="divider"><span>Or</span></div>
+          <input type="tel" placeholder="Phone Number" />
+          <div class="form-bottom">
+            <button type="submit" class="signup-btn">Continue</button>
+          </div>
+        </form>
 
-        <input type="email" placeholder="Email" required />
-
-        <div class="divider"><span>Or</span></div>
-
-        <input type="tel" placeholder="Phone Number" />
-
-        <button type="submit" class="signup-btn">Continue</button>
-      </form>
+        <form id="passwordForm" class="form-section hidden">
+          <input type="password" placeholder="Create a password" required />
+          <p class="password-hint">Must contain a capital letter, a number, and a special character.</p>
+          <input type="password" placeholder="Reenter password" required />
+          <div class="form-bottom">
+            <button type="submit" class="signup-btn golden">Sign up</button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
+
+  <script>
+    const continueBtn = document.querySelector('#initialForm .signup-btn');
+    const initialForm = document.getElementById('initialForm');
+    const passwordForm = document.getElementById('passwordForm');
+    const signupTitle = document.getElementById('signupTitle');
+
+    continueBtn.addEventListener('click', function(event) {
+      event.preventDefault();
+      initialForm.classList.add('hidden');
+      passwordForm.classList.remove('hidden');
+      signupTitle.textContent = 'Hello, [first name]';
+    });
+  </script>
 </body>
 </html>
