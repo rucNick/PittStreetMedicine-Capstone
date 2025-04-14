@@ -1,6 +1,7 @@
 package com.backend.streetmed_backend.controller.Auth;
 
 import com.backend.streetmed_backend.entity.user_entity.User;
+import com.backend.streetmed_backend.entity.user_entity.UserMetadata;
 import com.backend.streetmed_backend.entity.user_entity.VolunteerSubRole;
 import com.backend.streetmed_backend.security.SecurityManager;
 import com.backend.streetmed_backend.service.UserService;
@@ -118,7 +119,7 @@ public class AuthController {
 
                 User newUser = new User();
                 newUser.setUsername(userData.get("username"));
-                if (userData.containsKey("email") &&userData.get("email")!=null) {
+                if (userData.containsKey("email") && userData.get("email") != null) {
                     newUser.setEmail(userData.get("email"));
                 }
                 newUser.setPassword(userData.get("password"));
@@ -127,6 +128,16 @@ public class AuthController {
                     newUser.setPhone(userData.get("phone"));
                 }
                 newUser.setRole("CLIENT");
+
+                // Create and set metadata
+                UserMetadata metadata = new UserMetadata();
+                if (userData.containsKey("firstName") && userData.get("firstName") != null) {
+                    metadata.setFirstName(userData.get("firstName"));
+                }
+                if (userData.containsKey("lastName") && userData.get("lastName") != null) {
+                    metadata.setLastName(userData.get("lastName"));
+                }
+                newUser.setMetadata(metadata);
 
                 User savedUser = userService.createUser(newUser);
 

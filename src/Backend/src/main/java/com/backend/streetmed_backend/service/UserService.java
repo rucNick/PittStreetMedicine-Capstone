@@ -26,7 +26,6 @@ public class UserService {
     @Transactional
     public User createUser(User user) {
         validateNewUser(user);
-
         // Create new user with hashed password
         User newUser = new User();
         newUser.setUsername(user.getUsername());
@@ -42,16 +41,15 @@ public class UserService {
         UserMetadata metadata = new UserMetadata();
         metadata.setCreatedAt(LocalDateTime.now());
         metadata.setLastLogin(LocalDateTime.now());
-        metadata.setUser(savedUser);
 
-        // Set additional metadata fields if provided
+        // Add this part to handle firstName and lastName from the request
         if (user.getMetadata() != null) {
             metadata.setFirstName(user.getMetadata().getFirstName());
             metadata.setLastName(user.getMetadata().getLastName());
         }
 
+        metadata.setUser(savedUser);
         savedUser.setMetadata(metadata);
-
         // Save everything again
         return userRepository.saveAndFlush(savedUser);
     }

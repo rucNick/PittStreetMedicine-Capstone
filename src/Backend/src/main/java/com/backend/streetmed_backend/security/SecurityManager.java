@@ -23,9 +23,6 @@ public class SecurityManager {
     // Map to track when sessions were created (or last used)
     private final Map<String, Long> sessionTimestamps = new ConcurrentHashMap<>();
 
-    // Set session timeout to 30 minutes (in milliseconds)
-    private final long SESSION_TIMEOUT_MILLIS = 30 * 60 * 1000; // 30 minutes
-
     @Autowired
     public SecurityManager(ECDHService ecdhService, EncryptionUtil encryptionUtil) {
         this.ecdhService = ecdhService;
@@ -101,6 +98,9 @@ public class SecurityManager {
         long currentTime = System.currentTimeMillis();
         for (String sessionId : sessionTimestamps.keySet()) {
             Long timestamp = sessionTimestamps.get(sessionId);
+            // Set session timeout to 30 minutes (in milliseconds)
+            // 30 minutes
+            long SESSION_TIMEOUT_MILLIS = 30 * 60 * 1000;
             if (timestamp != null && (currentTime - timestamp) > SESSION_TIMEOUT_MILLIS) {
                 logger.info("Session {} expired, cleaning up", sessionId);
                 removeSession(sessionId);
