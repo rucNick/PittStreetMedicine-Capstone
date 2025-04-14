@@ -157,24 +157,18 @@ function Before_Login() {
                 className="block-image"
               />
               <div className="block-content">
-                <h3 className="block-title">Lorem ipsum dolor sit amet</h3>
+                <h3 className="block-title">Volunteering</h3>
                 <p className="block-text">
-                  Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-                  eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut
-                  enim ad minim veniam, quis nostrud exercitation ullamco laboris
-                  nisi ut aliquip ex ea commodo consequat.
+                Volunteer and engage with other organizations supporting the homeless population in Pittsburgh.
                 </p>
               </div>
             </article>
 
             <article className="content-block blue-block">
               <div className="block-content">
-                <h3 className="block-title">Lorem ipsum dolor sit amet</h3>
+                <h3 className="block-title">Volunteering</h3>
                 <p className="block-text">
-                  Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-                  eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut
-                  enim ad minim veniam, quis nostrud exercitation ullamco laboris
-                  nisi ut aliquip ex ea commodo consequat.
+                  Volunteer and engage with other organizations supporting the homeless population in Pittsburgh.
                 </p>
               </div>
               <img

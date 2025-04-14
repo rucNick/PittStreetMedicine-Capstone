@@ -1,8 +1,8 @@
-// Login.js
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { encrypt, decrypt, getSessionId, isInitialized } from "../../security/ecdhClient";
 import "../../css/Login/Login.css";
+import SessionErrorModal from '../../components/SessionErrorModal';
 
 const Login = ({ onLoginSuccess }) => {
   const navigate = useNavigate();
@@ -10,11 +10,13 @@ const Login = ({ onLoginSuccess }) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
+  const [showSessionErrorModal, setShowSessionErrorModal] = useState(false);
 
   const baseURL = process.env.REACT_APP_BASE_URL;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setMessage(""); // Clear any previous messages
 
     try {
       if (isInitialized()) {
@@ -33,36 +35,68 @@ const Login = ({ onLoginSuccess }) => {
           body: encryptedData,
         });
 
-        const encryptedResponse = await response.text();
-        const decryptedResponse = await decrypt(encryptedResponse);
-        const data = JSON.parse(decryptedResponse);
+        // Add this check for network errors
+        if (!response.ok) {
+          if (response.status === 500) {
+            // Display a user-friendly message for server errors
+            setMessage("Server error. Your session may have expired.");
+            setShowSessionErrorModal(true);
+            return;
+          }
+        }
 
-        if (data.authenticated) {
-          setMessage("Login success!");
-          console.log("User info:", data);
+        try {
+          const encryptedResponse = await response.text();
+          const decryptedResponse = await decrypt(encryptedResponse);
+          const data = JSON.parse(decryptedResponse);
 
-          localStorage.setItem(
-            "auth_user",
-            JSON.stringify({
+          if (data.authenticated) {
+            setMessage("Login success!");
+            console.log("User info:", data);
+
+            localStorage.setItem(
+              "auth_user",
+              JSON.stringify({
+                username: data.username,
+                userId: data.userId,
+                role: data.role,
+              })
+            );
+
+            onLoginSuccess({
               username: data.username,
               userId: data.userId,
               role: data.role,
-            })
-          );
-
-          onLoginSuccess({
-            username: data.username,
-            userId: data.userId,
-            role: data.role,
-          });
-          navigate("/");
-        } else {
-          throw new Error(data.message || "Login failed");
+            });
+            navigate("/");
+          } else {
+            throw new Error(data.message || "Login failed");
+          }
+        } catch (decryptError) {
+          // Handle session expiration or decryption errors
+          console.error("Decryption error:", decryptError);
+          if (decryptError.message.includes('atob') || 
+              decryptError.message.includes('session') ||
+              decryptError.message.includes('decode')) {
+            setMessage("Your session has expired.");
+            setShowSessionErrorModal(true);
+          } else {
+            throw decryptError;
+          }
         }
       }
     } catch (error) {
       console.error("Login error:", error);
-      setMessage("Login error: " + error.message);
+      
+      // Check if it's a session-related error
+      if (error.message.includes('session') || 
+          error.message.includes('atob') || 
+          error.message.includes('decode')) {
+        setMessage("Session error. Please refresh the page.");
+        setShowSessionErrorModal(true);
+      } else {
+        setMessage("Login error: " + error.message);
+      }
     }
   };
 
@@ -99,12 +133,12 @@ const Login = ({ onLoginSuccess }) => {
           
           <form onSubmit={handleSubmit}>
             <div className="input-group">
-              <label htmlFor="email">Email or Phone</label>
+              <label htmlFor="email">Email or UserName</label>
               <input
                 type="text"
                 id="email"
                 name="email"
-                placeholder="Email or Phone"
+                placeholder="Email or UserName"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
@@ -148,6 +182,12 @@ const Login = ({ onLoginSuccess }) => {
           </form>
         </div>
       </div>
+      
+      {/* Session Error Modal */}
+      <SessionErrorModal 
+        isOpen={showSessionErrorModal}
+        onClose={() => setShowSessionErrorModal(false)}
+      />
     </div>
   );
 };

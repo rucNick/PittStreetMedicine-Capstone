@@ -331,6 +331,18 @@ export const decrypt = async (encryptedData) => {
   }
   
   try {
+    // First check if this is actually an error response in plain JSON
+    // (This happens when session expires)
+    try {
+      const errorObj = JSON.parse(encryptedData);
+      if (errorObj.status === "error" || errorObj.error) {
+        // This is a plain JSON error response, not encrypted data
+        throw new Error('Session expired or invalid. Please refresh the page.');
+      }
+    } catch (jsonError) {
+      // Not valid JSON, continue with normal decryption
+    }
+    
     // Decode Base64
     const encryptedBytes = base64ToArrayBuffer(encryptedData);
     
@@ -353,6 +365,10 @@ export const decrypt = async (encryptedData) => {
     // Convert to string
     return new TextDecoder().decode(decryptedData);
   } catch (error) {
+    // If there's an error due to session expiration, throw a user-friendly message
+    if (error.message.includes('atob') || error.message.includes('Session expired')) {
+      throw new Error('Your session has expired. Please refresh the page to continue.');
+    }
     console.error('Decryption failed:', error);
     throw error;
   }
