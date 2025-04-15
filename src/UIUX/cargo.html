@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Cargo Management</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="store-header">
+    <img src="logo.png" alt="Logo" class="store-logo" />
+    <div class="header-right-group">
+      <nav class="store-tabs">
+        <a href="#">Order</a>
+        <a href="#">Other</a>
+        <a href="#">Other</a>
+      </nav>
+      <img src="profile.png" alt="Profile" class="profile-icon" />
+    </div>
+  </header>
+
+  <main class="cargo-container">
+    <div class="cargo-header">
+      <h2 class="cargo-title">Cargo Management System</h2>
+      <button id="manageToggleBtn" class="manage-btn">Manage</button>
+    </div>
+
+    <div class="cargo-card">
+      <h3 class="table-title">Cargo Status</h3>
+      <table class="cargo-table" id="cargoTable">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Type</th>
+            <th>ID</th>
+            <th>Description</th>
+            <th>Other</th>
+            <th>Count</th>
+            <th>Status</th>
+            <th id="deleteHeader" style="display: none;"></th>
+          </tr>
+        </thead>
+        <tbody id="cargoTbody">
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <script>
+    let cargoData = [
+      { item: 'Apple', type: 'Food', id: '0001', description: 'Red fruit', other: 'Other', count: 25 },
+      { item: 'Ibuprofen', type: 'OTC Medicine', id: '0002', description: 'Small orange pill', other: 'Other', count: 12 },
+      { item: 'Blanket', type: 'Textiles', id: '0003', description: 'Small fleece blanket', other: 'Other', count: 0 },
+    ];
+
+    let isEditMode = false;
+    const tbody = document.getElementById('cargoTbody');
+    const toggleBtn = document.getElementById('manageToggleBtn');
+
+    function getStatus(count) {
+      if (count === '' || isNaN(count)) return '';
+      count = parseInt(count);
+      if (count === 0) return '<span class="status out">Out</span>';
+      if (count < 15) return '<span class="status low">Low</span>';
+      return '<span class="status fine">Fine</span>';
+    }
+
+    function renderTable() {
+      tbody.innerHTML = '';
+      document.getElementById('deleteHeader').style.display = isEditMode ? '' : 'none';
+
+
+      cargoData.forEach((row, index) => {
+        const tr = document.createElement('tr');
+        if (isEditMode) {
+            tr.innerHTML = `
+            <td><input value="${row.item}" /></td>
+            <td><input value="${row.type}" /></td>
+            <td><input value="${row.id}" /></td>
+            <td><input value="${row.description}" /></td>
+            <td><input value="${row.other}" /></td>
+            <td><input type="number" value="${row.count}" /></td>
+            <td>${getStatus(row.count)}</td>
+            <td><button class="delete-btn" onclick="deleteRow(${index})">×</button></td>
+            `;
+        } else {
+            tr.innerHTML = `
+            <td>${row.item}</td>
+            <td>${row.type}</td>
+            <td>${row.id}</td>
+            <td>${row.description}</td>
+            <td>${row.other}</td>
+            <td>${row.count}</td>
+            <td>${getStatus(row.count)}</td>
+            `;
+        }
+        tbody.appendChild(tr);
+        });
+
+
+      if (isEditMode) {
+        const addRow = document.createElement('tr');
+        addRow.className = 'add-row';
+        addRow.innerHTML = `<td colspan="8"><button class="add-btn" onclick="addNewRow()">＋</button></td>`;
+        tbody.appendChild(addRow);
+      }
+    }
+
+    function addNewRow() {
+      cargoData.push({ item: '', type: '', id: '', description: '', other: '', count: 0 });
+      renderTable();
+    }
+
+    function deleteRow(index) {
+      cargoData.splice(index, 1);
+      renderTable();
+    }
+
+    toggleBtn.addEventListener('click', () => {
+      if (isEditMode) {
+        const rows = tbody.querySelectorAll('tr');
+        const updated = [];
+        rows.forEach(tr => {
+          const inputs = tr.querySelectorAll('input');
+          if (inputs.length === 6) {
+            const [item, type, id, description, other, count] = [...inputs].map(input => input.value);
+            if (item && id) {
+              updated.push({
+                item, type, id, description, other, count: parseInt(count) || 0
+              });
+            }
+          }
+        });
+        cargoData = updated;
+      }
+
+      isEditMode = !isEditMode;
+      toggleBtn.textContent = isEditMode ? 'Save' : 'Manage';
+      renderTable();
+    });
+
+    renderTable();
+  </script>
+</body>
+</html>
