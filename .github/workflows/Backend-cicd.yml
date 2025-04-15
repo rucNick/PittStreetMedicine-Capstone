@@ -108,6 +108,9 @@ jobs:
     - name: Deploy to Cloud Run
       id: deploy
       run: |
+        # Create a properly escaped CORS environment variable
+        ESCAPED_CORS="CORS_ALLOWED_ORIGINS=\"https://streetmed-frontend-900663028964.us-central1.run.app,http://localhost:3000,https://app.ruicao.info,https://app.streetmedatpitt.org\""
+        
         # Deploy with improved configuration
         gcloud run deploy ${{ env.SERVICE_NAME }} \
           --image ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
@@ -120,7 +123,7 @@ jobs:
           --port=8080 \
           --timeout=600s \
           --startup-cpu-boost \
-          --set-env-vars=CORS_ALLOWED_ORIGINS="${{ env.CORS_ALLOWED_ORIGINS }}" \
+          --set-env-vars=${ESCAPED_CORS} \
           --allow-unauthenticated
           
     - name: Show Backend URL
