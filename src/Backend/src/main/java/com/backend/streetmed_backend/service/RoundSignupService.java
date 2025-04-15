@@ -32,6 +32,9 @@ public class RoundSignupService {
     private static final Logger logger = LoggerFactory.getLogger(RoundSignupService.class);
 
     @Autowired
+    private OrderRoundAssignmentService orderRoundAssignmentService;
+
+    @Autowired
     public RoundSignupService(RoundsRepository roundsRepository,
                               RoundSignupRepository roundSignupRepository,
                               UserRepository userRepository,
@@ -482,6 +485,8 @@ public class RoundSignupService {
             throw new RuntimeException("Cannot cancel signup less than 24 hours before the round");
         }
 
+        Integer roundId = signup.getRoundId(); // Store the roundId before deleting the signup
+
         // Delete the signup
         roundSignupRepository.delete(signup);
 
@@ -489,6 +494,9 @@ public class RoundSignupService {
         if ("CONFIRMED".equals(signup.getStatus()) && "VOLUNTEER".equals(signup.getRole())) {
             runLotteryForRound(signup.getRoundId());
         }
+
+        // After successful cancellation, trigger order rebalancing
+        orderRoundAssignmentService.handleVolunteerCancellation(roundId);
     }
 
     /**

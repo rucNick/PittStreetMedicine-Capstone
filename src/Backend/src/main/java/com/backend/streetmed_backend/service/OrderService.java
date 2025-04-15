@@ -3,8 +3,10 @@ package com.backend.streetmed_backend.service;
 import com.backend.streetmed_backend.entity.CargoItem;
 import com.backend.streetmed_backend.entity.order_entity.Order;
 import com.backend.streetmed_backend.entity.order_entity.OrderItem;
+import com.backend.streetmed_backend.entity.rounds_entity.Rounds;
 import com.backend.streetmed_backend.entity.user_entity.User;
 import com.backend.streetmed_backend.repository.Order.OrderRepository;
+import com.backend.streetmed_backend.repository.Rounds.RoundsRepository;
 import com.backend.streetmed_backend.repository.User.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -22,14 +24,55 @@ public class OrderService {
     private final UserRepository userRepository;
     private final CargoItemService cargoItemService;
     private static final int GUEST_USER_ID = -1;
+    private final RoundsRepository roundsRepository;
+    private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(OrderService.class.getName());
+
+    @Autowired
+    private OrderRoundAssignmentService orderRoundAssignmentService;
 
     @Autowired
     public OrderService(OrderRepository orderRepository,
                         UserRepository userRepository,
-                        CargoItemService cargoItemService) {
+                        CargoItemService cargoItemService,
+                        RoundsRepository roundsRepository) {
         this.orderRepository = orderRepository;
         this.userRepository = userRepository;
         this.cargoItemService = cargoItemService;
+        this.roundsRepository = roundsRepository;
+    }
+
+    // Add to OrderService.java
+    /**
+     * Get orders for a specific round
+     */
+    @Transactional(readOnly = true)
+    public List<Order> getOrdersForRound(Integer roundId) {
+        List<Order> orders = orderRepository.findByRoundId(roundId);
+        orders.forEach(order -> order.getOrderItems().size()); // Force initialization
+        return orders;
+    }
+
+
+    /**
+     * Manually assign an order to a round
+     */
+    @Transactional
+    public Order assignOrderToRound(Integer orderId, Integer roundId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        if (roundId != null) {
+            Rounds round = roundsRepository.findById(roundId)
+                    .orElseThrow(() -> new RuntimeException("Round not found"));
+
+            // Check if round is in the future
+            if (round.getStartTime().isBefore(LocalDateTime.now())) {
+                throw new RuntimeException("Cannot assign orders to past rounds");
+            }
+        }
+
+        order.setRoundId(roundId);
+        return orderRepository.save(order);
     }
 
     /**
@@ -97,7 +140,24 @@ public class OrderService {
             order.addOrderItem(item);
         }
 
-        return orderRepository.save(order);
+        // Save the order first
+        Order savedOrder = orderRepository.save(order);
+
+        // Try to assign it to a round immediately
+        try {
+            List<Rounds> upcomingRounds = roundsRepository.findByStartTimeAfterAndStatusOrderByStartTimeAsc(
+                    LocalDateTime.now(), "SCHEDULED");
+            orderRoundAssignmentService.assignOrderToOptimalRound(savedOrder, upcomingRounds);
+
+            // If assignment was successful, reload the order to get updated roundId
+            savedOrder = orderRepository.findById(savedOrder.getOrderId()).orElse(savedOrder);
+        } catch (Exception e) {
+            // Log error but don't fail the order creation
+            logger.severe("Failed to assign order to round: " + e.getMessage());
+            logger.throwing(OrderService.class.getName(), "createOrder", e);
+        }
+
+        return savedOrder;
     }
 
     public Order getOrder(Integer orderId, Integer userId, String userRole) {

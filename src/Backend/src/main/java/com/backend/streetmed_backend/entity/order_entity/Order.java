@@ -13,6 +13,17 @@ public class Order {
         GUEST
     }
 
+    @Column(name = "round_id")
+    private Integer roundId;
+
+    public Integer getRoundId() {
+        return roundId;
+    }
+
+    public void setRoundId(Integer roundId) {
+        this.roundId = roundId;
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "order_id")

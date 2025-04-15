@@ -1,7 +1,9 @@
 package com.backend.streetmed_backend.controller.Rounds;
 
+import com.backend.streetmed_backend.entity.order_entity.Order;
 import com.backend.streetmed_backend.entity.rounds_entity.Rounds;
 import com.backend.streetmed_backend.entity.rounds_entity.RoundSignup;
+import com.backend.streetmed_backend.service.OrderService;
 import com.backend.streetmed_backend.service.RoundsService;
 import com.backend.streetmed_backend.service.RoundSignupService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -30,13 +32,16 @@ public class VolunteerRoundsController {
     private final RoundsService roundsService;
     private final RoundSignupService roundSignupService;
     private final Executor asyncExecutor;
+    private final OrderService orderService;
 
     @Autowired
     public VolunteerRoundsController(RoundsService roundsService,
                                      RoundSignupService roundSignupService,
+                                     OrderService orderService,
                                      @Qualifier("authExecutor") Executor asyncExecutor) {
         this.roundsService = roundsService;
         this.roundSignupService = roundSignupService;
+        this.orderService = orderService;
         this.asyncExecutor = asyncExecutor;
     }
 
@@ -403,6 +408,62 @@ public class VolunteerRoundsController {
                     return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
                 }
 
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+            }
+        }, asyncExecutor);
+    }
+
+    // Add to VolunteerRoundsController.java
+    @GetMapping("/{roundId}/orders")
+    public CompletableFuture<ResponseEntity<Map<String, Object>>> getRoundOrders(
+            @PathVariable Integer roundId,
+            @RequestParam("authenticated") Boolean authenticated,
+            @RequestParam("userId") Integer userId,
+            @RequestParam("userRole") String userRole) {
+
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                if (!Boolean.TRUE.equals(authenticated)) {
+                    Map<String, Object> errorResponse = new HashMap<>();
+                    errorResponse.put("status", "error");
+                    errorResponse.put("message", "Not authenticated");
+                    errorResponse.put("authenticated", false);
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+                }
+
+                // Verify the user is a volunteer
+                if (!"VOLUNTEER".equals(userRole)) {
+                    Map<String, Object> errorResponse = new HashMap<>();
+                    errorResponse.put("status", "error");
+                    errorResponse.put("message", "User must be a volunteer to view round orders");
+                    errorResponse.put("authenticated", true);
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
+                }
+
+                // Check if user is signed up for this round
+                boolean userSignedUp = roundSignupService.isUserSignedUp(roundId, userId);
+                if (!userSignedUp) {
+                    Map<String, Object> errorResponse = new HashMap<>();
+                    errorResponse.put("status", "error");
+                    errorResponse.put("message", "User is not signed up for this round");
+                    errorResponse.put("authenticated", true);
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
+                }
+
+                // Get orders for this round
+                List<Order> orders = orderService.getOrdersForRound(roundId);
+
+                Map<String, Object> response = new HashMap<>();
+                response.put("status", "success");
+                response.put("orders", orders);
+                response.put("authenticated", true);
+
+                return ResponseEntity.ok(response);
+            } catch (Exception e) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("status", "error");
+                errorResponse.put("message", e.getMessage());
+                errorResponse.put("authenticated", true);
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
             }
         }, asyncExecutor);
