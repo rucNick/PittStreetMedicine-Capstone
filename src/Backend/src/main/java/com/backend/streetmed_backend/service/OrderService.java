@@ -333,4 +333,18 @@ public class OrderService {
             throw new RuntimeException("User not found");
         }
     }
+
+    /**
+     * Get orders assigned to a specific volunteer
+     *
+     * @param volunteerId ID of the volunteer
+     * @return List of orders assigned to the volunteer
+     */
+    @Transactional(readOnly = true)
+    public List<Order> getOrdersByVolunteer(Integer volunteerId) {
+        List<Order> orders = orderRepository.findByVolunteerId(volunteerId);
+        // Initialize collections for lazy loading
+        orders.forEach(order -> order.getOrderItems().size());
+        return orders;
+    }
 }

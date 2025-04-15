@@ -500,4 +500,54 @@ public class OrderController {
             }
         }, asyncExecutor);
     }
+
+    @Operation(summary = "Get volunteer assigned orders",
+            description = "Retrieves orders assigned to a specific volunteer. Volunteers can only view their own assigned orders.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Orders retrieved successfully"),
+            @ApiResponse(responseCode = "401", description = "Not authenticated"),
+            @ApiResponse(responseCode = "403", description = "Unauthorized access")
+    })
+    @GetMapping("/volunteer/assigned")
+    public CompletableFuture<ResponseEntity<Map<String, Object>>> getVolunteerAssignedOrders(
+            @RequestParam("authenticated") Boolean authenticated,
+            @RequestParam("userId") Integer userId,
+            @RequestParam("userRole") String userRole) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                if (!Boolean.TRUE.equals(authenticated)) {
+                    Map<String, Object> errorResponse = new HashMap<>();
+                    errorResponse.put("status", "error");
+                    errorResponse.put("message", "Not authenticated");
+                    errorResponse.put("authenticated", false);
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+                }
+
+                // Verify the user is a volunteer
+                if (!"VOLUNTEER".equals(userRole)) {
+                    Map<String, Object> errorResponse = new HashMap<>();
+                    errorResponse.put("status", "error");
+                    errorResponse.put("message", "User must be a volunteer to view assigned orders");
+                    errorResponse.put("authenticated", true);
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
+                }
+
+                // Get orders assigned to this volunteer
+                List<Order> assignedOrders = orderService.getOrdersByVolunteer(userId);
+
+                Map<String, Object> response = new HashMap<>();
+                response.put("status", "success");
+                response.put("orders", assignedOrders);
+                response.put("authenticated", true);
+
+                return ResponseEntity.ok(response);
+            } catch (Exception e) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("status", "error");
+                errorResponse.put("message", e.getMessage());
+                errorResponse.put("authenticated", true);
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+            }
+        }, asyncExecutor);
+    }
 }

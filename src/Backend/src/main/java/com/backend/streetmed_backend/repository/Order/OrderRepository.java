@@ -24,4 +24,6 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
     // Add to OrderRepository.java
     List<Order> findByRoundIdIsNullOrderByRequestTimeAsc();
     long countByRoundId(Integer roundId);
+
+    List<Order> findByVolunteerId(Integer volunteerId);
 }
