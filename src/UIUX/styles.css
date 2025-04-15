@@ -1697,3 +1697,114 @@ body {
 .hidden {
   display: none;
 }
+
+.edit-profile-container {
+  background-color: #c8c9c7;
+  min-height: calc(100vh - 83px);
+  padding: 60px 40px;
+}
+
+.edit-title {
+  font-size: 28px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 30px;
+}
+
+.edit-card {
+  display: flex;
+  background-color: #decda7;
+  border-radius: 20px;
+  padding: 40px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  gap: 40px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.edit-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 220px;
+  text-align: center;
+}
+
+.profile-photo {
+  width: 200px;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 50%;
+  margin-bottom: 10px;
+}
+
+.change-photo {
+  font-size: 13px;
+  color: #003594;
+  text-decoration: underline;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+
+.user-role {
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+}
+
+.edit-form {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.input-pair {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.input-pair input {
+  flex: 1;
+  min-width: 240px;
+  padding: 12px;
+  font-size: 14px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+.form-bottom {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.save-btn {
+  padding: 14px 30px;
+  background-color: #003594;
+  color: white;
+  border: none;
+  border-radius: 999px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  width: 300px;
+  max-width: 100%;
+}
+
+.save-btn:hover {
+  background-color: #002a6d;
+}
+
+
+@media (max-width: 768px) {
+  .edit-card {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .edit-form {
+    width: 100%;
+  }
+}
