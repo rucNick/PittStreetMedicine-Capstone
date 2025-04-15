@@ -118,7 +118,7 @@ jobs:
           --memory=1Gi \
           --port=8080 \
           --timeout=600s \
-          --startup-cpu-boost \
+          --cpu-boost \
           --allow-unauthenticated
           
     - name: Update CORS settings
