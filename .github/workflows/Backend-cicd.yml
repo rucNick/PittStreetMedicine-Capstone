@@ -19,7 +19,7 @@ env:
   REGION: us-central1
   MYSQL_INSTANCE: streetmedgo:us-central1:streetmed
   ARTIFACT_REGISTRY: us-central1-docker.pkg.dev
-  REPOSITORY: streetmed-backend
+  REPOSITORY: streetmedgo-repo
 
 jobs:
   build:
@@ -66,61 +66,6 @@ jobs:
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
     
-    - name: Enable required APIs
-      run: |
-        # Enable required APIs
-        gcloud services enable run.googleapis.com --quiet || true
-        gcloud services enable cloudbuild.googleapis.com --quiet || true
-        gcloud services enable sqladmin.googleapis.com --quiet || true
-        gcloud services enable artifactregistry.googleapis.com --quiet || true
-        gcloud services enable vpcaccess.googleapis.com --quiet || true
-        
-        # Wait a bit for API enablement to propagate
-        echo "Waiting for API enablement to propagate..."
-        sleep 60
-    
-    - name: Create Artifact Registry repository if not exists
-      run: |
-        # Check if repository exists
-        if ! gcloud artifacts repositories describe ${{ env.REPOSITORY }} --location=${{ env.REGION }} 2>/dev/null; then
-          echo "Creating repository ${{ env.REPOSITORY }} in ${{ env.REGION }}"
-          gcloud artifacts repositories create ${{ env.REPOSITORY }} \
-            --repository-format=docker \
-            --location=${{ env.REGION }} \
-            --description="Repository for ${{ env.SERVICE_NAME }}" \
-            --async
-          
-          # Wait a moment for repository creation to propagate
-          sleep 30
-        fi
-    
-    - name: Create Dockerfile for Spring Boot
-      run: |
-        cd src/Backend
-        
-        # Create Dockerfile
-        cat > Dockerfile << 'EOF'
-        FROM eclipse-temurin:17-jdk-focal
-        
-        WORKDIR /app
-        
-        COPY target/*.jar app.jar
-        
-        ENV SPRING_PROFILES_ACTIVE=prod
-        ENV CORS_ALLOWED_ORIGINS=https://streetmed-frontend-l376e2l63q-uc.a.run.app,https://streetmed-frontend-900663028964.us-central1.run.app,http://localhost:3000,https://app.streetmedatpitt.org,https://app.ruicao.info
-        ENV SERVER_PORT=8080
-        
-        # Modified for Cloud Run database connection
-        ENV SPRING_DATASOURCE_URL=jdbc:mysql://localhost/streetmed?cloudSqlInstance=streetmedgo:us-central1:streetmed&socketFactory=com.google.cloud.sql.mysql.SocketFactory
-        ENV SPRING_DATASOURCE_USERNAME=streetmed
-        ENV SPRING_DATASOURCE_PASSWORD=StreetMed@Pitt
-        
-        EXPOSE 8080
-        
-        # Be more explicit about the Java options
-        ENTRYPOINT ["java", "-Dserver.port=8080", "-jar", "/app/app.jar"]
-        EOF
-    
     - name: Configure Docker for Artifact Registry
       run: |
         gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY }}
@@ -128,67 +73,44 @@ jobs:
     - name: Build and Push Docker image
       run: |
         cd src/Backend
+        
+        # Create a simple Dockerfile
+        cat > Dockerfile << 'EOF'
+        FROM eclipse-temurin:17-jdk-focal
+        
+        WORKDIR /app
+        
+        COPY target/*.jar app.jar
+        
+        EXPOSE 8080
+        
+        ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+        EOF
+        
+        # Build and push to Artifact Registry
         IMAGE_PATH="${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}"
         docker build -t ${IMAGE_PATH}:${{ github.sha }} -t ${IMAGE_PATH}:latest .
         docker push ${IMAGE_PATH}:${{ github.sha }}
         docker push ${IMAGE_PATH}:latest
     
-    - name: Create Cloud SQL connection
-      run: |
-        # Create or update Cloud SQL connection
-        gcloud compute networks vpc-access connectors create streetmed-sql-connector \
-          --region=${{ env.REGION }} \
-          --network=default \
-          --range=10.8.0.0/28 \
-          --min-instances=2 \
-          --max-instances=10 || true
-    
     - name: Deploy to Cloud Run
       id: deploy
       run: |
-        # Create an env.yaml file for environment variables
-        cat > env.yaml << EOF
-        SPRING_PROFILES_ACTIVE: "prod"
-        CORS_ALLOWED_ORIGINS: "https://streetmed-frontend-l376e2l63q-uc.a.run.app,https://streetmed-frontend-900663028964.us-central1.run.app,http://localhost:3000,https://app.streetmedatpitt.org,https://app.ruicao.info"
-        SERVER_PORT: "8080"
-        SPRING_DATASOURCE_URL: "jdbc:mysql://localhost/streetmed?cloudSqlInstance=streetmedgo:us-central1:streetmed&socketFactory=com.google.cloud.sql.mysql.SocketFactory"
-        SPRING_DATASOURCE_USERNAME: "streetmed"
-        SPRING_DATASOURCE_PASSWORD: "StreetMed@Pitt"
-        EOF
-        
-        # Deploy with increased timeout for startup
+        # Deploy with always-on configuration
         gcloud run deploy ${{ env.SERVICE_NAME }} \
           --image ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
           --region ${{ env.REGION }} \
-          --service-account=backend-identity@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
           --add-cloudsql-instances ${{ env.MYSQL_INSTANCE }} \
-          --vpc-connector streetmed-sql-connector \
           --min-instances=1 \
           --no-cpu-throttling \
-          --concurrency=80 \
           --cpu=1 \
           --memory=1Gi \
           --port=8080 \
           --timeout=600s \
-          --env-vars-file env.yaml \
-          --allow-unauthenticated \
-          --cpu-boost \
-          --max-instances=10
-    
-    - name: Configure IAM permissions
-      run: |
-        # Grant invoker role to frontend service account
-        gcloud run services add-iam-policy-binding ${{ env.SERVICE_NAME }} \
-          --region=${{ env.REGION }} \
-          --member="serviceAccount:frontend-identity@${{ env.PROJECT_ID }}.iam.gserviceaccount.com" \
-          --role="roles/run.invoker"
+          --allow-unauthenticated
     
     - name: Show Backend URL
       run: |
         BACKEND_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --region ${{ env.REGION }} --format='value(status.url)')
         echo "Backend URL: $BACKEND_URL"
-        echo "Backend successfully deployed to Cloud Run with Cloud SQL connectivity"
-        echo "Cloud SQL Instance: ${{ env.MYSQL_INSTANCE }}"
-        
-        # Save this URL for future reference
-        echo "backend_url=$BACKEND_URL" >> $GITHUB_OUTPUT
+        echo "Backend successfully deployed to Cloud Run with always-on instances"
