@@ -81,17 +81,17 @@ jobs:
           
           WORKDIR /app
           
-          # Copy the JAR file
+          # Copy the jar file built by Maven
           COPY target/*.jar app.jar
           
           # Explicitly expose port 8080
           EXPOSE 8080
           
-          # Set environment variable
+          # Set the PORT environment variable (Cloud Run will also pass PORT)
           ENV PORT=8080
           
-          # Define the entrypoint with explicit port and host binding
-          ENTRYPOINT ["java", "-Dserver.port=8080", "-Dserver.address=0.0.0.0", "-jar", "/app/app.jar"]
+          # Use an exec wrapper to ensure proper signal handling and correct port binding
+          ENTRYPOINT ["sh", "-c", "exec java -Dserver.port=${PORT} -Dserver.address=0.0.0.0 -jar /app/app.jar"]
           EOF
           
           # Build and push to Artifact Registry
