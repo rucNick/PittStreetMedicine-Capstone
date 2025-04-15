@@ -20,7 +20,6 @@ env:
   MYSQL_INSTANCE: streetmedgo:us-central1:streetmed
   ARTIFACT_REGISTRY: us-central1-docker.pkg.dev
   REPOSITORY: streetmedgo-repo
-  CORS_ALLOWED_ORIGINS: "https://streetmed-frontend-900663028964.us-central1.run.app,http://localhost:3000,https://app.ruicao.info,https://app.streetmedatpitt.org"
 
 jobs:
   build:
@@ -108,10 +107,7 @@ jobs:
     - name: Deploy to Cloud Run
       id: deploy
       run: |
-        # Create an env vars file
-        echo 'CORS_ALLOWED_ORIGINS=https://streetmed-frontend-900663028964.us-central1.run.app,http://localhost:3000,https://app.ruicao.info,https://app.streetmedatpitt.org' > env.yaml
-        
-        # Deploy using the env vars file
+        # First deploy without CORS
         gcloud run deploy ${{ env.SERVICE_NAME }} \
           --image ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
           --region ${{ env.REGION }} \
@@ -123,8 +119,17 @@ jobs:
           --port=8080 \
           --timeout=600s \
           --startup-cpu-boost \
-          --env-vars-file=env.yaml \
           --allow-unauthenticated
+          
+    - name: Update CORS settings
+      run: |
+        # Create a JSON file for environment variables
+        echo '{"CORS_ALLOWED_ORIGINS":"https://streetmed-frontend-900663028964.us-central1.run.app,http://localhost:3000,https://app.ruicao.info,https://app.streetmedatpitt.org"}' > env.json
+        
+        # Update with CORS settings using the file
+        gcloud run services update ${{ env.SERVICE_NAME }} \
+          --region ${{ env.REGION }} \
+          --update-env-vars-file=env.json
           
     - name: Show Backend URL
       run: |
