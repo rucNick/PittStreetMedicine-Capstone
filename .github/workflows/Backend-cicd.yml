@@ -131,26 +131,30 @@ jobs:
           --min-instances=2 \
           --max-instances=10 || true
     
-    - name: Deploy to Cloud Run
-      id: deploy
-      run: |
-        # Set environment variables for CORS
-        CORS_ORIGINS="CORS_ALLOWED_ORIGINS=https://streetmed-frontend-l376e2l63q-uc.a.run.app,https://streetmed-frontend-900663028964.us-central1.run.app,http://localhost:3000,https://app.streetmedatpitt.org,https://app.ruicao.info"
-        
-        gcloud run deploy ${{ env.SERVICE_NAME }} \
-          --image ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
-          --region ${{ env.REGION }} \
-          --service-account=backend-identity@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
-          --add-cloudsql-instances ${{ env.MYSQL_INSTANCE }} \
-          --vpc-connector streetmed-sql-connector \
-          --min-instances=1 \
-          --no-cpu-throttling \
-          --concurrency=80 \
-          --cpu=1 \
-          --memory=1Gi \
-          --port=8080 \
-          --timeout=300s \
-          --set-env-vars="SPRING_PROFILES_ACTIVE=prod,$CORS_ORIGINS"
+          - name: Deploy to Cloud Run
+          id: deploy
+          run: |
+            # Create an env.yaml file for environment variables
+            cat > env.yaml << EOF
+            SPRING_PROFILES_ACTIVE: prod
+            CORS_ALLOWED_ORIGINS: "https://streetmed-frontend-l376e2l63q-uc.a.run.app,https://streetmed-frontend-900663028964.us-central1.run.app,http://localhost:3000,https://app.streetmedatpitt.org,https://app.ruicao.info"
+            EOF
+            
+            # Deploy using env.yaml file
+            gcloud run deploy ${{ env.SERVICE_NAME }} \
+              --image ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+              --region ${{ env.REGION }} \
+              --service-account=backend-identity@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
+              --add-cloudsql-instances ${{ env.MYSQL_INSTANCE }} \
+              --vpc-connector streetmed-sql-connector \
+              --min-instances=1 \
+              --no-cpu-throttling \
+              --concurrency=80 \
+              --cpu=1 \
+              --memory=1Gi \
+              --port=8080 \
+              --timeout=300s \
+              --env-vars-file env.yaml
     
     - name: Configure IAM permissions
       run: |
