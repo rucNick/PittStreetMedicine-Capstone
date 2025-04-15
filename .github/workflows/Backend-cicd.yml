@@ -1,4 +1,4 @@
-name: Backend CI/CD for App Engine
+name: Backend CI/CD for Cloud Run
 
 on:
   push:
@@ -15,8 +15,11 @@ on:
 
 env:
   PROJECT_ID: streetmedgo
+  SERVICE_NAME: streetmed-backend
   REGION: us-central1
   MYSQL_INSTANCE: streetmedgo:us-central1:streetmed
+  ARTIFACT_REGISTRY: us-central1-docker.pkg.dev
+  REPOSITORY: streetmed-backend
 
 jobs:
   build:
@@ -31,7 +34,7 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
         cache: maven
-    
+        
     - name: Build with Maven
       run: cd src/Backend && mvn clean package -DskipTests
 
@@ -66,47 +69,88 @@ jobs:
     - name: Enable required APIs
       run: |
         # Enable required APIs
-        gcloud services enable appengine.googleapis.com --quiet || true
+        gcloud services enable run.googleapis.com --quiet || true
         gcloud services enable cloudbuild.googleapis.com --quiet || true
         gcloud services enable sqladmin.googleapis.com --quiet || true
+        gcloud services enable artifactregistry.googleapis.com --quiet || true
     
-    - name: Create app.yaml
+    - name: Create Dockerfile for Spring Boot
       run: |
         cd src/Backend
-        mkdir -p src/main/appengine
-        cat > src/main/appengine/app.yaml << 'EOF'
-        runtime: java17
-        instance_class: F2
-        env_variables:
-          SPRING_PROFILES_ACTIVE: 'prod'
-          CORS_ALLOWED_ORIGINS: 'https://streetmed-frontend-l376e2l63q-uc.a.run.app,https://streetmed-frontend-900663028964.us-central1.run.app,http://localhost:3000,https://app.streetmedatpitt.org,https://app.ruicao.info'
         
-        handlers:
-          - url: /.*
-            script: auto
-            secure: always
+        # Create Dockerfile
+        cat > Dockerfile << 'EOF'
+        FROM eclipse-temurin:17-jdk-focal
         
-        automatic_scaling:
-          min_instances: 1
-          max_instances: 10
-          min_idle_instances: 1
-          max_idle_instances: 3
-          target_cpu_utilization: 0.65
-          target_throughput_utilization: 0.65
-          max_concurrent_requests: 50
+        WORKDIR /app
         
-        # Add Cloud SQL instance connection
-        beta_settings:
-          cloud_sql_instances: ${{ env.MYSQL_INSTANCE }}
+        COPY target/*.jar app.jar
+        
+        ENV SPRING_PROFILES_ACTIVE=prod
+        ENV CORS_ALLOWED_ORIGINS=https://streetmed-frontend-l376e2l63q-uc.a.run.app,https://streetmed-frontend-900663028964.us-central1.run.app,http://localhost:3000,https://app.streetmedatpitt.org,https://app.ruicao.info
+        
+        EXPOSE 8080
+        
+        ENTRYPOINT ["java", "-jar", "/app/app.jar"]
         EOF
     
-    - name: Deploy to App Engine
+    - name: Configure Docker for Artifact Registry
+      run: |
+        gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY }}
+    
+    - name: Build and Push Docker image
       run: |
         cd src/Backend
-        mvn package appengine:deploy -DskipTests
+        IMAGE_PATH="${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}"
+        docker build -t ${IMAGE_PATH}:${{ github.sha }} -t ${IMAGE_PATH}:latest .
+        docker push ${IMAGE_PATH}:${{ github.sha }}
+        docker push ${IMAGE_PATH}:latest
+    
+    - name: Create Cloud SQL connection
+      run: |
+        # Create or update Cloud SQL connection
+        gcloud compute networks vpc-access connectors create streetmed-sql-connector \
+          --region=${{ env.REGION }} \
+          --network=default \
+          --range=10.8.0.0/28 \
+          --min-instances=2 \
+          --max-instances=10 || true
+    
+    - name: Deploy to Cloud Run
+      id: deploy
+      run: |
+        gcloud run deploy ${{ env.SERVICE_NAME }} \
+          --image ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+          --region ${{ env.REGION }} \
+          --service-account=backend-identity@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
+          --add-cloudsql-instances ${{ env.MYSQL_INSTANCE }} \
+          --vpc-connector streetmed-sql-connector \
+          --min-instances=1 \
+          --no-cpu-throttling \
+          --concurrency=80 \
+          --cpu=1 \
+          --memory=1Gi \
+          --port=8080 \
+          --timeout=300s \
+          --set-env-vars=SPRING_PROFILES_ACTIVE=prod,CORS_ALLOWED_ORIGINS=https://streetmed-frontend-l376e2l63q-uc.a.run.app,https://streetmed-frontend-900663028964.us-central1.run.app,http://localhost:3000,https://app.streetmedatpitt.org,https://app.ruicao.info
+    
+    - name: Configure IAM permissions
+      run: |
+        # Grant invoker role to frontend service account and public
+        gcloud run services add-iam-policy-binding ${{ env.SERVICE_NAME }} \
+          --region=${{ env.REGION }} \
+          --member="serviceAccount:frontend-identity@${{ env.PROJECT_ID }}.iam.gserviceaccount.com" \
+          --role="roles/run.invoker"
+        
+        # Allow unauthenticated invocations (if needed)
+        gcloud run services add-iam-policy-binding ${{ env.SERVICE_NAME }} \
+          --region=${{ env.REGION }} \
+          --member="allUsers" \
+          --role="roles/run.invoker"
     
     - name: Show Backend URL
       run: |
-        echo "Backend URL: https://${{ env.PROJECT_ID }}.uc.r.appspot.com"
-        echo "Backend successfully deployed to App Engine with Cloud SQL connectivity"
+        BACKEND_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --region ${{ env.REGION }} --format='value(status.url)')
+        echo "Backend URL: $BACKEND_URL"
+        echo "Backend successfully deployed to Cloud Run with Cloud SQL connectivity"
         echo "Cloud SQL Instance: ${{ env.MYSQL_INSTANCE }}"
