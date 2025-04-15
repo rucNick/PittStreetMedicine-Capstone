@@ -1808,3 +1808,126 @@ body {
     width: 100%;
   }
 }
+
+    /* Cargo styles */
+    .cargo-container {
+      background-color: #c8c9c7;
+      padding: 40px 60px;
+    }
+
+    .cargo-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .cargo-title {
+      font-size: 28px;
+      font-weight: bold;
+      color: #333;
+    }
+
+    .manage-btn {
+      background-color: #decda7;
+      padding: 10px 20px;
+      font-size: 16px;
+      border-radius: 20px;
+      border: none;
+      box-shadow: 2px 2px 5px rgba(0,0,0,0.15);
+      cursor: pointer;
+    }
+
+    .cargo-card {
+      background-color: #d1dae2;
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+      overflow-x: auto;
+    }
+
+    .table-title {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 15px;
+      color: #333;
+    }
+
+    .cargo-table {
+      width: 100%;
+      border-collapse: collapse;
+      background-color: #f9f9f9;
+    }
+
+    .cargo-table th,
+    .cargo-table td {
+      padding: 12px 14px;
+      border: 1px solid #ccc;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    .cargo-table th {
+      background-color: #edf1f5;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .status {
+      padding: 5px 12px;
+      border-radius: 999px;
+      color: white;
+      font-weight: bold;
+      font-size: 13px;
+      display: inline-block;
+      text-align: center;
+      min-width: 55px;
+    }
+
+    .status.fine { background-color: #2ecc71; }
+    .status.low { background-color: #f4b942; color: #333; }
+    .status.out { background-color: #c0392b; }
+
+    .cargo-table input {
+      width: 100%;
+      padding: 6px 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 13px;
+      background-color: #fff;
+    }
+
+    .cargo-table input::placeholder {
+      color: #999;
+    }
+
+    .add-btn {
+      font-size: 20px;
+      color: #333;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .delete-btn {
+      font-size: 18px;
+      background-color: #ddd;
+      color: #333;
+      border: none;
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      cursor: pointer;
+      text-align: center;
+      line-height: 28px;
+    }
+
+    .delete-btn:hover {
+      background-color: #bbb;
+    }
+
+    .add-row td {
+      background-color: #e4ebf2;
+      text-align: center;
+    }
