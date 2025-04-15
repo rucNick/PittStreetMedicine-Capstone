@@ -108,10 +108,12 @@ jobs:
         
         ENV SPRING_PROFILES_ACTIVE=prod
         ENV CORS_ALLOWED_ORIGINS=https://streetmed-frontend-l376e2l63q-uc.a.run.app,https://streetmed-frontend-900663028964.us-central1.run.app,http://localhost:3000,https://app.streetmedatpitt.org,https://app.ruicao.info
+        ENV SERVER_PORT=8080
         
         EXPOSE 8080
         
-        ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+        # Be more explicit about the Java options
+        ENTRYPOINT ["java", "-Dserver.port=8080", "-jar", "/app/app.jar"]
         EOF
     
     - name: Configure Docker for Artifact Registry
@@ -143,9 +145,11 @@ jobs:
         cat > env.yaml << EOF
         SPRING_PROFILES_ACTIVE: prod
         CORS_ALLOWED_ORIGINS: "https://streetmed-frontend-l376e2l63q-uc.a.run.app,https://streetmed-frontend-900663028964.us-central1.run.app,http://localhost:3000,https://app.streetmedatpitt.org,https://app.ruicao.info"
+        SERVER_PORT: 8080
+        SPRING_CLOUD_GCP_SQL_INSTANCE_CONNECTION_NAME: ${{ env.MYSQL_INSTANCE }}
         EOF
         
-        # Deploy using env.yaml file
+        # Deploy with increased startup time and health check
         gcloud run deploy ${{ env.SERVICE_NAME }} \
           --image ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
           --region ${{ env.REGION }} \
@@ -159,20 +163,17 @@ jobs:
           --memory=1Gi \
           --port=8080 \
           --timeout=300s \
-          --env-vars-file env.yaml
+          --env-vars-file env.yaml \
+          --allow-unauthenticated \
+          --startup-cpu-boost \
+          --max-instances=10
     
     - name: Configure IAM permissions
       run: |
-        # Grant invoker role to frontend service account and public
+        # Grant invoker role to frontend service account
         gcloud run services add-iam-policy-binding ${{ env.SERVICE_NAME }} \
           --region=${{ env.REGION }} \
           --member="serviceAccount:frontend-identity@${{ env.PROJECT_ID }}.iam.gserviceaccount.com" \
-          --role="roles/run.invoker"
-        
-        # Allow unauthenticated invocations (if needed)
-        gcloud run services add-iam-policy-binding ${{ env.SERVICE_NAME }} \
-          --region=${{ env.REGION }} \
-          --member="allUsers" \
           --role="roles/run.invoker"
     
     - name: Show Backend URL
@@ -183,4 +184,4 @@ jobs:
         echo "Cloud SQL Instance: ${{ env.MYSQL_INSTANCE }}"
         
         # Save this URL for future reference
-        echo "::set-output name=backend_url::$BACKEND_URL"
+        echo "backend_url=$BACKEND_URL" >> $GITHUB_OUTPUT
