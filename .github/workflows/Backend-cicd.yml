@@ -20,6 +20,7 @@ env:
   MYSQL_INSTANCE: streetmedgo:us-central1:streetmed
   ARTIFACT_REGISTRY: us-central1-docker.pkg.dev
   REPOSITORY: streetmedgo-repo
+  CORS_ALLOWED_ORIGINS: "https://streetmed-frontend-900663028964.us-central1.run.app,http://localhost:3000,https://app.ruicao.info,https://app.streetmedatpitt.org"
 
 jobs:
   build:
@@ -82,7 +83,6 @@ jobs:
         
         # Copy the JAR file
         COPY target/*.jar app.jar
-        COPY /auth_db.sqlite /auth_db.sqlite
         
         # Explicitly expose port 8080
         EXPOSE 8080
@@ -91,7 +91,7 @@ jobs:
         ENV PORT=8080
         
         # Define the entrypoint with explicit port and host binding
-        ENTRYPOINT ["java", "-Dserver.port=8080", "-Dserver.address=0.0.0.0", "-jar", "/app/app.jar"]
+        ENTRYPOINT ["java", "-Dserver.port=8080", "-Dserver.address=0.0.0.0", "-Dcors.allowed-origins=${CORS_ALLOWED_ORIGINS}", "-jar", "/app/app.jar"]
         EOF
         
         # Build and push to Artifact Registry
@@ -99,7 +99,7 @@ jobs:
         
         # Build with platform specification for compatibility
         docker buildx create --use
-        docker buildx build --platform linux/amd64 -t ${IMAGE_PATH}:${{ github.sha }} -t ${IMAGE_PATH}:latest .
+        docker buildx build --platform linux/amd64 --build-arg CORS_ALLOWED_ORIGINS="${{ env.CORS_ALLOWED_ORIGINS }}" -t ${IMAGE_PATH}:${{ github.sha }} -t ${IMAGE_PATH}:latest .
         docker push ${IMAGE_PATH}:${{ github.sha }}
         docker push ${IMAGE_PATH}:latest
         
@@ -118,6 +118,7 @@ jobs:
           --port=8080 \
           --timeout=600s \
           --startup-cpu-boost \
+          --set-env-vars=CORS_ALLOWED_ORIGINS="${{ env.CORS_ALLOWED_ORIGINS }}" \
           --allow-unauthenticated
           
     - name: Show Backend URL
