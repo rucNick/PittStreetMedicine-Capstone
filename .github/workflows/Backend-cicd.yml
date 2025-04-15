@@ -73,6 +73,11 @@ jobs:
         gcloud services enable cloudbuild.googleapis.com --quiet || true
         gcloud services enable sqladmin.googleapis.com --quiet || true
         gcloud services enable artifactregistry.googleapis.com --quiet || true
+        gcloud services enable vpcaccess.googleapis.com --quiet || true
+        
+        # Wait a bit for API enablement to propagate
+        echo "Waiting for API enablement to propagate..."
+        sleep 60
     
     - name: Create Artifact Registry repository if not exists
       run: |
@@ -131,30 +136,30 @@ jobs:
           --min-instances=2 \
           --max-instances=10 || true
     
-          - name: Deploy to Cloud Run
-          id: deploy
-          run: |
-            # Create an env.yaml file for environment variables
-            cat > env.yaml << EOF
-            SPRING_PROFILES_ACTIVE: prod
-            CORS_ALLOWED_ORIGINS: "https://streetmed-frontend-l376e2l63q-uc.a.run.app,https://streetmed-frontend-900663028964.us-central1.run.app,http://localhost:3000,https://app.streetmedatpitt.org,https://app.ruicao.info"
-            EOF
-            
-            # Deploy using env.yaml file
-            gcloud run deploy ${{ env.SERVICE_NAME }} \
-              --image ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
-              --region ${{ env.REGION }} \
-              --service-account=backend-identity@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
-              --add-cloudsql-instances ${{ env.MYSQL_INSTANCE }} \
-              --vpc-connector streetmed-sql-connector \
-              --min-instances=1 \
-              --no-cpu-throttling \
-              --concurrency=80 \
-              --cpu=1 \
-              --memory=1Gi \
-              --port=8080 \
-              --timeout=300s \
-              --env-vars-file env.yaml
+    - name: Deploy to Cloud Run
+      id: deploy
+      run: |
+        # Create an env.yaml file for environment variables
+        cat > env.yaml << EOF
+        SPRING_PROFILES_ACTIVE: prod
+        CORS_ALLOWED_ORIGINS: "https://streetmed-frontend-l376e2l63q-uc.a.run.app,https://streetmed-frontend-900663028964.us-central1.run.app,http://localhost:3000,https://app.streetmedatpitt.org,https://app.ruicao.info"
+        EOF
+        
+        # Deploy using env.yaml file
+        gcloud run deploy ${{ env.SERVICE_NAME }} \
+          --image ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+          --region ${{ env.REGION }} \
+          --service-account=backend-identity@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
+          --add-cloudsql-instances ${{ env.MYSQL_INSTANCE }} \
+          --vpc-connector streetmed-sql-connector \
+          --min-instances=1 \
+          --no-cpu-throttling \
+          --concurrency=80 \
+          --cpu=1 \
+          --memory=1Gi \
+          --port=8080 \
+          --timeout=300s \
+          --env-vars-file env.yaml
     
     - name: Configure IAM permissions
       run: |
@@ -177,5 +182,5 @@ jobs:
         echo "Backend successfully deployed to Cloud Run with Cloud SQL connectivity"
         echo "Cloud SQL Instance: ${{ env.MYSQL_INSTANCE }}"
         
-        # Save this URL for future use - update frontend CICD
+        # Save this URL for future reference
         echo "::set-output name=backend_url::$BACKEND_URL"
