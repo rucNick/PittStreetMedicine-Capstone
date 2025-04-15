@@ -165,7 +165,7 @@ jobs:
           --timeout=300s \
           --env-vars-file env.yaml \
           --allow-unauthenticated \
-          --startup-cpu-boost \
+          --cpu-boost \
           --max-instances=10
     
     - name: Configure IAM permissions
