@@ -4,7 +4,6 @@ import axios from 'axios';
 
 const VolunteerAppli = () => {
   const baseURL = process.env.REACT_APP_BASE_URL;
-
   const navigate = useNavigate();
 
   const [firstName, setFirstName] = useState('');
@@ -13,7 +12,6 @@ const VolunteerAppli = () => {
   const [phone, setPhone] = useState('');
   const [notes, setNotes] = useState('');
 
-  // error note
   const [firstNameError, setFirstNameError] = useState('');
   const [lastNameError, setLastNameError] = useState('');
   const [emailError, setEmailError] = useState('');
@@ -49,7 +47,6 @@ const VolunteerAppli = () => {
   };
 
   const validatePhone = () => {
-    // Numbers, Spaces, +, -, and parentheses are allowed
     const phoneRegex = /^[\d\s\-+()]+$/;
     if (!phoneRegex.test(phone) || phone.trim() === '') {
       setPhoneError('Invalid phone number');
@@ -59,11 +56,8 @@ const VolunteerAppli = () => {
     return true;
   };
 
-  // Submit the form handler
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    //Authantication
     const isFirstNameValid = validateFirstName();
     const isLastNameValid = validateLastName();
     const isEmailValid = validateEmail();
@@ -72,11 +66,8 @@ const VolunteerAppli = () => {
     if (!isFirstNameValid || !isLastNameValid || !isEmailValid || !isPhoneValid) {
       return;
     }
-
-    // Read the commit time in Unix time (seconds)
     const submissionTime = Math.floor(Date.now() / 1000);
 
-    // Constructs the payload that is sent to the back end
     const payload = {
       firstName,
       lastName,
@@ -90,7 +81,6 @@ const VolunteerAppli = () => {
       const response = await axios.post(`${baseURL}/api/volunteer/apply`, payload);
       if (response.data.status === 'success') {
         setMessage('Application submitted successfully!');
-        // clean form
         setFirstName('');
         setLastName('');
         setEmail('');
@@ -104,162 +94,233 @@ const VolunteerAppli = () => {
     }
   };
 
-  // Return to the previous page
   const handleGoBack = () => {
     navigate(-1);
   };
 
   return (
-    <div style={styles.container}>
-      {/* top nav bar */}
-      <div style={styles.navbar}>
+    <div style={styles.pageContainer}>
+      <header style={styles.navbar}>
+        <div style={styles.navLeft}>
+          <img
+            src="/Untitled.png"
+            alt="Logo"
+            style={styles.logo}
+          />
+          <span style={styles.navTitle}>Street Med Go - JOIN US !!!</span>
+        </div>
         <button style={styles.backButton} onClick={handleGoBack}>
-          go back
+          Go Back
         </button>
-      </div>
+      </header>
 
-      <div style={styles.content}>
-        <h2>Volunteer Application</h2>
-        <form style={styles.form} onSubmit={handleSubmit}>
-          <div style={styles.formGroup}>
-            <label>First Name:</label>
-            <input
-              type="text"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              onBlur={validateFirstName}
-              style={styles.input}
-              required
-            />
-            {firstNameError && <p style={styles.errorText}>{firstNameError}</p>}
-          </div>
-          <div style={styles.formGroup}>
-            <label>Last Name:</label>
-            <input
-              type="text"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              onBlur={validateLastName}
-              style={styles.input}
-              required
-            />
-            {lastNameError && <p style={styles.errorText}>{lastNameError}</p>}
-          </div>
-          <div style={styles.formGroup}>
-            <label>Email:</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onBlur={validateEmail}
-              style={styles.input}
-              required
-            />
-            {emailError && <p style={styles.errorText}>{emailError}</p>}
-          </div>
-          <div style={styles.formGroup}>
-            <label>Phone:</label>
-            <input
-              type="text"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              onBlur={validatePhone}
-              style={styles.input}
-              required
-            />
-            {phoneError && <p style={styles.errorText}>{phoneError}</p>}
-          </div>
-          <div style={styles.formGroup}>
-            <label>Note:</label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              style={styles.textarea}
-              placeholder="Enter additional information"
-            />
-          </div>
-          <button type="submit" style={styles.button}>
-            Submit Application
-          </button>
-          {message && <p style={styles.message}>{message}</p>}
-        </form>
+      <div style={styles.volunteerContainer}>
+        <div style={styles.volunteerCard}>
+          <h2 style={styles.volunteerTitle}>Volunteer Application</h2>
+          <form style={styles.volunteerForm} onSubmit={handleSubmit}>
+            <div style={styles.inputPair}>
+              <div style={styles.inputGroup}>
+                <label style={styles.label}>First Name</label>
+                <input
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  onBlur={validateFirstName}
+                  style={styles.input}
+                  required
+                />
+                {firstNameError && <p style={styles.errorText}>{firstNameError}</p>}
+              </div>
+              <div style={styles.inputGroup}>
+                <label style={styles.label}>Last Name</label>
+                <input
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  onBlur={validateLastName}
+                  style={styles.input}
+                  required
+                />
+                {lastNameError && <p style={styles.errorText}>{lastNameError}</p>}
+              </div>
+            </div>
+
+            <div style={styles.inputPair}>
+              <div style={styles.inputGroup}>
+                <label style={styles.label}>Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onBlur={validateEmail}
+                  style={styles.input}
+                  required
+                />
+                {emailError && <p style={styles.errorText}>{emailError}</p>}
+              </div>
+              <div style={styles.inputGroup}>
+                <label style={styles.label}>Phone</label>
+                <input
+                  type="text"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  onBlur={validatePhone}
+                  style={styles.input}
+                  required
+                />
+                {phoneError && <p style={styles.errorText}>{phoneError}</p>}
+              </div>
+            </div>
+
+            <div style={styles.inputGroup}>
+              <label style={styles.label}>Note</label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                style={styles.textarea}
+                placeholder="Enter additional information"
+              />
+            </div>
+
+            <button type="submit" style={styles.volunteerSubmit}>
+              Continue
+            </button>
+            {message && <p style={styles.message}>{message}</p>}
+          </form>
+        </div>
       </div>
     </div>
   );
 };
 
 const styles = {
-  container: {
-    position: 'relative',
+  pageContainer: {
+    width: '100%',
     minHeight: '100vh',
-    backgroundColor: '#f0f2f5',
-    fontFamily: 'Arial, sans-serif',
+    backgroundColor: '#c8c9c7',
+    display: 'flex',
+    flexDirection: 'column'
   },
   navbar: {
+    width: '100%',
+    height: '83px',
+    backgroundColor: '#d9d9d9',
     display: 'flex',
-    justifyContent: 'flex-end',
-    backgroundColor: '#1890ff',
-    padding: '10px',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '0 20px'
+  },
+  navLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px'
+  },
+  logo: {
+    width: '65px',
+    height: '65px',
+    borderRadius: '50%'
+  },
+  navTitle: {
+    fontSize: '40px',
+    fontWeight: 'bold',
+    color: '#333'
   },
   backButton: {
-    padding: '8px 16px',
-    backgroundColor: '#faad14',
+    backgroundColor: '#003e7e',
     border: 'none',
-    borderRadius: '4px',
+    color: '#fff',
     cursor: 'pointer',
-    color: 'white',
-  },
-  content: {
-    maxWidth: '500px',
-    margin: '40px auto',
-    padding: '20px',
-    backgroundColor: 'white',
+    fontWeight: 'bold',
+    width: '100px',
+    height: '40px',
     borderRadius: '8px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+    fontSize: '16px'
+  },
+  volunteerContainer: {
+    flex: 1,
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: '20px'
+  },
+  volunteerCard: {
+    backgroundColor: '#d1dae2',
+    borderRadius: '20px',
+    padding: '50px 40px',
+    width: '100%',
+    maxWidth: '700px',
+    boxShadow: '2px 4px 10px rgba(0, 0, 0, 0.1)',
+    minHeight: '500px',
+    display: 'flex',
+    flexDirection: 'column'
+  },
+  volunteerTitle: {
+    fontSize: '28px',
+    fontWeight: 'bold',
     textAlign: 'center',
+    marginBottom: '40px',
+    color: '#333'
   },
-  form: {
-    marginTop: '20px',
-    textAlign: 'left',
+  volunteerForm: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '25px'
   },
-  formGroup: {
-    marginBottom: '15px',
+  inputPair: {
+    display: 'flex',
+    gap: '20px',
+    flexWrap: 'wrap'
+  },
+  inputGroup: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column'
+  },
+  label: {
+    fontSize: '14px',
+    fontWeight: '600',
+    marginBottom: '6px',
+    color: '#333'
   },
   input: {
     width: '100%',
-    padding: '8px',
-    marginTop: '4px',
-    border: '1px solid #ddd',
-    borderRadius: '4px',
+    padding: '14px',
+    fontSize: '14px',
+    border: '1px solid #ccc',
+    backgroundColor: '#fff',
+    borderRadius: '6px'
   },
   textarea: {
     width: '100%',
-    padding: '8px',
-    marginTop: '4px',
-    border: '1px solid #ddd',
-    borderRadius: '4px',
-    minHeight: '80px',
+    padding: '14px',
+    fontSize: '14px',
+    border: '1px solid #ccc',
+    backgroundColor: '#fff',
+    borderRadius: '6px',
+    minHeight: '80px'
   },
-  button: {
-    width: '100%',
-    padding: '10px',
-    backgroundColor: '#1890ff',
-    color: 'white',
+  volunteerSubmit: {
+    backgroundColor: '#003594',
+    color: '#fff',
     border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    marginTop: '10px',
+    padding: '14px',
+    width: '200px',
+    margin: '0 auto',
+    borderRadius: '999px',
+    fontSize: '16px',
+    fontWeight: 'bold',
+    cursor: 'pointer'
   },
   errorText: {
     color: 'red',
     fontSize: '12px',
-    marginTop: '4px',
+    marginTop: '4px'
   },
   message: {
-    marginTop: '15px',
     textAlign: 'center',
     fontWeight: 'bold',
-  },
+    marginTop: '10px'
+  }
 };
 
 export default VolunteerAppli;
