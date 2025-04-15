@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Volunteer Application</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="volunteer-container">
+    <div class="volunteer-card" id="applicationCard">
+      <h2 class="volunteer-title">Volunteer Application</h2>
+      <form class="volunteer-form" id="volunteerForm">
+        <div class="input-pair">
+          <input type="text" placeholder="First Name" required />
+          <input type="text" placeholder="Last Name" required />
+        </div>
+
+        <div class="input-pair">
+          <input type="email" placeholder="Email" required />
+          <input type="tel" placeholder="Phone Number" required />
+        </div>
+
+        <div class="input-pair">
+          <input type="text" placeholder="Location" required />
+          <input type="text" placeholder="Other Field" required />
+        </div>
+
+        <div class="checkbox-group">
+          <label class="checkbox-wrapper">
+            <input type="checkbox" />
+            <span>Are you at least 18 years old?</span>
+          </label>
+          <label class="checkbox-wrapper">
+            <input type="checkbox" />
+            <span>
+              Do you agree to Terms & Conditions?<br />
+              <small class="terms-link">View here...</small>
+            </span>
+          </label>
+        </div>
+
+        <button type="submit" class="volunteer-submit">Continue</button>
+      </form>
+    </div>
+    <div class="volunteer-card thank-you-card hidden" id="thankYouCard">
+      <h2 class="volunteer-title">Thank you!</h2>
+      <p class="thank-you-text">A member of our team will be in contact.</p>
+
+      <div class="thank-you-buttons">
+        <button class="thank-you-btn golden-btn">Return to home</button>
+        <button class="thank-you-btn navy-btn">View FAQ</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const form = document.getElementById('volunteerForm');
+    const applicationCard = document.getElementById('applicationCard');
+    const thankYouCard = document.getElementById('thankYouCard');
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      applicationCard.classList.add('hidden');
+      thankYouCard.classList.remove('hidden');
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Edit Profile</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="store-header">
+    <img src="logo.png" alt="Logo" class="store-logo" />
+    <div class="header-right-group">
+      <nav class="store-tabs">
+        <a href="#">Order</a>
+        <a href="#">Other</a>
+        <a href="#">Other</a>
+      </nav>
+      <img src="placeholder.jpeg" alt="Profile" class="profile-icon" />
+    </div>
+  </header>
+
+  <main class="edit-profile-container">
+    <h2 class="edit-title">Edit your profile</h2>
+    <div class="edit-card">
+      <div class="edit-left">
+        <img src="placeholder.jpeg" alt="Profile" class="profile-photo"/>
+        <p class="change-photo">Change profile picture...</p>
+        <p class="user-role">Role: User</p>
+      </div>
+      <form class="edit-form">
+        <div class="input-pair">
+          <input type="text" placeholder="First Name" required />
+          <input type="text" placeholder="Last Name" required />
+        </div>
+        <div class="input-pair">
+          <input type="email" placeholder="Email" required />
+          <input type="email" placeholder="Confirm Email" required />
+        </div>
+        <div class="input-pair">
+          <input type="tel" placeholder="Phone Number" required />
+          <input type="tel" placeholder="Confirm Phone Number" required />
+        </div>
+        <div class="input-pair">
+          <input type="text" placeholder="Pronouns" />
+          <input type="text" placeholder="Location" />
+        </div>
+        <div class="form-bottom">
+          <button type="submit" class="save-btn">Save</button>
+        </div>
+      </form>
+    </div>
+  </main>
+  
+</body>
+</html>
