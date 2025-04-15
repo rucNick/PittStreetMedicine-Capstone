@@ -74,6 +74,21 @@ jobs:
         gcloud services enable sqladmin.googleapis.com --quiet || true
         gcloud services enable artifactregistry.googleapis.com --quiet || true
     
+    - name: Create Artifact Registry repository if not exists
+      run: |
+        # Check if repository exists
+        if ! gcloud artifacts repositories describe ${{ env.REPOSITORY }} --location=${{ env.REGION }} 2>/dev/null; then
+          echo "Creating repository ${{ env.REPOSITORY }} in ${{ env.REGION }}"
+          gcloud artifacts repositories create ${{ env.REPOSITORY }} \
+            --repository-format=docker \
+            --location=${{ env.REGION }} \
+            --description="Repository for ${{ env.SERVICE_NAME }}" \
+            --async
+          
+          # Wait a moment for repository creation to propagate
+          sleep 30
+        fi
+    
     - name: Create Dockerfile for Spring Boot
       run: |
         cd src/Backend
@@ -154,3 +169,6 @@ jobs:
         echo "Backend URL: $BACKEND_URL"
         echo "Backend successfully deployed to Cloud Run with Cloud SQL connectivity"
         echo "Cloud SQL Instance: ${{ env.MYSQL_INSTANCE }}"
+        
+        # Save this URL for future use - update frontend CICD
+        echo "::set-output name=backend_url::$BACKEND_URL"
