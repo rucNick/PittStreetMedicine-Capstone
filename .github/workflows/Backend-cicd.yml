@@ -45,58 +45,68 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
-    
+      
     - name: Set up JDK 17
       uses: actions/setup-java@v3
       with:
         java-version: '17'
         distribution: 'temurin'
         cache: maven
-    
+        
     - name: Build with Maven
       run: cd src/Backend && mvn clean package -DskipTests
-    
+      
     - name: Set up Cloud SDK
       uses: google-github-actions/setup-gcloud@v1
       with:
         project_id: ${{ env.PROJECT_ID }}
-    
+        
     - name: Authenticate to Google Cloud
       uses: google-github-actions/auth@v1
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
-    
+        
     - name: Configure Docker for Artifact Registry
       run: |
         gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY }}
-    
+        
     - name: Build and Push Docker image
       run: |
         cd src/Backend
         
-        # Create a simple Dockerfile
+        # Create improved Dockerfile
         cat > Dockerfile << 'EOF'
         FROM eclipse-temurin:17-jdk-focal
         
         WORKDIR /app
         
+        # Copy the JAR file
         COPY target/*.jar app.jar
+        COPY /auth_db.sqlite /auth_db.sqlite
         
+        # Explicitly expose port 8080
         EXPOSE 8080
         
-        ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+        # Set environment variable
+        ENV PORT=8080
+        
+        # Define the entrypoint with explicit port and host binding
+        ENTRYPOINT ["java", "-Dserver.port=8080", "-Dserver.address=0.0.0.0", "-jar", "/app/app.jar"]
         EOF
         
         # Build and push to Artifact Registry
         IMAGE_PATH="${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}"
-        docker build -t ${IMAGE_PATH}:${{ github.sha }} -t ${IMAGE_PATH}:latest .
+        
+        # Build with platform specification for compatibility
+        docker buildx create --use
+        docker buildx build --platform linux/amd64 -t ${IMAGE_PATH}:${{ github.sha }} -t ${IMAGE_PATH}:latest .
         docker push ${IMAGE_PATH}:${{ github.sha }}
         docker push ${IMAGE_PATH}:latest
-    
+        
     - name: Deploy to Cloud Run
       id: deploy
       run: |
-        # Deploy with always-on configuration
+        # Deploy with improved configuration
         gcloud run deploy ${{ env.SERVICE_NAME }} \
           --image ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
           --region ${{ env.REGION }} \
@@ -107,8 +117,9 @@ jobs:
           --memory=1Gi \
           --port=8080 \
           --timeout=600s \
+          --startup-cpu-boost \
           --allow-unauthenticated
-    
+          
     - name: Show Backend URL
       run: |
         BACKEND_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --region ${{ env.REGION }} --format='value(status.url)')
