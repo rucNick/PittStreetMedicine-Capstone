@@ -110,6 +110,11 @@ jobs:
         ENV CORS_ALLOWED_ORIGINS=https://streetmed-frontend-l376e2l63q-uc.a.run.app,https://streetmed-frontend-900663028964.us-central1.run.app,http://localhost:3000,https://app.streetmedatpitt.org,https://app.ruicao.info
         ENV SERVER_PORT=8080
         
+        # Modified for Cloud Run database connection
+        ENV SPRING_DATASOURCE_URL=jdbc:mysql://localhost/streetmed?cloudSqlInstance=streetmedgo:us-central1:streetmed&socketFactory=com.google.cloud.sql.mysql.SocketFactory
+        ENV SPRING_DATASOURCE_USERNAME=streetmed
+        ENV SPRING_DATASOURCE_PASSWORD=StreetMed@Pitt
+        
         EXPOSE 8080
         
         # Be more explicit about the Java options
@@ -146,10 +151,12 @@ jobs:
         SPRING_PROFILES_ACTIVE: "prod"
         CORS_ALLOWED_ORIGINS: "https://streetmed-frontend-l376e2l63q-uc.a.run.app,https://streetmed-frontend-900663028964.us-central1.run.app,http://localhost:3000,https://app.streetmedatpitt.org,https://app.ruicao.info"
         SERVER_PORT: "8080"
-        SPRING_CLOUD_GCP_SQL_INSTANCE_CONNECTION_NAME: "${{ env.MYSQL_INSTANCE }}"
+        SPRING_DATASOURCE_URL: "jdbc:mysql://localhost/streetmed?cloudSqlInstance=streetmedgo:us-central1:streetmed&socketFactory=com.google.cloud.sql.mysql.SocketFactory"
+        SPRING_DATASOURCE_USERNAME: "streetmed"
+        SPRING_DATASOURCE_PASSWORD: "StreetMed@Pitt"
         EOF
         
-        # Deploy with increased startup time and health check
+        # Deploy with increased timeout for startup
         gcloud run deploy ${{ env.SERVICE_NAME }} \
           --image ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
           --region ${{ env.REGION }} \
@@ -162,7 +169,7 @@ jobs:
           --cpu=1 \
           --memory=1Gi \
           --port=8080 \
-          --timeout=300s \
+          --timeout=600s \
           --env-vars-file env.yaml \
           --allow-unauthenticated \
           --cpu-boost \
