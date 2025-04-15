@@ -26,4 +26,7 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
     long countByRoundId(Integer roundId);
 
     List<Order> findByVolunteerId(Integer volunteerId);
+
+    List<Order> findByVolunteerIdAndStatus(Integer volunteerId, String status);
+    List<Order> findByVolunteerIdAndStatusIn(Integer volunteerId, List<String> statuses);
 }

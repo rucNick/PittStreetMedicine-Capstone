@@ -13,9 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 @Transactional
@@ -345,6 +343,54 @@ public class OrderService {
         List<Order> orders = orderRepository.findByVolunteerId(volunteerId);
         // Initialize collections for lazy loading
         orders.forEach(order -> order.getOrderItems().size());
+        return orders;
+    }
+
+    /**
+     * Get active orders (PENDING or PROCESSING) assigned to a specific volunteer
+     *
+     * @param volunteerId ID of the volunteer
+     * @return List of active orders assigned to the volunteer
+     */
+    @Transactional(readOnly = true)
+    public List<Order> getActiveOrdersByVolunteer(Integer volunteerId) {
+        List<String> activeStatuses = Arrays.asList("PENDING", "PROCESSING");
+        List<Order> orders = orderRepository.findByVolunteerIdAndStatusIn(volunteerId, activeStatuses);
+        // Initialize collections for lazy loading
+        orders.forEach(order -> order.getOrderItems().size());
+
+        // Sort by request time (newest first)
+        orders.sort(Comparator.comparing(Order::getRequestTime).reversed());
+
+        return orders;
+    }
+
+    /**
+     * Get completed orders assigned to a specific volunteer
+     *
+     * @param volunteerId ID of the volunteer
+     * @return List of completed orders assigned to the volunteer
+     */
+    @Transactional(readOnly = true)
+    public List<Order> getCompletedOrdersByVolunteer(Integer volunteerId) {
+        List<Order> orders = orderRepository.findByVolunteerIdAndStatus(volunteerId, "COMPLETED");
+        // Initialize collections for lazy loading
+        orders.forEach(order -> order.getOrderItems().size());
+
+        // Sort by delivery time (newest first)
+        orders.sort((o1, o2) -> {
+            // Handle null delivery times
+            if (o1.getDeliveryTime() == null && o2.getDeliveryTime() == null) {
+                return 0;
+            } else if (o1.getDeliveryTime() == null) {
+                return 1;
+            } else if (o2.getDeliveryTime() == null) {
+                return -1;
+            }
+            // Sort by delivery time descending (newest first)
+            return o2.getDeliveryTime().compareTo(o1.getDeliveryTime());
+        });
+
         return orders;
     }
 }
