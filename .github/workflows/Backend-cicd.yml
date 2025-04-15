@@ -143,10 +143,10 @@ jobs:
       run: |
         # Create an env.yaml file for environment variables
         cat > env.yaml << EOF
-        SPRING_PROFILES_ACTIVE: prod
+        SPRING_PROFILES_ACTIVE: "prod"
         CORS_ALLOWED_ORIGINS: "https://streetmed-frontend-l376e2l63q-uc.a.run.app,https://streetmed-frontend-900663028964.us-central1.run.app,http://localhost:3000,https://app.streetmedatpitt.org,https://app.ruicao.info"
-        SERVER_PORT: 8080
-        SPRING_CLOUD_GCP_SQL_INSTANCE_CONNECTION_NAME: ${{ env.MYSQL_INSTANCE }}
+        SERVER_PORT: "8080"
+        SPRING_CLOUD_GCP_SQL_INSTANCE_CONNECTION_NAME: "${{ env.MYSQL_INSTANCE }}"
         EOF
         
         # Deploy with increased startup time and health check
