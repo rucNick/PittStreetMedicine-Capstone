@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="store-header">
+    <img src="logo.png" alt="Logo" class="store-logo" />
+    <div class="header-right-group">
+      <nav class="store-tabs">
+        <a href="#">Order</a>
+        <a href="#">Other</a>
+        <a href="#">Other</a>
+      </nav>
+      <img src="placeholder.jpeg" alt="Profile" class="profile-icon" />
+    </div>
+  </header>
+
+  <main class="admin-dashboard">
+    <section class="admin-left">
+      <h1 class="admin-greeting">Hello, [First Name]</h1>
+      <div class="admin-card light-blue">
+        <span class="card-icon">🚚</span>
+        <span class="card-text">Manage Cargo</span>
+        <span class="card-badge blue-badge">3</span>
+      </div>
+      <div class="admin-card light-yellow">
+        <span class="card-icon">📦</span>
+        <span class="card-text">All Orders</span>
+        <span class="card-badge yellow-badge">5</span>
+      </div>
+      <div class="admin-card light-blue">
+        <span class="card-icon">👥</span>
+        <span class="card-text">Manage Volunteers</span>
+        <span class="card-badge blue-badge">2</span>
+      </div>
+      <div class="admin-card light-yellow">
+        <span class="card-icon">🧊</span>
+        <span class="card-text">Other</span>
+      </div>
+    </section>
+
+    <div class="divider-vertical"></div>
+
+    <section class="admin-right">
+      <div class="alerts-card">
+        <h2 class="alerts-title">Alerts</h2>
+        <hr />
+        <div class="alert-entry">
+          <span>Items out of stock</span>
+          <span class="card-badge red-badge">!</span>
+        </div>
+        <div class="alert-entry">
+          <span>Items running low</span>
+          <span class="card-badge yellow-badge">3</span>
+        </div>
+        <div class="alert-entry">
+          <span>New orders</span>
+          <span class="card-badge blue-badge">7</span>
+        </div>
+        <div class="alert-entry">
+          <span>New volunteer applications</span>
+          <span class="card-badge blue-badge">4</span>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
