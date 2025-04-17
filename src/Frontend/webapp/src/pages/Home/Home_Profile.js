@@ -350,7 +350,8 @@ const Home_Profile = ({
   return (
     <div className="profile-container">
       <h2>Update Profile</h2>
-      <p>Current Username: {username}</p>
+      <br></br>
+      <p>Current Username: <strong>{username}</strong></p>
       <div className="profile-formGroup">
         <label>Select field to update:</label>
         <div className="profile-radioGroup">

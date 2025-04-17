@@ -1,71 +1,103 @@
-/* Home_Feedback.css */
+body {
+  background-color: #C8C9C7;
+  font-family: Arial, sans-serif;
+}
 
-/* Container styles for the feedback page */
 .feedback-container {
-    min-height: 100vh;
-    background-color: #ffffff;
-    font-family: Arial, sans-serif;
-    padding: 40px 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #D1DAE2;
+  border-radius: 25px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  max-width: 420px;
+  padding: 30px;
+  margin: 60px auto;
+}
+
+.feedback-container h2 {
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 24px;
+}
+
+.feedback-formGroup {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.feedback-formGroup label {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #333;
+}
+
+.feedback-input {
+  width: 100%;
+  padding: 12px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+
+.feedback-textarea {
+  height: 150px;
+  resize: vertical;
+}
+
+.feedback-errorText {
+  color: #c0392b;
+  font-size: 14px;
+  margin-top: -8px;
+  margin-bottom: 10px;
+}
+
+.feedback-successText {
+  color: #27ae60;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.feedback-button {
+  width: 100%;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  border-radius: 25px;
+  background-color: #003e7e;
+  color: #fff;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.feedback-cancelButton {
+  width: 100%;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  border-radius: 25px;
+  background-color: #f78702;
+  color: #fff;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+@media (max-width: 480px) {
+  .feedback-container {
+    margin: 20px;
+    padding: 20px;
   }
-  
-  /* Styles for the feedback form groups */
-  .feedback-formGroup {
-    width: 100%;
-    max-width: 400px;
-    margin-bottom: 1rem;
-  }
-  
-  /* Input field styles */
-  .feedback-input {
-    width: 100%;
-    padding: 10px;
-    margin-top: 5px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-  }
-  
-  /* Textarea specific styles */
-  .feedback-textarea {
-    height: 120px;
-    resize: vertical;
-  }
-  
-  /* Error and success text styles */
-  .feedback-errorText {
-    color: red;
-    font-size: 14px;
-    margin-bottom: 10px;
-  }
-  
-  .feedback-successText {
-    color: green;
-    font-size: 14px;
-    margin-bottom: 10px;
-  }
-  
-  /* Button styles */
   .feedback-button,
   .feedback-cancelButton {
-    width: 100%;
-    max-width: 400px;
     padding: 12px;
-    border: none;
-    border-radius: 4px;
-    margin-top: 10px;
-    cursor: pointer;
-    font-size: 16px;
+    font-size: 14px;
   }
-  
-  .feedback-button {
-    background-color: #1890ff;
-    color: white;
-  }
-  
-  .feedback-cancelButton {
-    background-color: #ff4d4f;
-    color: white;
-  }
-  
+}

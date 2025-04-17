@@ -52,7 +52,7 @@ const Home_Feedback = ({ username }) => {
 
   return (
     <div className="feedback-container">
-      <h2>Submit Feedback</h2>
+      <h2>We need your Feedback</h2>
       <div className="feedback-formGroup">
         <label>Phone Number:</label>
         <input

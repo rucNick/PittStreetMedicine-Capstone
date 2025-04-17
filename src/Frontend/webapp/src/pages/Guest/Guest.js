@@ -90,7 +90,11 @@ const Guest = ({ onLogout }) => {
     if (existingIndex >= 0) {
       newCart[existingIndex].quantity += selectedQuantity;
     } else {
-      newCart.push({ name: itemName, quantity: selectedQuantity });
+      newCart.push({ name: itemName, 
+        quantity: selectedQuantity,
+        imageId: selectedItem.imageId, 
+        description: selectedItem.description,
+        category: selectedItem.category});
     }
     setCart(newCart);
     closeItemDetailModal();
@@ -249,46 +253,55 @@ const Guest = ({ onLogout }) => {
   //=========================================== HTML part ==============================================
 
   return (
-    <div className="container">
-      {/* top nav bar */}
-      <div className="navbar">
-        <div className="navGreeting">Welcome, Guest!</div>
-        <button className="logoutButton" onClick={handleLogout}>
-          Log Out
-        </button>
-      </div>
-
-      {/* Guest cannot view order history, only place an order */}
-      <div className="content">
-        <h2>Make a New Order as Guest</h2>
-        <button className="newOrderButton" onClick={handleOpenNewOrder}>
-          Make a New Order
-        </button>
-        <button className="cartButton" onClick={toggleCart}>
-          Cart ({cart.length})
-        </button>
-
-        {/* If user has clicked "Make a New Order", show cargo items directly on page */}
+    <div className="page-container">
+      {/* ---------- NAVBAR ---------- */}
+      <header className="site-header">
+        <div className="header-content">
+          <div className="header-left">
+            <img src="/Untitled.png" alt="Logo" className="logo" />
+            <span className="welcome-text">Welcome, Guest!</span>
+          </div>
+  
+          <div className="header-right">
+            <button className="logoutButton" onClick={handleLogout}>
+              Log&nbsp;Out
+            </button>
+          </div>
+        </div>
+      </header>
+  
+      {/* ---------- MAIN ---------- */}
+      <main className="user-dashboard">
+        <h2 className="dashboard-greeting">Hello, Guest</h2>
+  
+        <div className="dashboard-cards">
+          <button
+            className="dashboard-card light-yellow"
+            onClick={handleOpenNewOrder}
+          >
+            <span className="card-icon">&#128722;</span>
+            Make a New Order
+          </button>
+  
+          <button className="dashboard-card light-blue" onClick={toggleCart}>
+            <span className="card-icon">&#128179;</span>
+            Cart&nbsp;({cart.length})
+          </button>
+        </div>
+  
         {showCargoItems && (
-          <div style={{ marginTop: "20px", textAlign: "left" }}>
-            {/* "Available Items" title plus "Didn't find items your want?" link */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}
-            >
-              <h3>Available Items</h3>
-              <div
-                style={{ color: "#1890ff", cursor: "pointer", marginLeft: "10px" }}
+          <div style={{ marginTop: 30, width: "100%" }}>
+            <div className="items-header">
+              <h3 className="items-title">Available Items</h3>
+              <span
+                className="items-miss-link"
                 onClick={handleOpenCustomItemModal}
               >
-                Didn't find items your want? Click here.
-              </div>
+                Didn't find items you want? Click here.
+              </span>
             </div>
-
-            <div className="itemGrid" style={{ marginTop: "10px" }}>
+  
+            <div className="itemGrid" style={{ marginTop: 12 }}>
               {cargoItems.length === 0 ? (
                 <p>No items found in cargo.</p>
               ) : (
@@ -308,101 +321,90 @@ const Guest = ({ onLogout }) => {
                       <div className="itemImagePlaceholder">No Image</div>
                     )}
                     <h4>{item.name}</h4>
-                    <p style={{ fontSize: "14px", color: "#999" }}>
-                      {item.category}
-                    </p>
-                    <p style={{ fontSize: "14px" }}>
-                      Total Stock: {item.quantity}
-                    </p>
+                    <p style={{ fontSize: 14, color: "#999" }}>{item.category}</p>
+                    <p style={{ fontSize: 14 }}>Total Stock: {item.quantity}</p>
                   </div>
                 ))
               )}
             </div>
           </div>
         )}
-      </div>
-
-      {/* Detail modal for a selected item */}
+      </main>
+  
       {showItemDetailModal && selectedItem && (
         <div className="modalOverlay">
-          <div className="modalContent">
-            {/* Show image or placeholder */}
-            <div style={{ textAlign: "center" }}>
-              {selectedItem.imageId ? (
-                <img
-                  src={`${baseURL}/api/cargo/images/${selectedItem.id}`}
-                  alt={selectedItem.name}
-                  style={{ width: "200px", marginBottom: "10px" }}
-                />
-              ) : (
-                <div
-                  style={{
-                    width: "200px",
-                    height: "200px",
-                    backgroundColor: "#eee",
-                    margin: "0 auto 10px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  No Image
-                </div>
-              )}
-              <h3>{selectedItem.name}</h3>
-              <p>{selectedItem.description}</p>
-              <p style={{ fontSize: "14px", color: "#999" }}>
-                Category: {selectedItem.category || "N/A"}
-              </p>
-            </div>
-
-            {/* If item has sizeQuantities, let user pick a size */}
+          <div className="itemDetailContent">
+            {selectedItem.imageId ? (
+              <img
+                src={`${baseURL}/api/cargo/images/${selectedItem.imageId}`}
+                alt={selectedItem.name}
+                className="itemDetailImage"
+              />
+            ) : (
+              <div
+                className="itemDetailImage"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#666",
+                }}
+              >
+                No Image
+              </div>
+            )}
+  
+            <h3 className="detail-title">{selectedItem.name}</h3>
+            <p className="detail-desc">{selectedItem.description}</p>
+            <p className="detail-meta">
+              Category:&nbsp;{selectedItem.category || "N/A"}
+            </p>
+  
             {selectedItem.sizeQuantities &&
               Object.keys(selectedItem.sizeQuantities).length > 0 && (
-                <div style={{ margin: "10px 0" }}>
-                  <label style={{ marginRight: "8px" }}>Size:</label>
+                <div className="detail-row">
+                  <label>Size:</label>
                   <select
                     value={selectedSize}
                     onChange={(e) => setSelectedSize(e.target.value)}
                   >
                     {Object.entries(selectedItem.sizeQuantities).map(
-                      ([size, qty]) => (
-                        <option key={size} value={size}>
-                          {size} (stock: {qty})
+                      ([s, q]) => (
+                        <option key={s} value={s}>
+                          {s} (stock:&nbsp;{q})
                         </option>
                       )
                     )}
                   </select>
                 </div>
               )}
-
-            {/* quantity */}
-            <div style={{ margin: "10px 0" }}>
-              <label style={{ marginRight: "8px" }}>Quantity:</label>
+  
+            <div className="detail-row">
+              <label>Quantity:</label>
               <input
                 type="number"
                 min="1"
                 value={selectedQuantity}
                 onChange={(e) => setSelectedQuantity(Number(e.target.value))}
-                style={{ width: "60px" }}
+                style={{ width: 80 }}
               />
             </div>
-
-            <button className="button" onClick={handleAddSelectedItemToCart}>
-              Add to Cart
+  
+            <button className="add-btn" onClick={handleAddSelectedItemToCart}>
+              Add to Cart
             </button>
-            <button className="cancelButton" onClick={closeItemDetailModal}>
+            <button className="cancel-btn" onClick={closeItemDetailModal}>
               Cancel
             </button>
           </div>
         </div>
       )}
-
-      {/* Custom item modal */}
+  
       {showCustomItemModal && (
         <div className="modalOverlay">
           <div className="modalContent">
             <h3>Add a custom item</h3>
+  
             <div className="formGroup">
               <label>Item Name:</label>
               <input
@@ -412,6 +414,7 @@ const Guest = ({ onLogout }) => {
                 className="input"
               />
             </div>
+  
             <div className="formGroup">
               <label>Quantity:</label>
               <input
@@ -422,8 +425,9 @@ const Guest = ({ onLogout }) => {
                 className="input"
               />
             </div>
+  
             <button className="button" onClick={handleAddCustomItemToCart}>
-              Add to Cart
+              Add to Cart
             </button>
             <button
               className="cancelButton"
@@ -434,135 +438,186 @@ const Guest = ({ onLogout }) => {
           </div>
         </div>
       )}
-
-      {/* cart box open */}
+  
       {showCart && (
         <div className="modalOverlay">
-          <div className="modalContent">
-            <h3>Your Cart</h3>
-            {cart.length === 0 ? (
-              <p>No items in cart.</p>
-            ) : (
-              cart.map((c, index) => (
-                <div key={c.name} className="itemRow">
-                  <span>{c.name}</span>
-                  <input
-                    type="number"
-                    min="0"
-                    value={c.quantity}
-                    onChange={(e) => handleCartQuantityChange(index, e.target.value)}
-                    style={{ width: "60px", marginLeft: "10px", marginRight: "10px" }}
-                  />
-                  <button
-                    className="removeButton"
-                    onClick={() => handleRemoveCartItem(index)}
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))
-            )}
-
-            {/* Required information: Address, firstName, lastName, email, phone, note */}
-            <div className="formGroup">
-              <label>Delivery Address:</label>
-              <input
-                type="text"
-                value={deliveryAddress}
-                onChange={(e) => setDeliveryAddress(e.target.value)}
-                className="input"
-              />
-            </div>
-
-            <div className="formGroup">
-              <label>First Name:</label>
-              <input
-                type="text"
-                value={guestFirstName}
-                onChange={(e) => setGuestFirstName(e.target.value)}
-                className="input"
-              />
-            </div>
-
-            <div className="formGroup">
-              <label>Last Name:</label>
-              <input
-                type="text"
-                value={guestLastName}
-                onChange={(e) => setGuestLastName(e.target.value)}
-                className="input"
-              />
-            </div>
-
-            <div className="formGroup">
-              <label>Email:</label>
-              <input
-                type="text"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="input"
-              />
-            </div>
-
-            <div className="formGroup">
-              <label>Phone:</label>
-              <input
-                type="text"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="input"
-              />
-            </div>
-
-            <div className="formGroup">
-              <label>Notes:</label>
-              <input
-                type="text"
-                value={guestNotes}
-                onChange={(e) => setGuestNotes(e.target.value)}
-                className="input"
-              />
-            </div>
-
-            {cartError && <p className="errorText">{cartError}</p>}
-            {cartMessage && <p className="successText">{cartMessage}</p>}
-
-            <button className="button" onClick={handlePlaceOrder}>
-              Place Order
+          <div className="cartContent">
+            <button className="cartClose" onClick={toggleCart}>
+              ×
             </button>
-            <button className="cancelButton" onClick={toggleCart}>
-              Close
-            </button>
+  
+            <div className="cartLeft">
+              <h3>Cart</h3>
+              {cart.length === 0 ? (
+                <p>No items in cart.</p>
+              ) : (
+                cart.map((c, i) => (
+                  <div key={i} className="cartItem">
+                    {c.imageId ? (
+                      <img
+                        src={`${baseURL}/api/cargo/images/${c.imageId}`}
+                        alt={c.name}
+                        className="cartItemImage"
+                      />
+                    ) : (
+                      <div className="cartItemImagePlaceholder" />
+                    )}
+                    <div className="cartItemInfo">
+                      <h4>{c.name}</h4>
+                      {c.description && <p>{c.description}</p>}
+                      {c.category && (
+                        <p style={{ fontSize: 12, color: "#999" }}>
+                          {c.category}
+                        </p>
+                      )}
+                    </div>
+                    <div className="amountSection">
+                      <span>Amount</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={c.quantity}
+                        onChange={(e) =>
+                          handleCartQuantityChange(i, e.target.value)
+                        }
+                      />
+                    </div>
+                    <button
+                      className="removeButton"
+                      onClick={() => handleRemoveCartItem(i)}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+  
+            <div className="cartRight">
+              <h3>Overview</h3>
+              <ul className="overviewList">
+                {cart.map((c, idx) => (
+                  <li key={idx}>
+                    {c.name}&nbsp;x{c.quantity}
+                  </li>
+                ))}
+              </ul>
+  
+              <div className="formGroup">
+                <label>Delivery Address:</label>
+                <input
+                  type="text"
+                  value={deliveryAddress}
+                  onChange={(e) => setDeliveryAddress(e.target.value)}
+                  className="input"
+                />
+              </div>
+  
+              <div className="formGroup">
+                <label>First Name:</label>
+                <input
+                  type="text"
+                  value={guestFirstName}
+                  onChange={(e) => setGuestFirstName(e.target.value)}
+                  className="input"
+                />
+              </div>
+  
+              <div className="formGroup">
+                <label>Last Name:</label>
+                <input
+                  type="text"
+                  value={guestLastName}
+                  onChange={(e) => setGuestLastName(e.target.value)}
+                  className="input"
+                />
+              </div>
+  
+              <div className="formGroup">
+                <label>Email:</label>
+                <input
+                  type="text"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="input"
+                />
+              </div>
+  
+              <div className="formGroup">
+                <label>Phone:</label>
+                <input
+                  type="text"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="input"
+                />
+              </div>
+  
+              <div className="formGroup">
+                <label>Notes:</label>
+                <input
+                  type="text"
+                  value={guestNotes}
+                  onChange={(e) => setGuestNotes(e.target.value)}
+                  className="input"
+                />
+              </div>
+  
+              {cartError && <p className="errorText">{cartError}</p>}
+              {cartMessage && <p className="successText">{cartMessage}</p>}
+  
+              <button className="placeOrderButton" onClick={handlePlaceOrder}>
+                Place Order
+              </button>
+            </div>
           </div>
         </div>
       )}
-
-      {/* Current order information popup (only displayed after successful order) */}
+  
       {showCurrentOrderModal && currentOrder && (
         <div className="modalOverlay">
           <div className="modalContent">
-            {/* red note */}
-            <p style={{ color: "red", fontSize: "18px", fontStyle: "italic" }}>
-              NOTE: Please be sure to remember this information! Make sure you have taken a screenshot or written it down!
+            <p
+              style={{
+                color: "red",
+                fontSize: 18,
+                fontStyle: "italic",
+                marginBottom: 10,
+              }}
+            >
+              NOTE: Please save this information!
             </p>
+  
             <h3>Current Order</h3>
-            <p><strong>Order ID:</strong> {currentOrder.orderId}</p>
-            <p><strong>Status:</strong> {currentOrder.orderStatus}</p>
             <p>
-              <strong>Guest Name:</strong> {currentOrder.firstName}{" "}
+              <strong>Order ID:</strong>&nbsp;{currentOrder.orderId}
+            </p>
+            <p>
+              <strong>Status:</strong>&nbsp;{currentOrder.orderStatus}
+            </p>
+            <p>
+              <strong>Guest Name:</strong>&nbsp;{currentOrder.firstName}&nbsp;
               {currentOrder.lastName}
             </p>
-            <p><strong>Address:</strong> {currentOrder.address}</p>
-            <p><strong>Notes:</strong> {currentOrder.notes}</p>
+            <p>
+              <strong>Address:</strong>&nbsp;{currentOrder.address}
+            </p>
+            <p>
+              <strong>Notes:</strong>&nbsp;{currentOrder.notes}
+            </p>
             <div style={{ margin: "10px 0" }}>
               <strong>Items:</strong>
-              {currentOrder.items.map((item, idx) => (
+              {currentOrder.items.map((it, idx) => (
                 <div key={idx}>
-                  {item.name} x {item.quantity}
+                  {it.name}&nbsp;x&nbsp;{it.quantity}
                 </div>
               ))}
             </div>
-            <button className="button" onClick={() => setShowCurrentOrderModal(false)}>
+  
+            <button
+              className="button"
+              onClick={() => setShowCurrentOrderModal(false)}
+            >
               Close
             </button>
           </div>

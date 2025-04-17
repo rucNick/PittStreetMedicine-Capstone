@@ -5,10 +5,10 @@ import "../../css/Login/Before_Login.css";
 function Before_Login() {
   const navigate = useNavigate();
 
-  const handleForgetPasswordClick = (e) => {
-    e.preventDefault();
-    navigate("/reset_password");
-  };
+  // const handleForgetPasswordClick = (e) => {
+  //   e.preventDefault();
+  //   navigate("/reset_password");
+  // };
 
   const handleVolunteerApplicationClick = (e) => {
     e.preventDefault();
@@ -65,7 +65,7 @@ function Before_Login() {
           <div className="header-right">
             <nav className="main-nav">
               <ul className="nav-list">
-                <li className="nav-item">
+                {/* <li className="nav-item">
                   <button
                     type="button"
                     className="nav-link"
@@ -73,7 +73,7 @@ function Before_Login() {
                   >
                     Forget Password
                   </button>
-                </li>
+                </li> */}
                 <li className="nav-item">
                   <button
                     type="button"

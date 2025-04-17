@@ -94,7 +94,11 @@ const Home = ({ username, email, phone, userId, onLogout }) => {
       newCart[existingIndex].quantity += selectedQuantity;
       console.log("handleAddSelectedItemToCart: Updated quantity for existing cart item");
     } else {
-      newCart.push({ name: itemName, quantity: selectedQuantity });
+      newCart.push({ name: itemName, 
+                      quantity: selectedQuantity,
+                      imageId: selectedItem.imageId, 
+                      description: selectedItem.description,
+                      category: selectedItem.category});
       console.log("handleAddSelectedItemToCart: Added new item to cart");
     }
     setCart(newCart);
@@ -229,59 +233,89 @@ const Home = ({ username, email, phone, userId, onLogout }) => {
   // ================================== Rendering Section =================
   console.log("Home: Rendering component");
   return (
-    <div className="container">
-      {/* Navbar */}
-      <div className="navbar">
-        <div className="navGreeting">
-          Hello, {username}!
-          {/* Profile button navigates to Profile page */}
-          <button className="profileButton" onClick={() => navigate("/profile")}>
-            Profile
-          </button>
-        </div>
-        {/* Feedback button navigates to Feedback page */}
-        <button className="feedbackButton" onClick={() => navigate("/feedback")}>
-          Feedback
-        </button>
-        <button className="cartButton" onClick={toggleCart}>
-          Cart
-        </button>
-        <button className="logoutButton" onClick={onLogout}>
-          Log Out
-        </button>
-      </div>
+    <div className="page-container">
+      {/* ---------------- NAVBAR ---------------- */}
+      <header className="site-header">
+        <div className="header-content">
+          <div className="header-left">
+            <img src="/Untitled.png" alt="Logo" className="logo" />
+            <span className="welcome-text">Hello, {username} !</span>
+            <button
+              className="profileButton"
+              onClick={() => navigate("/profile")}
+            >
+              Profile
+            </button>
+          </div>
 
-      {/* Main Content */}
-      <div className="content">
-        <h2>Welcome Back, {username}!</h2>
-        <div className="buttonRow">
-          {/* Modified: "View Orders History" button navigates to separate Order History page */}
-          <button className="toggleOrdersButton" onClick={handleOrderHistoryNavigation}>
-            View Orders History
+          <div className="header-right">
+            <button className="cartButton" onClick={toggleCart}>
+              Cart
+            </button>
+            <button
+              className="feedbackButton"
+              onClick={() => navigate("/feedback")}
+            >
+              Feedback
+            </button>
+            <button className="logoutButton" onClick={onLogout}>
+              Log&nbsp;Out
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="user-dashboard">
+        <h2 className="dashboard-greeting">Hello, {username}</h2>
+
+        <div className="dashboard-cards">
+          <button
+            className="dashboard-card light-blue"
+            onClick={handleOrderHistoryNavigation}
+          >
+            <span className="card-icon">&#9660;</span>
+            View Orders
           </button>
-          <button className="newOrderButton" onClick={handleOpenNewOrder}>
+
+          <button
+            className="dashboard-card light-yellow"
+            onClick={handleOpenNewOrder}
+          >
+            <span className="card-icon">&#128722;</span>
             Make a New Order
           </button>
         </div>
 
-        {/* Available Items */}
         {showNewOrder && (
-          <div style={{ marginTop: "20px", textAlign: "left" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <h3>Available Items</h3>
-              <div
-                style={{ color: "#1890ff", cursor: "pointer", marginLeft: "10px" }}
-                onClick={handleOpenCustomItemModal}
-              >
-                Didn't find items you want? Click here.
+          <div style={{ marginTop: 30, width: "100%" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <div className="items-header">
+                <h3 className="items-title">Available Items</h3>
+                <span
+                  className="items-miss-link"
+                  onClick={handleOpenCustomItemModal}
+                >
+                  Didn't find items you want? Click here.
+                </span>
               </div>
             </div>
-            <div className="itemGrid" style={{ marginTop: "10px" }}>
+
+            <div className="itemGrid" style={{ marginTop: 12 }}>
               {cargoItems.length === 0 ? (
                 <p>No items found in cargo.</p>
               ) : (
                 cargoItems.map((item) => (
-                  <div key={item.id} className="itemCard" onClick={() => handleSelectItem(item)}>
+                  <div
+                    key={item.id}
+                    className="itemCard"
+                    onClick={() => handleSelectItem(item)}
+                  >
                     {item.imageId ? (
                       <img
                         src={`${baseURL}/api/cargo/images/${item.imageId}`}
@@ -292,95 +326,84 @@ const Home = ({ username, email, phone, userId, onLogout }) => {
                       <div className="itemImagePlaceholder">No Image</div>
                     )}
                     <h4>{item.name}</h4>
-                    <p style={{ fontSize: "14px", color: "#999" }}>{item.category}</p>
-                    <p style={{ fontSize: "14px" }}>Total Stock: {item.quantity}</p>
+                    <p style={{ fontSize: 14, color: "#999" }}>
+                      {item.category}
+                    </p>
+                    <p style={{ fontSize: 14 }}>
+                      Total Stock: {item.quantity}
+                    </p>
                   </div>
                 ))
               )}
             </div>
           </div>
         )}
-      </div>
+      </main>
 
-      {/* Item Detail Modal */}
       {showItemDetailModal && selectedItem && (
         <div className="modalOverlay">
-          <div className="modalContent">
-            <div style={{ textAlign: "center" }}>
-              {selectedItem.imageId ? (
-                <img
-                  src={`${baseURL}/api/cargo/images/${selectedItem.imageId}`}
-                  alt={selectedItem.name}
-                  style={{ width: "200px", marginBottom: "10px" }}
-                />
-              ) : (
-                <div
-                  style={{
-                    width: "200px",
-                    height: "200px",
-                    backgroundColor: "#eee",
-                    margin: "0 auto 10px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  No Image
-                </div>
-              )}
-              <h3>{selectedItem.name}</h3>
-              <p>{selectedItem.description}</p>
-              <p style={{ fontSize: "14px", color: "#999" }}>
-                Category: {selectedItem.category || "N/A"}
-              </p>
-            </div>
+          <div className="itemDetailContent">
+            {selectedItem.imageId ? (
+              <img
+                src={`${baseURL}/api/cargo/images/${selectedItem.imageId}`}
+                alt={selectedItem.name}
+                className="itemDetailImage"
+              />
+            ) : (
+              <div className="itemDetailImage" style={{ display:'flex',alignItems:'center',justifyContent:'center',color:'#666' }}>
+                No Image
+              </div>
+            )}
+
+            <h3 className="detail-title">{selectedItem.name}</h3>
+            <p className="detail-desc">{selectedItem.description}</p>
+            <p className="detail-meta">
+              Category: {selectedItem.category || "N/A"}
+            </p>
+
             {selectedItem.sizeQuantities &&
               Object.keys(selectedItem.sizeQuantities).length > 0 && (
-                <div style={{ margin: "10px 0" }}>
-                  <label style={{ marginRight: "8px" }}>Size:</label>
+                <div className="detail-row">
+                  <label>Size:</label>
                   <select
                     value={selectedSize}
-                    onChange={(e) => {
-                      console.log("Item Detail Modal: selectedSize changed to", e.target.value);
-                      setSelectedSize(e.target.value);
-                    }}
+                    onChange={(e) => setSelectedSize(e.target.value)}
                   >
-                    {Object.entries(selectedItem.sizeQuantities).map(([size, qty]) => (
-                      <option key={size} value={size}>
-                        {size} (stock: {qty})
+                    {Object.entries(selectedItem.sizeQuantities).map(([s, q]) => (
+                      <option key={s} value={s}>
+                        {s} (stock: {q})
                       </option>
                     ))}
                   </select>
                 </div>
               )}
-            <div style={{ margin: "10px 0" }}>
-              <label style={{ marginRight: "8px" }}>Quantity:</label>
+
+            <div className="detail-row">
+              <label>Quantity:</label>
               <input
                 type="number"
                 min="1"
                 value={selectedQuantity}
-                onChange={(e) => {
-                  console.log("Item Detail Modal: selectedQuantity changed to", e.target.value);
-                  setSelectedQuantity(Number(e.target.value));
-                }}
-                style={{ width: "60px" }}
+                onChange={(e) => setSelectedQuantity(Number(e.target.value))}
+                style={{ width: 80 }}
               />
             </div>
-            <button className="button" onClick={handleAddSelectedItemToCart}>
-              Add to Cart
+
+            <button className="add-btn" onClick={handleAddSelectedItemToCart}>
+              Add to Cart
             </button>
-            <button className="cancelButton" onClick={closeItemDetailModal}>
+            <button className="cancel-btn" onClick={closeItemDetailModal}>
               Cancel
             </button>
           </div>
         </div>
       )}
 
-      {/* Custom Item Popup */}
       {showCustomItemModal && (
         <div className="modalOverlay">
           <div className="modalContent">
             <h3>Add a custom item</h3>
+
             <div className="formGroup">
               <label>Item Name:</label>
               <input
@@ -390,6 +413,7 @@ const Home = ({ username, email, phone, userId, onLogout }) => {
                 className="input"
               />
             </div>
+
             <div className="formGroup">
               <label>Quantity:</label>
               <input
@@ -400,8 +424,9 @@ const Home = ({ username, email, phone, userId, onLogout }) => {
                 className="input"
               />
             </div>
+
             <button className="button" onClick={handleAddCustomItemToCart}>
-              Add to Cart
+              Add to Cart
             </button>
             <button className="cancelButton" onClick={() => setShowCustomItemModal(false)}>
               Cancel
@@ -410,83 +435,106 @@ const Home = ({ username, email, phone, userId, onLogout }) => {
         </div>
       )}
 
-      {/* Cart Modal */}
       {showCart && (
         <div className="modalOverlay">
-          <div className="modalContent">
-            <h3>Your Cart</h3>
-            {cart.length === 0 ? (
-              <p>No items in cart.</p>
-            ) : (
-              cart.map((c, index) => (
-                <div key={index} className="itemRow">
-                  <span>{c.name}</span>
-                  <input
-                    type="number"
-                    min="0"
-                    value={c.quantity}
-                    onChange={(e) => {
-                      console.log("Cart Modal: Quantity changed for item at index", index, "to", e.target.value);
-                      handleCartQuantityChange(index, e.target.value);
-                    }}
-                    style={{ width: "60px", marginLeft: "10px", marginRight: "10px" }}
-                  />
-                  <button
-                    className="removeButton"
-                    onClick={() => {
-                      console.log("Cart Modal: Removing item at index", index);
-                      handleRemoveCartItem(index);
-                    }}
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))
-            )}
-            <div className="formGroup">
-              <label>Delivery Address:</label>
-              <input
-                type="text"
-                value={deliveryAddress}
-                onChange={(e) => {
-                  console.log("Cart Modal: Delivery Address changed to", e.target.value);
-                  setDeliveryAddress(e.target.value);
-                }}
-                className="input"
-              />
-            </div>
-            <div className="formGroup">
-              <label>Phone Number:</label>
-              <input
-                type="text"
-                value={phoneNumber}
-                onChange={(e) => {
-                  console.log("Cart Modal: Phone Number changed to", e.target.value);
-                  setPhoneNumber(e.target.value);
-                }}
-                className="input"
-              />
-            </div>
-            <div className="formGroup">
-              <label>Notes:</label>
-              <input
-                type="text"
-                value={notes}
-                onChange={(e) => {
-                  console.log("Cart Modal: Notes changed to", e.target.value);
-                  setNotes(e.target.value);
-                }}
-                className="input"
-              />
-            </div>
-            {cartError && <p className="errorText">{cartError}</p>}
-            {cartMessage && <p className="successText">{cartMessage}</p>}
-            <button className="button" onClick={handlePlaceOrder}>
-              Place Order
+          <div className="cartContent">
+            <button className="cartClose" onClick={toggleCart}>
+              ×
             </button>
-            <button className="cancelButton" onClick={toggleCart}>
-              Close
-            </button>
+            <div className="cartLeft">
+              <h3>Cart</h3>
+              {cart.length === 0 ? (
+                <p>No items in cart.</p>
+              ) : (
+                cart.map((c, i) => (
+                  <div key={i} className="cartItem">
+                    {c.imageId ? (
+                      <img
+                        src={`${baseURL}/api/cargo/images/${c.imageId}`}
+                        alt={c.name}
+                        className="cartItemImage"
+                      />
+                    ) : (
+                      <div className="cartItemImagePlaceholder" />
+                    )}
+                    <div className="cartItemInfo">
+                      <h4>{c.name}</h4>
+                      {c.description && <p>{c.description}</p>}
+                      {c.category && (
+                        <p style={{ fontSize: 12, color: "#999" }}>
+                          {c.category}
+                        </p>
+                      )}
+                    </div>
+                    <div className="amountSection">
+                      <span>Amount</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={c.quantity}
+                        onChange={(e) =>
+                          handleCartQuantityChange(i, e.target.value)
+                        }
+                      />
+                    </div>
+                    <button
+                      className="removeButton"
+                      onClick={() => handleRemoveCartItem(i)}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="cartRight">
+              <h3>Overview</h3>
+              <ul className="overviewList">
+                {cart.map((c, idx) => (
+                  <li key={idx}>
+                    {c.name} x{c.quantity}
+                  </li>
+                ))}
+              </ul>
+
+              <div className="formGroup">
+                <label>Delivery Address:</label>
+                <input
+                  type="text"
+                  value={deliveryAddress}
+                  onChange={(e) => setDeliveryAddress(e.target.value)}
+                  className="input"
+                />
+              </div>
+
+              <div className="formGroup">
+                <label>Phone Number:</label>
+                <input
+                  type="text"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  className="input"
+                />
+              </div>
+
+              <div className="formGroup">
+                <label>Notes:</label>
+                <input
+                  type="text"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="input"
+                />
+              </div>
+
+              {cartError && <p className="errorText">{cartError}</p>}
+              {cartMessage && <p className="successText">{cartMessage}</p>}
+
+              <button className="placeOrderButton" onClick={handlePlaceOrder}>
+                Place Order
+              </button>
+            </div>
           </div>
         </div>
       )}
