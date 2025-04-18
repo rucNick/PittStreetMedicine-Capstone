@@ -5,7 +5,7 @@
 This repository contains the StreetMedGo application, including both the backend and frontend code, along with UI/UX design patterns.
 
 ## Web App Overview
-
+**web URL: https://app.streetmedatpitt.org/**
 StreetMedGo is a comprehensive platform designed to support the operations of StreetMed@Pitt, a non-profit organization providing medical outreach to underserved communities. The web application serves three primary user roles:
 
 - **Clients**: Can request medical supplies and services, track their orders, and receive updates on deliveries.
