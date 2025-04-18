@@ -17,6 +17,10 @@ import ResetPassword from "../Login/ResetPassword";
 import RoundAdmin from "../Round/Round_Admin";
 import VolunteerDashboard from "../Volunteer/Volunteer_Dashboard";
 import BeforeLogin from "../Login/Before_Login";
+import AdminUsers from "../Admin/Admin_Users";   
+import AdminOrders from "../Admin/Admin_Orders";
+import AdminViewAppli from "../Admin/Admin_ViewAppli";
+import AdminFeedback from "../Admin/Admin_Feedback";
 
 function App({ securityInitialized = false }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -105,6 +109,10 @@ function App({ securityInitialized = false }) {
         <Route path="/reset_password" element={<ResetPassword />} />
         <Route path="/round_admin" element={<RoundAdmin />} />
         {/* <Route path="/volunteer_dashboard" element={<VolunteerDashboard userData={userData} />} /> */}
+        <Route path="/admin/users" element={<AdminUsers userData={userData} />} />
+        <Route path="/admin/orders" element={<AdminOrders userData={userData} />} />
+        <Route path="/admin/applications" element={<AdminViewAppli userData={userData} />} />
+        <Route path="/admin/feedback" element={<AdminFeedback userData={userData} />} />
       </Routes>
     </Router>
   );

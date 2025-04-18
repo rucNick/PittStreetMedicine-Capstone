@@ -1,696 +1,351 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import '../../css/Admin/Cargo_Admin.css';
 
 const Cargo_Admin = ({ userData }) => {
   const baseURL = process.env.REACT_APP_BASE_URL;
-
   const navigate = useNavigate();
-  console.log("Cargo_Admin: Component mounted");
 
-  // -------------------- Tabs (Inventory / Images) --------------------
-  const [activeTab, setActiveTab] = useState('inventory');
-  console.log("Tabs: Active tab initialized as 'inventory'");
-
-  // ==================== 1. Inventory Management ====================
-  // 1.1 Show all items
+  // === Inventory Data ===
   const [allItems, setAllItems] = useState([]);
   const [allItemsError, setAllItemsError] = useState('');
-  console.log("Inventory Management: Initialized allItems and allItemsError");
 
   const fetchAllItems = useCallback(async () => {
-    console.log("fetchAllItems: Fetching all items from backend");
     try {
-      const response = await axios.get(`${baseURL}/api/cargo/items`);
-      console.log("fetchAllItems: Received response", response);
-      setAllItems(response.data);
-      setAllItemsError('');
-    } catch (error) {
-      console.log("fetchAllItems: Error occurred", error);
-      setAllItemsError(error.response?.data?.message || error.message);
-    }
-  }, [baseURL]);
-
-  // 1.2 Add items - Basic information + multiple size options
-  const [newItemData, setNewItemData] = useState({
-    name: '',
-    description: '',
-    category: '',
-    quantity: 0, // If there is no size, the user can manually input the quantity
-  });
-  console.log("Add Item: Initialized newItemData");
-
-  // Store size input entries: each object in the array has { size: string, quantity: number }
-  const [newSizeEntries, setNewSizeEntries] = useState([]);
-  console.log("Add Item: Initialized newSizeEntries");
-  const [newItemImage, setNewItemImage] = useState(null);
-  console.log("Add Item: Initialized newItemImage");
-
-  // Add a new size input row
-  const handleAddSizeEntry = () => {
-    console.log("handleAddSizeEntry: Adding a new size entry");
-    setNewSizeEntries([...newSizeEntries, { size: '', quantity: 0 }]);
-  };
-
-  // Update the size information for a specific row
-  const handleSizeEntryChange = (index, field, value) => {
-    console.log(`handleSizeEntryChange: Updating size entry at index ${index} - field: ${field}, value: ${value}`);
-    const updated = [...newSizeEntries];
-    updated[index] = {
-      ...updated[index],
-      [field]: field === 'quantity' ? Number(value) : value,
-    };
-    setNewSizeEntries(updated);
-  };
-
-  // Delete a specific row's size information
-  const handleRemoveSizeEntry = (index) => {
-    console.log(`handleRemoveSizeEntry: Removing size entry at index ${index}`);
-    const updated = newSizeEntries.filter((_, i) => i !== index);
-    setNewSizeEntries(updated);
-  };
-
-  /**
-   * When adding a new item, if there is size data then the final quantity is the sum of all size quantities;
-   * if there is no size data then the quantity entered by the user is used.
-   */
-  const handleAddNewItem = async () => {
-    console.log("handleAddNewItem: Adding new item with data", newItemData, "and size entries", newSizeEntries);
-    try {
-      // Construct the sizeQuantities object
-      const sizeQuantities = {};
-      newSizeEntries.forEach((entry) => {
-        if (entry.size) {
-          sizeQuantities[entry.size] = entry.quantity;
+      const res = await axios.get(`${baseURL}/api/cargo/items`, {
+        headers: {
+          'Admin-Username': userData.username,
+          'Authentication-Status': 'true'
         }
       });
-      console.log("handleAddNewItem: Constructed sizeQuantities", sizeQuantities);
+      setAllItems(res.data);
+      setAllItemsError('');
+    } catch (err) {
+      setAllItemsError(err.response?.data?.message || err.message);
+    }
+  }, [baseURL, userData.username]);
 
-      // If there is size data, sum up all the size quantities as the final quantity
+  useEffect(() => {
+    fetchAllItems();
+  }, [fetchAllItems]);
+
+  // === Add New Item State ===
+  const [newItemData, setNewItemData] = useState({
+    name: '', description: '', category: '', quantity: 0
+  });
+  const [newSizeEntries, setNewSizeEntries] = useState([]);
+  const [newItemImage, setNewItemImage] = useState(null);
+
+  // === Update Item State ===
+  const [updateItemId, setUpdateItemId] = useState('');
+  const [updateItemData, setUpdateItemData] = useState({
+    name: '', description: '', category: '', quantity: 0
+  });
+  const [updateItemImage, setUpdateItemImage] = useState(null);
+
+  // === Drawer toggles ===
+  const [showAdd, setShowAdd] = useState(false);
+  const [showUpdate, setShowUpdate] = useState(false);
+
+  // === Helpers ===
+  const handleAddSizeEntry = () =>
+    setNewSizeEntries([...newSizeEntries, { size: '', quantity: 0 }]);
+
+  const handleSizeEntryChange = (idx, field, val) => {
+    const tmp = [...newSizeEntries];
+    tmp[idx] = { ...tmp[idx], [field]: field==='quantity'? +val : val };
+    setNewSizeEntries(tmp);
+  };
+
+  const handleRemoveSizeEntry = idx =>
+    setNewSizeEntries(newSizeEntries.filter((_,i) => i!==idx));
+
+  const renderStatus = qty => {
+    if (qty===0) return <span className="status out">Out</span>;
+    if (qty<5)  return <span className="status low">Low</span>;
+    return <span className="status fine">Fine</span>;
+  };
+
+  const handleAddNewItem = async () => {
+    try {
+      const sizeQuantities = {};
+      newSizeEntries.forEach(e => e.size && (sizeQuantities[e.size]=e.quantity));
       let finalQuantity = newItemData.quantity;
-      if (Object.keys(sizeQuantities).length > 0) {
-        finalQuantity = Object.values(sizeQuantities).reduce((acc, cur) => acc + cur, 0);
-        console.log("handleAddNewItem: Computed finalQuantity from sizes", finalQuantity);
-      } else {
-        console.log("handleAddNewItem: Using provided quantity", finalQuantity);
+      if (Object.keys(sizeQuantities).length>0) {
+        finalQuantity = Object.values(sizeQuantities).reduce((a,b)=>a+b,0);
       }
-
-      // Merge data, overriding quantity with the final computed value
-      const dataToSend = {
-        ...newItemData,
-        quantity: finalQuantity,
-        sizeQuantities,
-      };
-      console.log("handleAddNewItem: Data to send", dataToSend);
-
-      const formData = new FormData();
-      formData.append(
-        'data',
-        new Blob([JSON.stringify(dataToSend)], { type: 'application/json' })
-      );
-      // If there is an image, then add it
-      if (newItemImage) {
-        console.log("handleAddNewItem: Adding image to formData");
-        formData.append('image', newItemImage);
-      }
-
-      const response = await axios.post(`${baseURL}/api/cargo/items`, formData, {
+      const dataToSend = { ...newItemData, quantity: finalQuantity, sizeQuantities };
+      const fd = new FormData();
+      fd.append('data', new Blob([JSON.stringify(dataToSend)], { type:'application/json' }));
+      newItemImage && fd.append('image', newItemImage);
+      const resp = await axios.post(`${baseURL}/api/cargo/items`, fd, {
         headers: {
-          'Content-Type': 'multipart/form-data',
+          'Content-Type':'multipart/form-data',
           'Admin-Username': userData.username,
-          'Authentication-Status': 'true',
-        },
+          'Authentication-Status':'true'
+        }
       });
-      console.log("handleAddNewItem: Received response", response);
-
-      alert(response.data.message || 'Item added successfully');
-      // Clear the input fields
-      setNewItemData({ name: '', description: '', category: '', quantity: 0 });
+      alert(resp.data.message||'Item added');
+      setNewItemData({ name:'',description:'',category:'',quantity:0 });
       setNewSizeEntries([]);
       setNewItemImage(null);
-      console.log("handleAddNewItem: Cleared new item inputs");
-      // Refresh the list
       fetchAllItems();
-    } catch (error) {
-      console.log("handleAddNewItem: Error occurred", error);
-      alert(error.response?.data?.message || error.message);
+    } catch (err) {
+      alert(err.response?.data?.message||err.message);
     }
   };
-
-  // 1.3 Update items
-  const [updateItemId, setUpdateItemId] = useState('');
-  console.log("Update Item: Initialized updateItemId");
-  const [updateItemData, setUpdateItemData] = useState({
-    name: '',
-    description: '',
-    category: '',
-    quantity: 0,
-  });
-  console.log("Update Item: Initialized updateItemData");
-  const [updateItemImage, setUpdateItemImage] = useState(null);
-  console.log("Update Item: Initialized updateItemImage");
 
   const handleUpdateItem = async () => {
-    console.log("handleUpdateItem: Updating item with ID", updateItemId);
     if (!updateItemId) {
-      console.log("handleUpdateItem: No updateItemId provided");
-      alert('Please fill in the Item ID you want to update first');
+      alert('Enter Item ID to update');
       return;
     }
-
     try {
-      // First update the text data
-      console.log("handleUpdateItem: Sending update request with data", updateItemData);
-      const itemUpdateRes = await axios.put(
+      const resp1 = await axios.put(
         `${baseURL}/api/cargo/items/${updateItemId}`,
         updateItemData,
-        {
-          headers: {
+        { headers:{
             'Admin-Username': userData.username,
-            'Authentication-Status': 'true',
-          },
+            'Authentication-Status':'true'
+          }
         }
       );
-      console.log("handleUpdateItem: Received text update response", itemUpdateRes);
-
-      // If the image needs to be updated, handle it separately
       if (updateItemImage) {
-        console.log("handleUpdateItem: Updating image for item", updateItemId);
-        const formData = new FormData();
-        formData.append('image', updateItemImage);
+        const fd = new FormData();
+        fd.append('image', updateItemImage);
         await axios.put(
           `${baseURL}/api/cargo/items/${updateItemId}?image`,
-          formData,
-          {
-            headers: {
-              'Content-Type': 'multipart/form-data',
+          fd,
+          { headers:{
+              'Content-Type':'multipart/form-data',
               'Admin-Username': userData.username,
-              'Authentication-Status': 'true',
-            },
+              'Authentication-Status':'true'
+            }
           }
         );
-        console.log("handleUpdateItem: Image update completed");
       }
-
-      alert(itemUpdateRes.data.message || 'Item updated successfully');
+      alert(resp1.data.message||'Item updated');
       fetchAllItems();
-    } catch (error) {
-      console.log("handleUpdateItem: Error occurred", error);
-      alert(error.response?.data?.message || error.message);
+    } catch (err) {
+      alert(err.response?.data?.message||err.message);
     }
   };
 
-  // ==================== 2. Image Management ====================
-  const [uploadImageFile, setUploadImageFile] = useState(null);
-  console.log("Image Management: Initialized uploadImageFile");
-  const [uploadCargoItemId, setUploadCargoItemId] = useState('');
-  console.log("Image Management: Initialized uploadCargoItemId");
-
-  const handleUploadImage = async () => {
-    console.log("handleUploadImage: Uploading image", uploadImageFile, "for cargo item ID", uploadCargoItemId);
-    if (!uploadImageFile) {
-      console.log("handleUploadImage: No image file selected");
-      alert('Please select the image file to upload');
-      return;
-    }
-    try {
-      const formData = new FormData();
-      formData.append('file', uploadImageFile);
-      if (uploadCargoItemId) {
-        console.log("handleUploadImage: Including cargoItemId", uploadCargoItemId);
-        formData.append('cargoItemId', uploadCargoItemId);
-      }
-
-      const response = await axios.post(`${baseURL}/api/cargo/images/upload`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          'Authentication-Status': 'true',
-        },
-      });
-      console.log("handleUploadImage: Received response", response);
-      alert(response.data.message || 'Image uploaded successfully');
-      setUploadImageFile(null);
-      setUploadCargoItemId('');
-      console.log("handleUploadImage: Cleared upload inputs");
-    } catch (error) {
-      console.log("handleUploadImage: Error occurred", error);
-      alert(error.response?.data?.message || error.message);
-    }
-  };
-
-  const [deleteImageId, setDeleteImageId] = useState('');
-  console.log("Image Management: Initialized deleteImageId");
-
-  const handleDeleteImage = async () => {
-    console.log("handleDeleteImage: Deleting image with ID", deleteImageId);
-    if (!deleteImageId) {
-      console.log("handleDeleteImage: No deleteImageId provided");
-      alert('Please fill in the Image ID you want to delete first');
-      return;
-    }
-    try {
-      const response = await axios.delete(
-        `${baseURL}/api/cargo/images/${deleteImageId}`,
-        {
-          headers: {
-            'Authentication-Status': 'true',
-          },
-        }
-      );
-      console.log("handleDeleteImage: Received response", response);
-      alert(response.data.message || 'Image deleted successfully');
-      setDeleteImageId('');
-      console.log("handleDeleteImage: Cleared deleteImageId");
-    } catch (error) {
-      console.log("handleDeleteImage: Error occurred", error);
-      alert(error.response?.data?.message || error.message);
-    }
-  };
-
-  // ==================== useEffect ====================
-  useEffect(() => {
-    console.log("useEffect: activeTab changed to", activeTab);
-    if (activeTab === 'inventory') {
-      console.log("useEffect: activeTab is 'inventory', calling fetchAllItems");
-      fetchAllItems();
-    }
-  }, [activeTab, fetchAllItems]);
-
-  // ============================================== HTML =======================================================
   return (
-    <div style={styles.container}>
-      <h1>Cargo Management page!</h1>
-      <button
-        style={styles.backButton}
-        onClick={() => {
-          console.log("Navigation: Back to Admin page clicked");
-          navigate(-1);
-        }}
-      >
-        Back to Admin page
-      </button>
+    <div className="page-container">
+      {/* Header */}
+      <header className="site-header">
+        <div className="header-content">
+          <div className="logo-container">
+            <img src="/Untitled.png" alt="Logo" className="logo" />
+            <span className="site-title">Cargo Management System</span>
+          </div>
+          <div className="header-right">
+            <button className="manage-btn" onClick={()=>navigate(-1)}>
+              Go Back
+            </button>
+          </div>
+        </div>
+      </header>
 
-      {/* Navi Tab */}
-      <div style={styles.tabContainer}>
-        <button
-          style={activeTab === 'inventory' ? styles.activeTabButton : styles.tabButton}
-          onClick={() => {
-            console.log("Navigation: Switching to Inventory Management tab");
-            setActiveTab('inventory');
-          }}
-        >
-          Inventory Management
-        </button>
-        <button
-          style={activeTab === 'images' ? styles.activeTabButton : styles.tabButton}
-          onClick={() => {
-            console.log("Navigation: Switching to Image Management tab");
-            setActiveTab('images');
-          }}
-        >
-          Image Management
-        </button>
-      </div>
+      <main className="main-content">
+        <div className="cargo-container">
+          <div className="cargo-header">
+            <h2 className="cargo-title">Cargo Status</h2>
+            <button className="manage-btn" onClick={fetchAllItems}>
+              Refresh
+            </button>
+          </div>
 
-      {/* ============== Inventory Management ============== */}
-      {activeTab === 'inventory' && (
-        <div style={styles.section}>
-          <h2>Inventory Management</h2>
+          <div className="cargo-card">
+            {allItemsError && <p className="cargo-error">{allItemsError}</p>}
 
-          {/* 1.1 Show all items */}
-          <div style={styles.block}>
-            <h3>All Items</h3>
-            {allItemsError && <p style={{ color: 'red' }}>{allItemsError}</p>}
-
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th style={styles.tableHeaderCell}>ID</th>
-                  <th style={styles.tableHeaderCell}>Name</th>
-                  <th style={styles.tableHeaderCell}>Description</th>
-                  <th style={styles.tableHeaderCell}>Category</th>
-                  <th style={styles.tableHeaderCell}>Total-Quantity</th>
-                  <th style={styles.tableHeaderCell}>Size</th>
-                  <th style={styles.tableHeaderCell}>Size-Quantity</th>
-                </tr>
-              </thead>
-              <tbody>
-                {allItems.map((item) => {
-                  const hasSizes =
-                    item.sizeQuantities && Object.keys(item.sizeQuantities).length > 0;
-
-                  return (
-                    <React.Fragment key={item.id}>
-                      {/* Main row (item info) */}
-                      <tr>
-                        <td style={styles.tableCell}>{item.id}</td>
-                        <td style={styles.tableCell}>{item.name}</td>
-                        <td style={styles.tableCell}>{item.description}</td>
-                        <td style={styles.tableCell}>{item.category}</td>
-                        {/* If item.quantity < 5, display (Low-Stock!) in red */}
-                        <td style={styles.tableCell}>
-                          {item.quantity}
-                          {item.quantity < 5 && (
-                            <span style={{ color: 'red', marginLeft: '5px' }}>
-                              (Low-Stock!)
-                            </span>
-                          )}
-                        </td>
-                        {/* If no multiple sizes, show empty cells for size columns */}
-                        <td style={styles.tableCell}></td>
-                        <td style={styles.tableCell}></td>
-                      </tr>
-
-                      {/* If there is size information, display additional rows for each size */}
-                      {hasSizes &&
-                        Object.entries(item.sizeQuantities).map(([size, qty]) => (
-                          <tr key={`${item.id}-${size}`}>
-                            {/* Blank cells for the first 5 columns */}
-                            <td style={styles.tableCell}></td>
-                            <td style={styles.tableCell}></td>
-                            <td style={styles.tableCell}></td>
-                            <td style={styles.tableCell}></td>
-                            <td style={styles.tableCell}></td>
-                            {/* Show the size and size quantity in the last two columns */}
-                            <td style={styles.tableCell}>{size}</td>
-                            <td style={styles.tableCell}>
-                              {qty}
-                              {qty < 5 && (
-                                <span style={{ color: 'red', marginLeft: '5px' }}>
-                                  (Low-Stock!)
-                                </span>
-                              )}
-                            </td>
+            <div className="table-title">Inventory Overview</div>
+            <div className="table-scroll">
+              <table className="cargo-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th>Category</th>
+                    <th>Total-Quantity</th>
+                    <th>Size</th>
+                    <th>Size-Quantity</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allItems.map(item => {
+                    const sizes = item.sizeQuantities||{};
+                    const hasSizes = Object.keys(sizes).length>0;
+                    return (
+                      <React.Fragment key={item.id}>
+                        <tr>
+                          <td>{item.id}</td>
+                          <td>{item.name}</td>
+                          <td>{item.description}</td>
+                          <td>{item.category}</td>
+                          <td>{item.quantity}</td>
+                          <td></td>
+                          <td></td>
+                          <td>{renderStatus(item.quantity)}</td>
+                        </tr>
+                        {hasSizes && Object.entries(sizes).map(([sz,qty])=>(
+                          <tr key={`${item.id}-${sz}`}>
+                            <td></td><td></td><td></td><td></td><td></td>
+                            <td>{sz}</td>
+                            <td>{qty}</td>
+                            <td>{renderStatus(qty)}</td>
                           </tr>
                         ))}
-                    </React.Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
 
-          {/* 1.2 Add New Item */}
-          <div style={styles.block}>
-            <h3>Add New Item</h3>
-            <input
-              style={styles.input}
-              type="text"
-              placeholder="Name"
-              value={newItemData.name}
-              onChange={(e) => {
-                console.log("Add New Item: Name changed to", e.target.value);
-                setNewItemData({ ...newItemData, name: e.target.value });
-              }}
-            />
-            <input
-              style={styles.input}
-              type="text"
-              placeholder="Description"
-              value={newItemData.description}
-              onChange={(e) => {
-                console.log("Add New Item: Description changed to", e.target.value);
-                setNewItemData({ ...newItemData, description: e.target.value });
-              }}
-            />
-            <input
-              style={styles.input}
-              type="text"
-              placeholder="Category"
-              value={newItemData.category}
-              onChange={(e) => {
-                console.log("Add New Item: Category changed to", e.target.value);
-                setNewItemData({ ...newItemData, category: e.target.value });
-              }}
-            />
-            <input
-              style={styles.input}
-              type="number"
-              placeholder="Quantity (if no sizes)"
-              value={newItemData.quantity}
-              onChange={(e) => {
-                console.log("Add New Item: Quantity changed to", e.target.value);
-                setNewItemData({ ...newItemData, quantity: Number(e.target.value) });
-              }}
-            />
-
-            {/* Size Options */}
-            <div style={{ marginTop: '10px' }}>
-              <h4>Size Options (optional)</h4>
-              {newSizeEntries.map((entry, index) => (
-                <div key={index} style={{ marginBottom: '5px' }}>
-                  <input
-                    style={styles.input}
-                    type="text"
-                    placeholder="Size (e.g., S, M, L)"
-                    value={entry.size}
-                    onChange={(e) => {
-                      console.log(`Size Option: Size at index ${index} changed to`, e.target.value);
-                      handleSizeEntryChange(index, 'size', e.target.value);
-                    }}
-                  />
-                  <input
-                    style={styles.input}
-                    type="number"
-                    placeholder="Quantity for this size"
-                    value={entry.quantity}
-                    onChange={(e) => {
-                      console.log(`Size Option: Quantity at index ${index} changed to`, e.target.value);
-                      handleSizeEntryChange(index, 'quantity', e.target.value);
-                    }}
-                  />
-                  <button style={styles.smallButton} onClick={() => {
-                    console.log(`Size Option: Remove button clicked for index ${index}`);
-                    handleRemoveSizeEntry(index);
-                  }}>
-                    Remove
-                  </button>
-                </div>
-              ))}
-              <button style={styles.button} onClick={handleAddSizeEntry}>
-                Add Size Option
+          {/* drawer buttons */}
+          <div className="drawer-container">
+            <div className="drawer-section">
+              <button
+                className="drawer-toggle"
+                onClick={()=>setShowAdd(!showAdd)}
+              >
+                {showAdd? 'Hide Add Form' : 'Add New Item'}
               </button>
             </div>
-
-            <div style={{ marginTop: '10px' }}>
-              <input type="file" onChange={(e) => {
-                console.log("Add New Item: New item image selected", e.target.files[0]);
-                setNewItemImage(e.target.files[0]);
-              }} />
+            <div className="drawer-section">
+              <button
+                className="drawer-toggle"
+                onClick={()=>setShowUpdate(!showUpdate)}
+              >
+                {showUpdate? 'Hide Update Form' : 'Update Item'}
+              </button>
             </div>
-            <button style={styles.button} onClick={handleAddNewItem}>
-              Add Item
-            </button>
           </div>
 
-          {/* 1.3 Update Item */}
-          <div style={styles.block}>
-            <h3>Update Item</h3>
-            <input
-              style={styles.input}
-              type="text"
-              placeholder="Item ID to update"
-              value={updateItemId}
-              onChange={(e) => {
-                console.log("Update Item: Item ID changed to", e.target.value);
-                setUpdateItemId(e.target.value);
-              }}
-            />
-            <input
-              style={styles.input}
-              type="text"
-              placeholder="Name"
-              value={updateItemData.name}
-              onChange={(e) => {
-                console.log("Update Item: Name changed to", e.target.value);
-                setUpdateItemData({ ...updateItemData, name: e.target.value });
-              }}
-            />
-            <input
-              style={styles.input}
-              type="text"
-              placeholder="Description"
-              value={updateItemData.description}
-              onChange={(e) => {
-                console.log("Update Item: Description changed to", e.target.value);
-                setUpdateItemData({ ...updateItemData, description: e.target.value });
-              }}
-            />
-            <input
-              style={styles.input}
-              type="text"
-              placeholder="Category"
-              value={updateItemData.category}
-              onChange={(e) => {
-                console.log("Update Item: Category changed to", e.target.value);
-                setUpdateItemData({ ...updateItemData, category: e.target.value });
-              }}
-            />
-            <input
-              style={styles.input}
-              type="number"
-              placeholder="Quantity"
-              value={updateItemData.quantity}
-              onChange={(e) => {
-                console.log("Update Item: Quantity changed to", e.target.value);
-                setUpdateItemData({ ...updateItemData, quantity: Number(e.target.value) });
-              }}
-            />
+          {/* Add Form Drawer */}
+          <div className={`drawer-panel ${showAdd? 'open':''}`}>
+            <div className="content-block blue-block">
+              <div className="block-content">
+                <h3 className="block-title">Add New Item</h3>
+                <input
+                  className="cargo-input"
+                  placeholder="Name"
+                  value={newItemData.name}
+                  onChange={e=>setNewItemData({ ...newItemData, name:e.target.value })}
+                />
+                <input
+                  className="cargo-input"
+                  placeholder="Description"
+                  value={newItemData.description}
+                  onChange={e=>setNewItemData({ ...newItemData, description:e.target.value })}
+                />
+                <input
+                  className="cargo-input"
+                  placeholder="Category"
+                  value={newItemData.category}
+                  onChange={e=>setNewItemData({ ...newItemData, category:e.target.value })}
+                />
+                <input
+                  className="cargo-input"
+                  type="number"
+                  placeholder="Quantity"
+                  value={newItemData.quantity}
+                  onChange={e=>setNewItemData({ ...newItemData, quantity:+e.target.value })}
+                />
 
-            <div style={{ marginTop: '10px' }}>
-              <input type="file" onChange={(e) => {
-                console.log("Update Item: New update image selected", e.target.files[0]);
-                setUpdateItemImage(e.target.files[0]);
-              }} />
+                <div className="cargo-sizes">
+                  {newSizeEntries.map((ent,i)=>(
+                    <div key={i} className="cargo-size-entry">
+                      <input
+                        className="cargo-input"
+                        placeholder="Size"
+                        value={ent.size}
+                        onChange={e=>handleSizeEntryChange(i,'size',e.target.value)}
+                      />
+                      <input
+                        className="cargo-input"
+                        type="number"
+                        placeholder="Qty"
+                        value={ent.quantity}
+                        onChange={e=>handleSizeEntryChange(i,'quantity',e.target.value)}
+                      />
+                      <button className="cargo-small-btn" onClick={()=>handleRemoveSizeEntry(i)}>×</button>
+                    </div>
+                  ))}
+                  <button className="cargo-button" onClick={handleAddSizeEntry}>
+                    + Add Size Option
+                  </button>
+                </div>
+
+                <div style={{ margin:'12px 0' }}>
+                  <input type="file" onChange={e=>setNewItemImage(e.target.files[0])} />
+                </div>
+
+                <button className="cargo-button" onClick={handleAddNewItem}>
+                  Add Item
+                </button>
+              </div>
             </div>
-            <button style={styles.button} onClick={handleUpdateItem}>
-              Update
-            </button>
           </div>
+
+          {/* Update Form Drawer */}
+          <div className={`drawer-panel ${showUpdate? 'open':''}`}>
+            <div className="content-block beige-block">
+              <div className="block-content">
+                <h3 className="block-title">Update Item</h3>
+                <input
+                  className="cargo-input"
+                  placeholder="Item ID"
+                  value={updateItemId}
+                  onChange={e=>setUpdateItemId(e.target.value)}
+                />
+                <input
+                  className="cargo-input"
+                  placeholder="Name"
+                  value={updateItemData.name}
+                  onChange={e=>setUpdateItemData({ ...updateItemData, name:e.target.value })}
+                />
+                <input
+                  className="cargo-input"
+                  placeholder="Description"
+                  value={updateItemData.description}
+                  onChange={e=>setUpdateItemData({ ...updateItemData, description:e.target.value })}
+                />
+                <input
+                  className="cargo-input"
+                  placeholder="Category"
+                  value={updateItemData.category}
+                  onChange={e=>setUpdateItemData({ ...updateItemData, category:e.target.value })}
+                />
+                <input
+                  className="cargo-input"
+                  type="number"
+                  placeholder="Quantity"
+                  value={updateItemData.quantity}
+                  onChange={e=>setUpdateItemData({ ...updateItemData, quantity:+e.target.value })}
+                />
+
+                <div style={{ margin:'12px 0' }}>
+                  <input type="file" onChange={e=>setUpdateItemImage(e.target.files[0])} />
+                </div>
+
+                <button className="cargo-button" onClick={handleUpdateItem}>
+                  Update Item
+                </button>
+              </div>
+            </div>
+          </div>
+
         </div>
-      )}
-
-      {/* ============== Image Management ============== */}
-      {activeTab === 'images' && (
-        <div style={styles.section}>
-          <h2>Image Management</h2>
-
-          {/* 2.1 Upload Image */}
-          <div style={styles.block}>
-            <h3>Upload Image</h3>
-            <input type="file" onChange={(e) => {
-              console.log("Image Management: Upload image file selected", e.target.files[0]);
-              setUploadImageFile(e.target.files[0]);
-            }} />
-            <input
-              style={styles.input}
-              type="text"
-              placeholder="Cargo Item ID (optional)"
-              value={uploadCargoItemId}
-              onChange={(e) => {
-                console.log("Image Management: Cargo Item ID changed to", e.target.value);
-                setUploadCargoItemId(e.target.value);
-              }}
-            />
-            <button style={styles.button} onClick={handleUploadImage}>
-              Upload
-            </button>
-          </div>
-
-          {/* 2.2 Delete Image */}
-          <div style={styles.block}>
-            <h3>Delete Image</h3>
-            <input
-              style={styles.input}
-              type="text"
-              placeholder="Image ID to delete"
-              value={deleteImageId}
-              onChange={(e) => {
-                console.log("Image Management: Delete Image ID changed to", e.target.value);
-                setDeleteImageId(e.target.value);
-              }}
-            />
-            <button style={styles.button} onClick={handleDeleteImage}>
-              Delete
-            </button>
-          </div>
-        </div>
-      )}
+      </main>
     </div>
   );
-};
-
-// ===================================================== CSS =============================================================
-const styles = {
-  container: {
-    textAlign: 'center',
-    padding: '20px',
-  },
-  backButton: {
-    marginBottom: '20px',
-    padding: '10px 20px',
-    backgroundColor: '#1890ff',
-    color: 'white',
-    border: 'none',
-    borderRadius: '5px',
-    cursor: 'pointer',
-  },
-  tabContainer: {
-    marginBottom: '20px',
-  },
-  tabButton: {
-    margin: '0 10px',
-    padding: '10px 20px',
-    backgroundColor: '#ccc',
-    border: 'none',
-    borderRadius: '5px',
-    cursor: 'pointer',
-  },
-  activeTabButton: {
-    margin: '0 10px',
-    padding: '10px 20px',
-    backgroundColor: '#1890ff',
-    color: 'white',
-    border: 'none',
-    borderRadius: '5px',
-    cursor: 'pointer',
-  },
-  section: {
-    border: '1px solid #ddd',
-    borderRadius: '8px',
-    padding: '20px',
-    margin: '0 auto',
-    width: '90%',
-    textAlign: 'left',
-  },
-  block: {
-    marginTop: '20px',
-    marginBottom: '20px',
-  },
-  input: {
-    margin: '0 5px',
-    padding: '6px',
-    borderRadius: '4px',
-    border: '1px solid #ccc',
-  },
-  button: {
-    marginTop: '10px',
-    marginLeft: '10px',
-    padding: '8px 16px',
-    backgroundColor: '#52c41a',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-  },
-  smallButton: {
-    padding: '4px 8px',
-    backgroundColor: '#f5222d',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    marginLeft: '5px',
-  },
-  // Updated table style to show horizontal and vertical lines
-  table: {
-    margin: '0 auto',
-    borderCollapse: 'collapse', // Ensures that border lines are drawn as a single line
-    width: '100%',
-  },
-  // Below styles can be used if you decide to add <th style={styles.tableHeaderCell}> or <td style={styles.tableCell}>
-  tableHeaderCell: {
-    border: '1px solid #ccc',
-    padding: '8px',
-    backgroundColor: '#f7f7f7',
-    fontWeight: 'bold',
-    textAlign: 'left',
-  },
-  tableCell: {
-    border: '1px solid #ccc',
-    padding: '8px',
-    textAlign: 'left',
-  },
 };
 
 export default Cargo_Admin;

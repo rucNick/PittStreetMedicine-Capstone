@@ -211,6 +211,13 @@ const Volunteer_Dashboard = ({ userData, onLogout }) => {
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <img className="nav-logo" src="/Untitled.png" alt="Logo" />
           <span className="nav-welcome"><h2>Welcome Back, {userData.username} !</h2></span>
+          <button
+          className="nav-btn"
+          style={{ marginLeft: "10px" }}
+          onClick={() => navigate("/profile")}
+        >
+          Profile
+        </button>
         </div>
         <div className="nav-right-group">
           <button className="nav-btn" onClick={() => navigate("/cargo_volunteer")}>
